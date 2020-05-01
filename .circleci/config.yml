@@ -32,6 +32,7 @@ jobs:
             JAVA_HOME: /usr/lib/jvm/default-java
           command: |
             cd docs
+            make rsthtml SPHINXOPTS="-W --keep-going"
             make javadocs
 
       - store_artifacts:
