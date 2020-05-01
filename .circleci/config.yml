@@ -33,6 +33,9 @@ jobs:
             make rsthtml SPHINXOPTS="-W --keep-going"
             make javadocs
 
+      - store_artifacts:
+          path: docs/build/html/index.html
+
 workflows:
   ci:
     jobs:
