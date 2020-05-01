@@ -28,6 +28,8 @@ jobs:
 
       - run:
           name: Build documentation
+          environment:
+            JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64/bin/
           command: |
             cd docs
             make rsthtml SPHINXOPTS="-W --keep-going"
