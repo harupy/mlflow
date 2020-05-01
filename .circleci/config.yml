@@ -34,7 +34,7 @@ jobs:
             make javadocs
 
       - store_artifacts:
-          path: docs/build/html/index.html
+          path: docs/build/html
 
 workflows:
   ci:
