@@ -15,16 +15,16 @@ jobs:
             sudo apt-get install default-jdk -y
             sudo apt-get install maven -y
             java -version
-      - run:
-          name: Install Python dependencies
-          environment:
-            INSTALL_SMALL_PYTHON_DEPS: true
-            INSTALL_LARGE_PYTHON_DEPS: true
-          command: |
-            pip install --progress-bar off -r ./travis/small-requirements.txt
-            pip install --progress-bar off -r ./travis/large-requirements.txt
-            pip install --progress-bar off .
-            pip install --progress-bar off sphinx==2.2.1 sphinx-click==2.3.0
+      # - run:
+      #     name: Install Python dependencies
+      #     environment:
+      #       INSTALL_SMALL_PYTHON_DEPS: true
+      #       INSTALL_LARGE_PYTHON_DEPS: true
+      #     command: |
+      #       pip install --progress-bar off -r ./travis/small-requirements.txt
+      #       pip install --progress-bar off -r ./travis/large-requirements.txt
+      #       pip install --progress-bar off .
+      #       pip install --progress-bar off sphinx==2.2.1 sphinx-click==2.3.0
 
       - run:
           name: Build documentation
@@ -32,7 +32,6 @@ jobs:
             JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64/bin/
           command: |
             cd docs
-            make rsthtml SPHINXOPTS="-W --keep-going"
             make javadocs
 
       - store_artifacts:
