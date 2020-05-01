@@ -21,8 +21,8 @@ jobs:
             INSTALL_SMALL_PYTHON_DEPS: true
             INSTALL_LARGE_PYTHON_DEPS: true
           command: |
-            pip install --quiet -r ./travis/small-requirements.txt
-            pip install --quiet -r ./travis/small-requirements.txt
+            pip install -r ./travis/small-requirements.txt
+            pip install -r ./travis/small-requirements.txt
             pip install .
             pip install sphinx==2.2.1 sphinx-click==2.3.0
 
