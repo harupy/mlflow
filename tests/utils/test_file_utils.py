@@ -90,11 +90,11 @@ def test_make_tarfile(tmpdir):
     file_utils.make_tarfile(
         output_filename=tarfile1, source_dir=dst_dir, archive_name="some-archive")
 
-    proc = subprocess.Popen(["ls -l {}".format(tarfile0)], stdout=subprocess.PIPE, shell=True)
+    proc = subprocess.Popen(["ls -la {}".format(tarfile0)], stdout=subprocess.PIPE, shell=True)
     out, err = proc.communicate()
     print(out.decode("utf-8"))
 
-    proc = subprocess.Popen(["ls -l {}".format(tarfile1)], stdout=subprocess.PIPE, shell=True)
+    proc = subprocess.Popen(["ls -la {}".format(tarfile1)], stdout=subprocess.PIPE, shell=True)
     out, err = proc.communicate()
     print(out.decode("utf-8"))
 
