@@ -78,11 +78,11 @@ def test_make_tarfile(tmpdir):
 
     import subprocess
 
-    proc = subprocess.Popen(["ls", "-l", dst_dir], stdout=subprocess.PIPE, shell=True)
+    proc = subprocess.Popen(["ls -l {}".format(dst_dir)], stdout=subprocess.PIPE, shell=True)
     out, err = proc.communicate()
     print(out.decode("utf-8"))
 
-    proc = subprocess.Popen(["ls", "-l", TEST_PROJECT_DIR], stdout=subprocess.PIPE, shell=True)
+    proc = subprocess.Popen(["ls -l {}".format(TEST_PROJECT_DIR)], stdout=subprocess.PIPE, shell=True)
     out, err = proc.communicate()
     print(out.decode("utf-8"))
     # Tar the copied project
