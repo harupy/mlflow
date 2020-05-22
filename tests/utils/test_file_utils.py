@@ -76,6 +76,10 @@ def test_make_tarfile(tmpdir):
     tarfile1 = str(tmpdir.join("second-tarfile"))
     file_utils.make_tarfile(
         output_filename=tarfile1, source_dir=dst_dir, archive_name="some-archive")
+
+    print(os.listdir(dst_dir))
+    print(os.listdir(TEST_PROJECT_DIR))
+    assert False
     # Compare the archives & explicitly verify their SHA256 hashes match (i.e. that
     # changes in file modification timestamps don't affect the archive contents)
     assert filecmp.cmp(tarfile0, tarfile1, shallow=False)
