@@ -90,6 +90,15 @@ def test_make_tarfile(tmpdir):
     file_utils.make_tarfile(
         output_filename=tarfile1, source_dir=dst_dir, archive_name="some-archive")
 
+    proc = subprocess.Popen(["ls -l {}".format(tarfile0)], stdout=subprocess.PIPE, shell=True)
+    out, err = proc.communicate()
+    print(out.decode("utf-8"))
+
+    proc = subprocess.Popen(["ls -l {}".format(tarfile1)], stdout=subprocess.PIPE, shell=True)
+    out, err = proc.communicate()
+    print(out.decode("utf-8"))
+
+
     # Compare the archives & explicitly verify their SHA256 hashes match (i.e. that
     # changes in file modification timestamps don't affect the archive contents)
     assert filecmp.cmp(tarfile0, tarfile1, shallow=False)
