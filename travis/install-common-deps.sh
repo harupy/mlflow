@@ -25,7 +25,7 @@ conda info -a
 if [[ -n "$TRAVIS_PYTHON_VERSION" ]]; then
   conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
 else
-  conda create -q -n test-environment python=3.6
+  conda create -q -n test-environment python=3.7
 fi
 source activate test-environment
 python --version
