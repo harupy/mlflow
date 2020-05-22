@@ -75,6 +75,16 @@ def test_make_tarfile(tmpdir):
     shutil.copytree(TEST_PROJECT_DIR, dst_dir)
     print(os.listdir(dst_dir))
     print(os.listdir(TEST_PROJECT_DIR))
+
+    import subprocess
+
+    proc = subprocess.Popen(["ls", "-l", dst_dir], stdout=subprocess.PIPE, shell=True)
+    out, err = proc.communicate()
+    print(out)
+
+    proc = subprocess.Popen(["ls", "-l", TEST_PROJECT_DIR], stdout=subprocess.PIPE, shell=True)
+    out, err = proc.communicate()
+    print(out)
     # Tar the copied project
     tarfile1 = str(tmpdir.join("second-tarfile"))
     file_utils.make_tarfile(
