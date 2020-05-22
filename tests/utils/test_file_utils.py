@@ -71,10 +71,8 @@ def test_make_tarfile(tmpdir):
         output_filename=tarfile0, source_dir=TEST_PROJECT_DIR, archive_name="some-archive")
     # Copy local project into a temp dir
     dst_dir = str(tmpdir.join("project-directory"))
-    from distutils.dir_util import copy_tree
 
-    # shutil.copytree(TEST_PROJECT_DIR, dst_dir)
-    copy_tree(TEST_PROJECT_DIR, dst_dir)
+    shutil.copytree(TEST_PROJECT_DIR, dst_dir)
     # Tar the copied project
     tarfile1 = str(tmpdir.join("second-tarfile"))
     file_utils.make_tarfile(
