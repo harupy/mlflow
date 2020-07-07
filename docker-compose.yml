@@ -1,5 +1,4 @@
-# --backend-store-uri=postgresql+psycopg2://mlflow:mlflow@localhost:5432/mlflow
-# export MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow:mlflow@localhost:5432/mlflow
+# mlflow ui --backend-store-uri=postgresql+psycopg2://mlflow:mlflow@localhost:5432/mlflow
 # export MLFLOW_TRACKING_URI=postgresql+psycopg2://mlflow:mlflow@localhost:5432/mlflow
 
 version: "3"

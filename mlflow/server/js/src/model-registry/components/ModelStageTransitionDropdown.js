@@ -19,6 +19,7 @@ export class ModelStageTransitionDropdown extends React.Component {
     confirmModalVisible: false,
     confirmingActivity: null,
     handleConfirm: undefined,
+    flag: false,
   };
 
   handleMenuItemClick = (activity) => {
@@ -30,7 +31,7 @@ export class ModelStageTransitionDropdown extends React.Component {
         onSelect &&
         (() => {
           this.setState({ confirmModalVisible: false });
-          this.props.onSelect(activity);
+          this.props.onSelect(activity, this.state.flag);
         }),
     });
   };
@@ -43,6 +44,19 @@ export class ModelStageTransitionDropdown extends React.Component {
     const stages = Object.values(Stages);
     _.remove(stages, (s) => s === currentStage);
     return stages;
+  };
+
+  renderCheckbox = () => {
+    const { flag } = this.state;
+    return (
+      <input
+        type='checkbox'
+        checked={flag}
+        onClick={(e) => {
+          this.setState({ flag: e.target.checked });
+        }}
+      ></input>
+    );
   };
 
   getMenu() {
@@ -81,6 +95,7 @@ export class ModelStageTransitionDropdown extends React.Component {
           onCancel={this.handleConfirmModalCancel}
         >
           {renderActivityDescription(confirmingActivity)}
+          {this.renderCheckbox()}
         </Modal>
       );
     }

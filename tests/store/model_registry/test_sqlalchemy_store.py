@@ -282,6 +282,30 @@ class TestSqlAlchemyStoreSqlite(unittest.TestCase):
         self.assertEqual(mv3.version, 3)
         self.assertEqual(mvd3.version, 3)
 
+    def test_archive_existing_versions(self):
+        name = "model"
+        self._rm_maker(name)
+        mv1 = self._mv_maker(name)
+        mv2 = self._mv_maker(name)
+        mv3 = self._mv_maker(name)
+
+        # use for loop for mv1 and mv2
+        self.store.transition_model_version_stage(name, mv1.version, stage="Staging", archive_existing_versions=False)
+        self.store.transition_model_version_stage(name, mv2.version, stage="Staging", archive_existing_versions=False)
+        self.store.transition_model_version_stage(name, mv3.version, stage="Staging", archive_existing_versions=True)
+
+        # use for loop here
+        mvd1 = self.store.get_model_version(name=name, version=mv1.version)
+        mvd2 = self.store.get_model_version(name=name, version=mv2.version)
+        mvd3 = self.store.get_model_version(name=name, version=mv3.version)
+
+        self.assertEqual(mvd1.current_stage, "Archived")
+        self.assertEqual(mvd2.current_stage, "Archived")
+        self.assertEqual(mvd3.current_stage, "Staging")
+
+        self.assertEqual(mvd1.last_updated_timestamp, mvd3.last_updated_timestamp)
+        self.assertEqual(mvd2.last_updated_timestamp, mvd3.last_updated_timestamp)
+
     def test_update_model_version(self):
         name = "test_for_update_MV"
         self._rm_maker(name)
