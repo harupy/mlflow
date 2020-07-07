@@ -12,6 +12,7 @@ import mlflow.xgboost
 
 mpl.use('Agg')
 
+mlflow.set_tracking_uri('postgresql+psycopg2://mlflow:mlflow@localhost:5432/mlflow')
 
 def parse_args():
     parser = argparse.ArgumentParser(description='XGBoost example')
