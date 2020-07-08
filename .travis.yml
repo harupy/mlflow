@@ -11,23 +11,23 @@ matrix:
     # Does not include Windows since Projects/Models are mostly not compatible with Windows as of now.
     - stage: Nightly
       if: type == cron
-    - stage: Large
-      if: type != cron
-    # Run Windows tests in the "large" test builder so that we don't spend Travis executor
-    # time running Windows tests if Python 3 small tests fail.
-    - os: windows
-      name: "Windows"
-      if: type != cron
-      language: sh
-      before_install:
-        - choco install python3 --version=3.7.4
-      install:
-        - export PATH="/c/Python37:/c/Python37/Scripts:$PATH"
-        - pip install -r dev-requirements.txt
-        - pip install -r travis/small-requirements.txt
-        - pip install -e .
-      script:
-        - pytest --verbose --ignore-flavors --ignore=tests/projects tests
+    # - stage: Large
+    #   if: type != cron
+    # # Run Windows tests in the "large" test builder so that we don't spend Travis executor
+    # # time running Windows tests if Python 3 small tests fail.
+    # - os: windows
+    #   name: "Windows"
+    #   if: type != cron
+    #   language: sh
+    #   before_install:
+    #     - choco install python3 --version=3.7.4
+    #   install:
+    #     - export PATH="/c/Python37:/c/Python37/Scripts:$PATH"
+    #     - pip install -r dev-requirements.txt
+    #     - pip install -r travis/small-requirements.txt
+    #     - pip install -e .
+    #   script:
+    #     - pytest --verbose --ignore-flavors --ignore=tests/projects tests
 
 
 # Travis runs an extra top-level job for each build stage - depending on the build stage, we either
