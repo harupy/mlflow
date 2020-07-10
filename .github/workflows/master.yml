@@ -263,4 +263,5 @@ jobs:
       - name: Run tests
         run: |
           export PATH="$CONDA_DIR/bin:$PATH"
+          source activate test-environment
           ./travis/run-large-python-tests.sh
