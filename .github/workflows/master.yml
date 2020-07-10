@@ -262,4 +262,4 @@ jobs:
         run: |
           export PATH="$CONDA_DIR/bin:$PATH"
           source activate test-environment
-          pytest tests --large --ignore-flavors --ignore=tests/examples --ignore=tests/models
+          pytest --verbose tests/examples --large
