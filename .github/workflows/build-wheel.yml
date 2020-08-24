@@ -37,8 +37,10 @@ jobs:
           # set outputs
           wheel_path=$(find dist -type f)
           wheel_name=$(basename $wheel_path)
+          wheel_size=$(stat -c %s $wheel_path)
           echo "::set-output name=wheel-path::${wheel_path}"
           echo "::set-output name=wheel-name::${wheel_name}"
+          echo "::set-output name=wheel-size::${wheel_size}"
 
       - name: Verify wheel can be installed
         run: |
@@ -53,8 +55,11 @@ jobs:
       - name: Adjust storage usage
         uses: actions/github-script@v3
         with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          wheel-size: ${{ steps.build-wheel.outputs.wheel-size }}
           script: |
+            const wheelSize = core.getInput("wheel-size");
+            console.log(wheelSize)
             const { owner, repo } = context.repo;
             const artifactsResp = await github.actions.listArtifactsForRepo({
               owner,
