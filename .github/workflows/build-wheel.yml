@@ -87,6 +87,7 @@ jobs:
             }
             console.log(wheels);
             console.log(sum);
+            console.log(index);
 
             if (sum <= MAX_SIZE_IN_BYTES) {
               return;
