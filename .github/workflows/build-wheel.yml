@@ -85,6 +85,7 @@ jobs:
                 break;
               }
             }
+            console.log(wheels)
 
             if (sum <= MAX_SIZE_IN_BYTES) {
               return;
