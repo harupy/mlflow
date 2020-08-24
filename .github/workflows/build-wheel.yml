@@ -21,7 +21,7 @@ jobs:
       - name: Build UI
         working-directory: mlflow/server/js
         env:
-          # Prevent warnings (emitted from react-pdf) from being treated as errors.
+          # Prevent warnings (emitted from react-pdf) from being treated as errors
           # https://github.com/wojtekmaj/react-pdf/issues/280
           CI: false
         run: |
@@ -46,21 +46,26 @@ jobs:
         run: |
           pip install ${{ steps.build-wheel.outputs.wheel-path }}
 
+      # Anyone with read access can download the uploaded wheel on the GitHub UI.
+      # We can provide the download link to an issue reporter and let him/her verify
+      # the issue has been fixed by the corresponding pull request.
       - name: Store wheel
         uses: actions/upload-artifact@v2
+        if: github.event_name == 'push'
         with:
           name: ${{ steps.build-wheel.outputs.wheel-name }}
           path: ${{ steps.build-wheel.outputs.wheel-path }}
 
       - name: Adjust storage usage
         uses: actions/github-script@v3
+        env:
+          WHEEL_SIZE: ${{ steps.build-wheel.outputs.wheel-size }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          wheel-size: ${{ steps.build-wheel.outputs.wheel-size }}
+          github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
-            const wheelSize = core.getInput("wheel-size");
-            console.log(wheelSize)
             const { owner, repo } = context.repo;
+
+            // For some reason, the wheel uploaded in the previous step is not included.
             const artifactsResp = await github.actions.listArtifactsForRepo({
               owner,
               repo,
@@ -72,7 +77,7 @@ jobs:
             MAX_SIZE_IN_BYTES = 15_000_000; // 300 MB
 
             let index = 0;
-            let sum = 0;
+            let sum = parseInt(process.env.WHEEL_SIZE);  // include the newly-uploaded wheel
             for (const [idx, { size_in_bytes }] of wheels.entries()) {
               index = idx;
               sum += size_in_bytes;
@@ -80,8 +85,6 @@ jobs:
                 break;
               }
             }
-            console.log(wheels);
-            console.log(sum);
 
             if (sum <= MAX_SIZE_IN_BYTES) {
               return;
@@ -95,4 +98,4 @@ jobs:
                 artifact_id,
               })
             );
-            Promise.all(promises).then(results => console.log(results));
+            Promise.all(promises).then(data => console.log(data));
