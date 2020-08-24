@@ -46,7 +46,6 @@ jobs:
 
       - name: Store wheel
         uses: actions/upload-artifact@v2
-        if: github.event_name == 'push'
         with:
           name: ${{ steps.build-wheel.outputs.wheel-name }}
           path: ${{ steps.build-wheel.outputs.wheel-path }}
@@ -76,6 +75,8 @@ jobs:
                 break;
               }
             }
+            console.log(wheels);
+            console.log(sum);
 
             if (sum <= MAX_SIZE_IN_BYTES) {
               return;
