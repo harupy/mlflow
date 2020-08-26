@@ -57,7 +57,7 @@ class LocalArtifactRepository(ArtifactRepository):
         print(local_dir, artifact_dir)
         if not os.path.exists(artifact_dir):
             mkdir(artifact_dir)
-        shutil.copytree(src=local_dir, dst=artifact_dir)
+        shutil.copytree(src=local_dir, dst=artifact_dir, dirs_exist_ok=True)
         print(os.listdir(artifact_dir))
 
     def download_artifacts(self, artifact_path, dst_path=None):
