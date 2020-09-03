@@ -243,7 +243,7 @@ def _get_docker_command(image, active_run, docker_args=None, volumes=None, user_
             cmd += ["-v", v]
 
     for key, value in env_vars.items():
-        cmd += ["-e", "{key}={value}".format(key=key, value=value)]
+        cmd += ["-e", '{key}="{value}"'.format(key=key, value=value)]
     cmd += [image.tags[0]]
     return cmd
 
