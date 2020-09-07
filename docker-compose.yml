@@ -1,0 +1,12 @@
+version: "3"
+services:
+  ftp:
+    image: stilliard/pure-ftpd
+    environment:
+      FTP_USER_NAME: mlflow
+      FTP_USER_PASS: mlflow
+      FTP_USER_HOME: /home/mlflow
+
+    ports:
+      - "21:21"
+      - "30000-30009:30000-30009"
