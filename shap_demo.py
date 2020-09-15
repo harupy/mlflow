@@ -20,12 +20,12 @@ def main():
 
     print(X.shape)
     print(y.shape)
-    svm = SVC(kernel="rbf", probability=True)
-    svm.fit(X, y)
+    model = SVC(kernel="rbf", probability=True)
+    model.fit(X, y)
 
     # log an explanation
     with mlflow.start_run() as run:
-        mlflow.shap.log_explanation(svm.predict_proba, X)
+        mlflow.shap.log_explanation(model.predict_proba, X)
 
     # load the explanation
     expl = mlflow.shap.load_explanation(run.info.run_id)

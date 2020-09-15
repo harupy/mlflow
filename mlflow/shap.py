@@ -84,24 +84,42 @@ def log_explanation(
             raise ValueError(msg_tpl.format(["sample", "kmeans"], background_sampling_method))
 
     # compute shap_values
+    # QUESTION: what is the proper sampling size for `background_data`
+    # Some explainers (e.g. `TreeExplainer`) doesn't require `background_data`
     explainer = shap.KernelExplainer(predict_func, background_data)
-    shap_values = explainer.shap_values(features)
 
+    # this step takes long if the data size is large
+    # For a regression or binary classification model,
+    # `shap_values` becomes a 2D array which has the shape: (num_samples x num_features).
+    # For a multi-class classification model,
+    # `shap_values` becomes a 3D array which has the shape: (num_classes x num_samples x num_features)
+    # We can slice a 3D array and save each layer in one csv file, but this approach doesn't seem to
+    # work when the number of classes is large.
+    shap_values = explainer.shap_values(features)
+    shap_values = np.array(shap_values)
+
+    # `expected_value` is a number or a list of number (multi-class classification)
+    # `expected_value` equals to `predict_func(features).mean(axis=0)`
+    # For a regression or binary classification model, `expected_value` becomes a number
+    # For a multi-class classification model, `expected_value` becomes a list of numbers
     expected_value = (
         np.array(explainer.expected_value)
         if isinstance(explainer.expected_value, list)
         else explainer.expected_value
     )
 
-    # create a summary bar plot
-    shap.summary_plot(shap_values, features, plot_type="bar", show=False)
-    bar_plot = plt.gcf()
-    bar_plot.tight_layout()
-
-    # log results
-    _log_numpy_object(np.array(shap_values), _SHAP_VALUES_FILE_NAME, _SHAP_DEFAULT_ARTIFACT_PATH)
+    # log explanation data
+    _log_numpy_object(shap_values, _SHAP_VALUES_FILE_NAME, _SHAP_DEFAULT_ARTIFACT_PATH)
     _log_numpy_object(expected_value, _EXPECTED_VALUE_FILE_NAME, _SHAP_DEFAULT_ARTIFACT_PATH)
+
+    # create a summary plot
+    # `summary_plot` returns nothing
+    shap.summary_plot(shap_values, features, plot_type="bar", show=False)
+    bar_plot = plt.gcf()  # get the current figure
+    bar_plot.tight_layout()  # prevent the y-axis labels from overflowing
     _log_matplotlib_figure(bar_plot, "bar_plot.png", _SHAP_DEFAULT_ARTIFACT_PATH)
+
+    # log metadata
     _log_dict_as_yml(
         {
             "shap_version": shap.__version__,
