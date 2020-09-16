@@ -66,26 +66,25 @@ def _log_dict_as_yml(dct, out_file, artifact_path=None):
 def log_explanation(
     predict_func,
     features,
-    background_data=None,
-    background_sampling_method="sample",
-    background_num_samples=10,
+    # explainer_constructor=KerneExplainer,
+    # constructor_kwargs=None,  # defaults to an empty dict
+    # shap_values_kwargs=None,  # defaults to an empty dict
+    # the following arguments are only valid when `explainer_constructor` is `KerneExplainer`
 ):
     """
     Log an explanation.
+
+    shap_values_kwargs is used when
+    ```
+    explainer = explainer_constructor(predict_func, **constructor_kwargs)
+    shap_values = explainer.shap_values(features, **shap_values_kwargs)
+    ```
     """
-
-    if background_data is None and len(features) > 100:
-        if background_sampling_method == "sample":
-            background_data = shap.sample(features, background_num_samples)
-        elif background_sampling_method == "kmeans":
-            background_data = shap.kmeans(features, background_num_samples)
-        else:
-            msg_tpl = "Invalid value for `background_sampling_method`. Must be one of {} but got {}"
-            raise ValueError(msg_tpl.format(["sample", "kmeans"], background_sampling_method))
-
     # compute shap_values
     # QUESTION: what is the proper sampling size for `background_data`
     # Some explainers (e.g. `TreeExplainer`) doesn't require `background_data`
+    # `shap` raises a warning saying "use shap.sample or shap.kmeans"
+    # when `background_data` has more than 100 rows.
     explainer = shap.KernelExplainer(predict_func, background_data)
 
     # this step takes long if the data size is large
@@ -95,6 +94,12 @@ def log_explanation(
     # `shap_values` becomes a 3D array which has the shape: (num_classes x num_samples x num_features)
     # We can slice a 3D array and save each layer in one csv file, but this approach doesn't seem to
     # work when the number of classes is large.
+    # It the size of `features` is large, it takes really long time to compute SHAP values.
+    # We can sample `features` to avoid that, but not sure if that' what we should do.
+    # QUESTION: should we log `features`? Basically, (expected_value, shap_values, features)
+    # is like a set. Logging `features` with `shap_values` and `expected_value` allows the user
+    # to create additional plots easily. If we didn't log `features`, the user would somehow need to
+    # prepare `features` used when computing the SHAP values.
     shap_values = explainer.shap_values(features)
     shap_values = np.array(shap_values)
 

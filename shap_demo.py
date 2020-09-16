@@ -11,6 +11,49 @@ import mlflow.shap
 logging.getLogger("shap").setLevel(logging.DEBUG)
 
 
+def main2():
+    with mlflow.start_run() as run:
+        sklearn_model = ...
+        # With this approach, the user needs to log a model first.
+        # - What if the user doesn't need a model but just wants an explanation of the model?
+        # - What if the user uses a model that we don't support (e.g. skorch)?
+        mlflow.sklearn.log_model(sklearn_model, "model")
+        model_uri = "runs/:{}/model".format(run.info.run_id)
+        mlflow.shap.log_explanation(model_uri, data)
+
+
+def main3():
+    with mlflow.start_run() as run:
+        random_model = ...
+        # How can we detect `predict` or `predict_method`?
+        # PyTorch models don't have a `predict` method.
+        mlflow.shap.log_explanation(random_model, data)
+
+
+model.shap.log_explanation(sklear_regressor.predict, features)
+model.shap.log_explanation(sklearn_multi_classifier.predict_proba, features)
+
+
+def predict_as_numpy_array(model, features):
+    def predict(features):
+        return model.predict(features).as_numpy_array()
+
+    return predict
+
+
+# This doesn't seem inconvenient that much...
+model.shap.log_explanation(predict_as_numpy_array(model), features)
+
+
+def main4():
+    with mlflow.start_run() as run:
+        random_model = ...
+        # How can we detect `predict` or `predict_method`?
+        # - sklearn's predict and predict_proba
+        # - PyTorch models don't have a `predict` method. The model itself is a predict method.
+        mlflow.shap.log_explanation(random_model, data)
+
+
 def main():
     # train a multi-class classifier using the iris dataset
     X, y = load_iris(return_X_y=True, as_frame=True)
