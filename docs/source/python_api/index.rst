@@ -9,7 +9,7 @@ exposed in the :py:mod:`mlflow` module, so we recommend starting there.
 .. toctree::
   :glob:
 
-  *
+  *[!shap]
 
 
 See also the :ref:`index of all functions and classes<genindex>`.
