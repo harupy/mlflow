@@ -67,6 +67,7 @@ rdocs:
 # Builds only the RST-based documentation (i.e., everything but Java & R docs)
 .PHONY: rsthtml
 rsthtml:
+	cat $(BUILDDIR)/../source/rest-api.rst
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
