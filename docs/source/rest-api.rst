@@ -1121,7 +1121,7 @@ Response Structure
 +============+===================================+===========================================+
 | root_uri   | ``STRING``                        | Root artifact directory for the run.      |
 +------------+-----------------------------------+-------------------------------------------+
-| files      | An array of :ref:`mlflowfileinfo` | File location and metadata for artifacts. |
+| files      | An array of :ref:`mlflowFileInfo` | File location and metadata for artifacts. |
 +------------+-----------------------------------+-------------------------------------------+
 
 ===========================
