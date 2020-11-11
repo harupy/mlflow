@@ -207,7 +207,6 @@ def _autolog(log_every_n_epoch=1):
             try_mlflow_log(mlflow.end_run)
         return result
 
-    @gorilla.patch(pl.Trainer)
     def fit(self, *args, **kwargs):
         """
         Patching trainer.fit method to add autolog class into callback
