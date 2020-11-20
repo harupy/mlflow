@@ -29,7 +29,7 @@ def get_minor_version(ver):
     return re.search(r"^(\d+\.\d+).*", ver).group(1)
 
 
-def get_minor_versions(versions):
+def get_latest_minor_versions(versions):
     res = {}
 
     for ver in versions:
@@ -55,7 +55,7 @@ def main():
     versions = list(filter(contains_only_numbers, versions))
     versions = list(filter(lambda v: is_between(v, args.min_ver, args.max_ver), versions))
     versions = sorted(versions, key=LooseVersion, reverse=True)
-    versions = get_minor_versions(versions)
+    versions = get_latest_minor_versions(versions)
     print(json.dumps({"version": versions}))
 
 
