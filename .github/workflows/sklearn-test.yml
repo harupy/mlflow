@@ -1,0 +1,54 @@
+name: sklearn-test
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  get-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          MIN_VERSION=$(python -c "import mlflow; print(mlflow.sklearn.MIN_VERSION)")
+          MAX_VERSION=$(python -c "import mlflow; print(mlflow.sklearn.MAX_VERSION)")
+          echo "::set-output name=matrix::{\"version\": [${MIN_VERSION}, {MAX_VERSION}]}"
+  sklearn:
+    needs: get-versions
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{fromJson(needs.get-versions.outputs.matrix)}}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.6"
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          pip install -r dev/small-requirements.txt
+          pip install matplotlib
+      - name: Update scikit-learn
+        run: |
+          ver="${{ matrix.version }}"
+          op=$([[ "$ver" =~ ^git ]] && echo "@" || echo "==")
+          pip install -U "lightgbm $op $ver"
+      - name: Check scikit-learn version
+        shell: python
+        run: |
+          import sklearn
+          print(sklearn.__version__)
+      - name: Run tests
+        run: |
+          pytest --verbose --large tests/sklearn/test_sklearn_autolog.py
+      - name: Run examples
+        working-directory: examples/sklearn_autolog
+        run: |
+          set -x
+          python linear_regression.py
+          python pipeline.py
+          python grid_search_cv.py

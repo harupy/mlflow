@@ -1,4 +1,4 @@
-"""
+TEMPLATE = """
 The ``mlflow.sklearn`` module provides an API for logging and loading scikit-learn models. This
 module exports scikit-learn models with the following flavors:
 
@@ -9,7 +9,14 @@ Python (native) `pickle <https://scikit-learn.org/stable/modules/model_persisten
     Produced for use by generic pyfunc-based deployment tools and batch inference.
     NOTE: The `mlflow.pyfunc` flavor is only added for scikit-learn models that define `predict()`,
     since `predict()` is required for pyfunc model inference.
+
+Supported MAX version: {}
+Supported MIN version: {}
 """
+MIN_VERSION = "0.20.3"
+MAX_VERSION = "0.23.2"
+__doc__ = TEMPLATE.format(MIN_VERSION, MAX_VERSION)
+
 import os
 import logging
 import pickle
