@@ -13,8 +13,8 @@ Python (native) `pickle <https://scikit-learn.org/stable/modules/model_persisten
 Supported MAX version: {}
 Supported MIN version: {}
 """
-MIN_VERSION = "0.20.3"
-MAX_VERSION = "0.23.2"
+MIN_VERSION = "0.21.3"
+MAX_VERSION = "0.22.2"
 __doc__ = TEMPLATE.format(MIN_VERSION, MAX_VERSION)
 
 import os
