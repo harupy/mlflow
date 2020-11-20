@@ -21,6 +21,26 @@ def is_between(ver, min_ver, max_ver):
         return False
 
 
+def contains_only_numbers(ver):
+    return re.search(r"^[\.\d]+$", ver) is not None
+
+
+def get_minor_version(ver):
+    return re.search(r"^(\d+\.\d+).*", ver).group(1)
+
+
+def get_minor_versions(versions):
+    res = {}
+
+    for ver in versions:
+        minor_ver = get_minor_version(ver)
+        print(minor_ver)
+        if minor_ver not in res:
+            res[minor_ver] = ver
+
+    return sorted(list(res.values()))
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--package-name")
@@ -32,10 +52,11 @@ def parse_args():
 def main():
     args = parse_args()
     versions = get_versions(args.package_name)
-    versions = list(filter(lambda v: re.search(r"\.\d+$", v), versions))
+    versions = list(filter(contains_only_numbers, versions))
     versions = list(filter(lambda v: is_between(v, args.min_ver, args.max_ver), versions))
-    data = {"version": versions}
-    print(json.dumps(data))
+    versions = sorted(versions, key=LooseVersion, reverse=True)
+    versions = get_minor_versions(versions)
+    print(json.dumps({"version": versions}))
 
 
 if __name__ == "__main__":
