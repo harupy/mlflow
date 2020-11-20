@@ -110,39 +110,6 @@ delete_run = mlflow.tracking.fluent.delete_run
 register_model = mlflow.tracking._model_registry.fluent.register_model
 autolog = mlflow.tracking.fluent.autolog
 
-import types
-import functools
-
-
-def add_version_warning(module, package_name):
-    MIN_VER = getattr(module, "MIN_VERSION")
-    MAX_VER = getattr(module, "MAX_VERSION")
-
-    def decorate(f):
-        @functools.wraps(f)
-        def wrapper(*args, **kwargs):
-            import importlib
-            from distutils.version import LooseVersion
-            import warnings
-
-            ver = importlib.import_module(package_name).__version__
-
-            if LooseVersion(ver) < LooseVersion(MIN_VER) or LooseVersion(ver) > LooseVersion(
-                MAX_VER
-            ):
-                warnings.warn("This {} version ({}) is not tested.".format(package_name, ver))
-
-            return f(*args, **kwargs)
-
-        return wrapper
-
-    for name in dir(module):
-        obj = getattr(module, name)
-        if isinstance(obj, types.FunctionType):
-            setattr(module, name, decorate(obj))
-
-
-add_version_warning(sklearn, "sklearn")
 
 run = projects.run
 
