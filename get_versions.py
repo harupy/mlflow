@@ -34,7 +34,6 @@ def get_latest_minor_versions(versions):
 
     for ver in versions:
         minor_ver = get_minor_version(ver)
-        print(minor_ver)
         if minor_ver not in res:
             res[minor_ver] = ver
 
