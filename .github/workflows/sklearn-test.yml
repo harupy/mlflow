@@ -11,6 +11,13 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.6"
+      - name: Install MLflow
+        run: |
+          pip install -e .
       - id: set-matrix
         run: |
           MIN_VERSION=$(python -c "import mlflow; print(mlflow.sklearn.MIN_VERSION)")
