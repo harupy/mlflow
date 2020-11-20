@@ -22,7 +22,8 @@ jobs:
         run: |
           MIN_VERSION=$(python -c "import mlflow; print(mlflow.sklearn.MIN_VERSION)")
           MAX_VERSION=$(python -c "import mlflow; print(mlflow.sklearn.MAX_VERSION)")
-          echo "::set-output name=matrix::{\"version\": [\"${MIN_VERSION}\", \"{MAX_VERSION\"}]}"
+          VERSIONS_JSON=$(python get_versions.py --package-name scikit-learn --min-ver $MIN_VERSION --max-ver $MAX_VERSION)
+          echo "::set-output name=matrix::$VERSIONS_JSON"
   sweep:
     needs: get-versions
     runs-on: ubuntu-latest
