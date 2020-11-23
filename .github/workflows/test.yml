@@ -21,6 +21,12 @@ jobs:
           cd xgboost/python-package
           python setup.py install
 
+      - name: Test
+        shell: python
+        run: |
+          import xgboost
+          print(xgboost.__version__)
+
   pytorch:
     runs-on: ubuntu-latest
     steps:
