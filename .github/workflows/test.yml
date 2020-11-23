@@ -29,6 +29,28 @@ jobs:
           import xgboost
           print(xgboost.__version__)
 
+  lightgbm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.6"
+      - name: Build
+        run: |
+          # https://xgboost.readthedocs.io/en/latest/build.html#building-on-linux-distributions
+          git clone --recursive https://github.com/dmlc/xgboost
+          cd LightGBM/python-package
+          python setup.py install
+          python setup.py egg_info
+          pip install -r *.egg-info/requires.txt
+
+      - name: Test
+        shell: python
+        run: |
+          import lightgbm
+          print(lightgbm.__version__)
+
   pytorch:
     runs-on: ubuntu-latest
     steps:
