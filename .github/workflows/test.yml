@@ -18,12 +18,8 @@ jobs:
         run: |
           # https://xgboost.readthedocs.io/en/latest/build.html#building-on-linux-distributions
           git clone --recursive https://github.com/dmlc/xgboost
-          cd xgboost
-          mkdir build
-          cd build
-          cmake ..
-          make -j$(nproc)
-          sudo make install
+          cd xgboost/python-package
+          python setup.py install
 
   pytorch:
     runs-on: ubuntu-latest
