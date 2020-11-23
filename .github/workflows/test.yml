@@ -38,8 +38,7 @@ jobs:
           python-version: "3.6"
       - name: Build
         run: |
-          # https://xgboost.readthedocs.io/en/latest/build.html#building-on-linux-distributions
-          git clone --recursive https://github.com/dmlc/xgboost
+          git clone --recursive https://github.com/microsoft/LightGBM.git
           cd LightGBM/python-package
           python setup.py install
           python setup.py egg_info
