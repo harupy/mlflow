@@ -21,7 +21,7 @@ jobs:
           cd xgboost/python-package
           python setup.py install
           python setup.py egg_info
-          pip install -e .
+          pip install .
 
       - name: Test
         shell: python
@@ -41,7 +41,7 @@ jobs:
           git clone --recursive https://github.com/microsoft/LightGBM.git
           cd LightGBM/python-package
           python setup.py install
-          pip install -e .
+          pip install .
 
       - name: Test
         shell: python
