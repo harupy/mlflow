@@ -25,7 +25,7 @@ jobs:
           make -j$(nproc)
           sudo make install
 
-  xgboost:
+  pytorch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
