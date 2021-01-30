@@ -19,6 +19,7 @@ import tempfile
 from collections import namedtuple
 import pandas
 from distutils.version import LooseVersion
+from threading import RLock
 
 import mlflow
 import mlflow.keras
@@ -57,6 +58,7 @@ _MAX_METRIC_QUEUE_SIZE = 500
 
 _LOG_EVERY_N_STEPS = 100
 
+_metric_queue_lock = RLock()
 _metric_queue = []
 
 _thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
@@ -520,16 +522,28 @@ class _TFWrapper(object):
             for sigdef_output, tnsr_info in signature_def.outputs.items()
         }
 
-    def predict(self, df):
+    def predict(self, data):
         with self.tf_graph.as_default():
-            # Build the feed dict, mapping input tensors to DataFrame column values.
-            feed_dict = {
-                self.input_tensor_mapping[tensor_column_name]: df[tensor_column_name].values
-                for tensor_column_name in self.input_tensor_mapping.keys()
-            }
+            feed_dict = data
+            if isinstance(data, dict):
+                feed_dict = {
+                    self.input_tensor_mapping[tensor_column_name]: data[tensor_column_name]
+                    for tensor_column_name in self.input_tensor_mapping.keys()
+                }
+            elif isinstance(data, pandas.DataFrame):
+                # Build the feed dict, mapping input tensors to DataFrame column values.
+                feed_dict = {
+                    self.input_tensor_mapping[tensor_column_name]: data[tensor_column_name].values
+                    for tensor_column_name in self.input_tensor_mapping.keys()
+                }
+            else:
+                raise TypeError("Only dict and DataFrame input types are supported")
             raw_preds = self.tf_sess.run(self.output_tensors, feed_dict=feed_dict)
             pred_dict = {column_name: values.ravel() for column_name, values in raw_preds.items()}
-            return pandas.DataFrame(data=pred_dict)
+            if isinstance(data, pandas.DataFrame):
+                return pandas.DataFrame(data=pred_dict)
+            else:
+                return pred_dict
 
 
 class _TF2Wrapper(object):
@@ -544,19 +558,25 @@ class _TF2Wrapper(object):
         """
         self.infer = infer
 
-    def predict(self, df):
+    def predict(self, data):
         import tensorflow
 
         feed_dict = {}
-        for df_col_name in list(df):
-            # If there are multiple columns with the same name, selecting the shared name
-            # from the DataFrame will result in another DataFrame containing the columns
-            # with the shared name. TensorFlow cannot make eager tensors out of pandas
-            # DataFrames, so we convert the DataFrame to a numpy array here.
-            val = df[df_col_name]
-            if isinstance(val, pandas.DataFrame):
-                val = val.values
-            feed_dict[df_col_name] = tensorflow.constant(val)
+        if isinstance(data, dict):
+            feed_dict = {k: tensorflow.constant(v) for k, v in data.items()}
+        elif isinstance(data, pandas.DataFrame):
+            for df_col_name in list(data):
+                # If there are multiple columns with the same name, selecting the shared name
+                # from the DataFrame will result in another DataFrame containing the columns
+                # with the shared name. TensorFlow cannot make eager tensors out of pandas
+                # DataFrames, so we convert the DataFrame to a numpy array here.
+                val = data[df_col_name]
+                if isinstance(val, pandas.DataFrame):
+                    val = val.values
+                feed_dict[df_col_name] = tensorflow.constant(val)
+        else:
+            raise TypeError("Only dict and DataFrame input types are supported")
+
         raw_preds = self.infer(**feed_dict)
         pred_dict = {col_name: raw_preds[col_name].numpy() for col_name in raw_preds.keys()}
         for col in pred_dict.keys():
@@ -565,7 +585,10 @@ class _TF2Wrapper(object):
             else:
                 pred_dict[col] = pred_dict[col].tolist()
 
-        return pandas.DataFrame.from_dict(data=pred_dict)
+        if isinstance(data, dict):
+            return pred_dict
+        else:
+            return pandas.DataFrame.from_dict(data=pred_dict)
 
 
 def _log_artifacts_with_warning(**kwargs):
@@ -587,12 +610,22 @@ def _flush_queue():
     Flush the metric queue and log contents in batches to MLflow.
     Queue is divided into batches according to run id.
     """
-    global _metric_queue
-    client = mlflow.tracking.MlflowClient()
-    dic = _assoc_list_to_map(_metric_queue)
-    for key in dic:
-        try_mlflow_log(client.log_batch, key, metrics=dic[key], params=[], tags=[])
-    _metric_queue = []
+    try:
+        # Multiple queue flushes may be scheduled simultaneously on different threads
+        # (e.g., if the queue is at its flush threshold and several more items
+        # are added before a flush occurs). For correctness and efficiency, only one such
+        # flush operation should proceed; all others are redundant and should be dropped
+        acquired_lock = _metric_queue_lock.acquire(blocking=False)
+        if acquired_lock:
+            global _metric_queue
+            client = mlflow.tracking.MlflowClient()
+            dic = _assoc_list_to_map(_metric_queue)
+            for key in dic:
+                try_mlflow_log(client.log_batch, key, metrics=dic[key], params=[], tags=[])
+            _metric_queue = []
+    finally:
+        if acquired_lock:
+            _metric_queue_lock.release()
 
 
 def _add_to_queue(key, value, step, time, run_id):
@@ -603,7 +636,7 @@ def _add_to_queue(key, value, step, time, run_id):
     met = Metric(key=key, value=value, timestamp=time, step=step)
     _metric_queue.append((run_id, met))
     if len(_metric_queue) > _MAX_METRIC_QUEUE_SIZE:
-        _flush_queue()
+        _thread_pool.submit(_flush_queue)
 
 
 def _log_event(event):
@@ -619,8 +652,7 @@ def _log_event(event):
                 # different from the arithmetic used in `__MLflowTfKeras2Callback.on_epoch_end`,
                 # which provides metric logging hooks for tf.Keras
                 if (event.step - 1) % _LOG_EVERY_N_STEPS == 0:
-                    _thread_pool.submit(
-                        _add_to_queue,
+                    _add_to_queue(
                         key=v.tag,
                         value=v.simple_value,
                         step=event.step,
@@ -884,14 +916,25 @@ def autolog(
         return result
 
     def export_saved_model(original, self, *args, **kwargs):
+        def create_autologging_run():
+            autologging_run = mlflow.start_run(tags={MLFLOW_AUTOLOGGING: FLAVOR_NAME})
+            _logger.info(
+                "Created MLflow autologging run with ID '%s', which will store the TensorFlow"
+                " model in MLflow Model format",
+                autologging_run.info.run_id,
+            )
+
         auto_end = False
         if not mlflow.active_run():
             global _AUTOLOG_RUN_ID
             if _AUTOLOG_RUN_ID:
+                _logger.info(
+                    "Logging TensorFlow Estimator as MLflow Model to run with ID '%s'",
+                    _AUTOLOG_RUN_ID,
+                )
                 try_mlflow_log(mlflow.start_run, _AUTOLOG_RUN_ID)
             else:
-                try_mlflow_log(mlflow.start_run)
-                try_mlflow_log(mlflow.set_tag, MLFLOW_AUTOLOGGING, FLAVOR_NAME)
+                try_mlflow_log(create_autologging_run)
                 auto_end = True
 
         serialized = original(self, *args, **kwargs)
@@ -1084,11 +1127,8 @@ def autolog(
         return result
 
     managed = [
-        (EventFileWriter, "add_event", add_event),
-        (EventFileWriterV2, "add_event", add_event),
         (tensorflow.estimator.Estimator, "train", train),
         (tensorflow.keras.Model, "fit", FitPatch),
-        (FileWriter, "add_summary", add_summary),
     ]
 
     if LooseVersion(tensorflow.__version__) < LooseVersion("2.1.0"):
@@ -1099,6 +1139,9 @@ def autolog(
         managed.append((tensorflow.keras.Model, "fit_generator", FitGeneratorPatch))
 
     non_managed = [
+        (EventFileWriter, "add_event", add_event),
+        (EventFileWriterV2, "add_event", add_event),
+        (FileWriter, "add_summary", add_summary),
         (tensorflow.estimator.Estimator, "export_saved_model", export_saved_model),
         (tensorflow.estimator.Estimator, "export_savedmodel", export_saved_model),
     ]
