@@ -225,6 +225,10 @@ def start_run(run_id=None, experiment_id=None, run_name=None, nested=False, tags
     return _active_run_stack[-1]
 
 
+def start_run_untyped(*args, **kwargs):
+    return start_run(*args, **kwargs)
+
+
 def end_run(status=RunStatus.to_string(RunStatus.FINISHED)):
     """End an active MLflow run (if there is one).
 
