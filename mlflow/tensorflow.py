@@ -19,6 +19,7 @@ import tempfile
 from collections import namedtuple
 import pandas
 from distutils.version import LooseVersion
+from threading import RLock
 
 import mlflow
 import mlflow.keras
@@ -933,7 +934,7 @@ def autolog(
                 )
                 try_mlflow_log(mlflow.start_run, _AUTOLOG_RUN_ID)
             else:
-                try_mlflow_log(create_autologging_run))
+                try_mlflow_log(create_autologging_run)
                 auto_end = True
 
         serialized = original(self, *args, **kwargs)
@@ -1137,7 +1138,7 @@ def autolog(
         # `fit_generator()` in TF < 2.1.0
         managed.append((tensorflow.keras.Model, "fit_generator", FitGeneratorPatch))
 
-    non_managed =
+    non_managed = [
         (EventFileWriter, "add_event", add_event),
         (EventFileWriterV2, "add_event", add_event),
         (FileWriter, "add_summary", add_summary),
