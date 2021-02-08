@@ -339,34 +339,6 @@ def test_missing_value_hint_is_displayed_when_it_should():
     assert hint not in str(ex.value.message)
 
 
-def test_missing_value_hint_is_displayed_when_it_should():
-    class TestModel(object):
-        @staticmethod
-        def predict(pdf):
-            return pdf
-
-    m = Model()
-    input_schema = Schema([ColSpec("integer", "a")])
-    m.signature = ModelSignature(inputs=input_schema)
-    pyfunc_model = PyFuncModel(model_meta=m, model_impl=TestModel())
-    pdf = pd.DataFrame(data=[[1], [None]], columns=["a"],)
-    with pytest.raises(MlflowException) as ex:
-        pyfunc_model.predict(pdf)
-    hint = "Hint: the type mismatch is likely caused by missing values."
-    assert "Incompatible input types" in str(ex.value.message)
-    assert hint in str(ex.value.message)
-    pdf = pd.DataFrame(data=[[1.5], [None]], columns=["a"],)
-    with pytest.raises(MlflowException) as ex:
-        pyfunc_model.predict(pdf)
-    assert "Incompatible input types" in str(ex)
-    assert hint not in str(ex.value.message)
-    pdf = pd.DataFrame(data=[[1], [2]], columns=["a"], dtype=np.float64)
-    with pytest.raises(MlflowException) as ex:
-        pyfunc_model.predict(pdf)
-    assert "Incompatible input types" in str(ex.value.message)
-    assert hint not in str(ex.value.message)
-
-
 def test_schema_enforcement_no_col_names():
     class TestModel(object):
         @staticmethod

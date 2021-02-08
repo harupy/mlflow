@@ -3,7 +3,11 @@ from collections import namedtuple
 from unittest import mock
 
 import mlflow
-from mlflow.utils.autologging_utils import get_autologging_config
+from mlflow.utils.autologging_utils import (
+    get_autologging_config,
+    autologging_is_disabled,
+    AutologgingEventLogger,
+)
 
 import tensorflow
 import keras

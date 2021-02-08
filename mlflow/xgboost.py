@@ -1,12 +1,10 @@
 """
 The ``mlflow.xgboost`` module provides an API for logging and loading XGBoost models.
 This module exports XGBoost models with the following flavors:
-
 XGBoost (native) format
     This is the main flavor that can be loaded back into XGBoost.
 :py:mod:`mlflow.pyfunc`
     Produced for use by generic pyfunc-based deployment tools and batch inference.
-
 .. _xgboost.Booster:
     https://xgboost.readthedocs.io/en/latest/python/python_api.html#xgboost.Booster
 .. _xgboost.Booster.save_model:
@@ -89,7 +87,6 @@ def save_model(
 ):
     """
     Save an XGBoost model to a path on the local file system.
-
     :param xgb_model: XGBoost model (an instance of `xgboost.Booster`_) to be saved.
                       Note that models that implement the `scikit-learn API`_  are not supported.
     :param path: Local path where the model is to be saved.
@@ -100,7 +97,6 @@ def save_model(
                       :func:`get_default_conda_env()` environment is added to the model.
                       The following is an *example* dictionary representation of a Conda
                       environment::
-
                         {
                             'name': 'mlflow-env',
                             'channels': ['defaults'],
@@ -111,18 +107,14 @@ def save_model(
                                 ]
                             ]
                         }
-
     :param mlflow_model: :py:mod:`mlflow.models.Model` this flavor is being added to.
-
     :param signature: (Experimental) :py:class:`ModelSignature <mlflow.models.ModelSignature>`
                       describes model input and output :py:class:`Schema <mlflow.types.Schema>`.
                       The model signature can be :py:func:`inferred <mlflow.models.infer_signature>`
                       from datasets with valid model input (e.g. the training dataset with target
                       column omitted) and valid model output (e.g. model predictions generated on
                       the training dataset), for example:
-
                       .. code-block:: python
-
                         from mlflow.models.signature import infer_signature
                         train = df.drop_column("target_label")
                         predictions = ... # compute model predictions
@@ -132,7 +124,6 @@ def save_model(
                           model. The given example will be converted to a Pandas DataFrame and then
                           serialized to json using the Pandas split-oriented format. Bytes are
                           base64-encoded.
-
     """
     import xgboost as xgb
 
@@ -180,7 +171,6 @@ def log_model(
 ):
     """
     Log an XGBoost model as an MLflow artifact for the current run.
-
     :param xgb_model: XGBoost model (an instance of `xgboost.Booster`_) to be saved.
                       Note that models that implement the `scikit-learn API`_  are not supported.
     :param artifact_path: Run-relative artifact path.
@@ -191,7 +181,6 @@ def log_model(
                       :func:`get_default_conda_env()` environment is added to the model.
                       The following is an *example* dictionary representation of a Conda
                       environment::
-
                         {
                             'name': 'mlflow-env',
                             'channels': ['defaults'],
@@ -205,16 +194,13 @@ def log_model(
     :param registered_model_name: (Experimental) If given, create a model version under
                                   ``registered_model_name``, also creating a registered model if one
                                   with the given name does not exist.
-
     :param signature: (Experimental) :py:class:`ModelSignature <mlflow.models.ModelSignature>`
                       describes model input and output :py:class:`Schema <mlflow.types.Schema>`.
                       The model signature can be :py:func:`inferred <mlflow.models.infer_signature>`
                       from datasets with valid model input (e.g. the training dataset with target
                       column omitted) and valid model output (e.g. model predictions generated on
                       the training dataset), for example:
-
                       .. code-block:: python
-
                         from mlflow.models.signature import infer_signature
                         train = df.drop_column("target_label")
                         predictions = ... # compute model predictions
@@ -253,7 +239,6 @@ def _load_model(path):
 def _load_pyfunc(path):
     """
     Load PyFunc implementation. Called by ``pyfunc.load_pyfunc``.
-
     :param path: Local filesystem path to the MLflow Model with the ``xgboost`` flavor.
     """
     return _XGBModelWrapper(_load_model(path))
@@ -262,18 +247,14 @@ def _load_pyfunc(path):
 def load_model(model_uri):
     """
     Load an XGBoost model from a local file or a run.
-
     :param model_uri: The location, in URI format, of the MLflow model. For example:
-
                       - ``/Users/me/path/to/local/model``
                       - ``relative/path/to/local/model``
                       - ``s3://my_bucket/path/to/model``
                       - ``runs:/<mlflow_run_id>/run-relative/path/to/model``
-
                       For more information about supported URI schemes, see
                       `Referencing Artifacts <https://www.mlflow.org/docs/latest/tracking.html#
                       artifact-locations>`_.
-
     :return: An XGBoost model (an instance of `xgboost.Booster`_)
     """
     local_model_path = _download_artifact_from_uri(artifact_uri=model_uri)
@@ -304,7 +285,6 @@ def autolog(
 ):  # pylint: disable=W0102,unused-argument
     """
     Enables (or disables) and configures autologging from XGBoost to MLflow. Logs the following:
-
     - parameters specified in `xgboost.train`_.
     - metrics on each iteration (if ``evals`` specified).
     - metrics at the best iteration (if ``early_stopping_rounds`` specified).
@@ -312,9 +292,7 @@ def autolog(
     - trained model, including:
         - an example of valid input.
         - inferred signature of the inputs and outputs of the model.
-
     Note that the `scikit-learn API`_ is not supported.
-
     :param importance_types: Importance types to log. If unspecified, defaults to ``["weight"]``.
     :param log_input_examples: If ``True``, input examples from training datasets are collected and
                                logged along with XGBoost model artifacts during training. If
@@ -374,10 +352,42 @@ def autolog(
             Create a callback function that records evaluation results.
             """
 
-            @exception_safe_function
-            def callback(env):
-                metrics_logger.record_metrics(dict(env.evaluation_result_list), env.iteration)
-                eval_results.append(dict(env.evaluation_result_list))
+            if LooseVersion(xgboost.__version__) >= LooseVersion("1.3.0"):
+                # In xgboost >= 1.3.0, user-defined callbacks should inherit
+                # `xgboost.callback.TrainingCallback`:
+                # https://xgboost.readthedocs.io/en/latest/python/callbacks.html#defining-your-own-callback  # noqa
+
+                class Callback(
+                    xgboost.callback.TrainingCallback, metaclass=ExceptionSafeAbstractClass,
+                ):
+                    def after_iteration(self, model, epoch, evals_log):
+                        """
+                        Run after each iteration. Return True when training should stop.
+                        """
+                        # `evals_log` is a nested dict (type: Dict[str, Dict[str, List[float]]])
+                        # that looks like this:
+                        # {
+                        #   "train": {
+                        #     "auc": [0.5, 0.6, 0.7, ...],
+                        #     ...
+                        #   },
+                        #   ...
+                        # }
+                        evaluation_result_dict = {}
+                        for data_name, metric_dict in evals_log.items():
+                            for metric_name, metric_values_on_each_iter in metric_dict.items():
+                                key = "{}-{}".format(data_name, metric_name)
+                                # The last element in `metric_values_on_each_iter` corresponds to
+                                # the meric on the current iteration
+                                evaluation_result_dict[key] = metric_values_on_each_iter[-1]
+
+                        metrics_logger.record_metrics(evaluation_result_dict, epoch)
+                        eval_results.append(evaluation_result_dict)
+
+                        # Return `False` to indicate training should not stop
+                        return False
+
+                return Callback()
 
             else:
 
@@ -385,6 +395,8 @@ def autolog(
                 def callback(env):
                     metrics_logger.record_metrics(dict(env.evaluation_result_list), env.iteration)
                     eval_results.append(dict(env.evaluation_result_list))
+
+                return callback
 
         def log_feature_importance_plot(features, importance, importance_type):
             """

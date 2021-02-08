@@ -68,10 +68,7 @@ def test_pytorch_autolog_logs_expected_data(pytorch_model):
 
     # Testing optimizer parameters are logged
     assert "optimizer_name" in data.params
-
-    # In pytorch-lightning >= 1.1.0, optimizer names are prefixed with "Lightning".
-    prefix = "Lightning" if LooseVersion(pl.__version__) >= LooseVersion("1.1.0") else ""
-    assert data.params["optimizer_name"] == prefix + "Adam"
+    assert data.params["optimizer_name"] == "Adam"
 
     # Testing model_summary.txt is saved
     client = mlflow.tracking.MlflowClient()

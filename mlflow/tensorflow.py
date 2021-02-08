@@ -915,6 +915,14 @@ def autolog(
         return result
 
     def export_saved_model(original, self, *args, **kwargs):
+        def create_autologging_run():
+            autologging_run = mlflow.start_run(tags={MLFLOW_AUTOLOGGING: FLAVOR_NAME})
+            _logger.info(
+                "Created MLflow autologging run with ID '%s', which will store the TensorFlow"
+                " model in MLflow Model format",
+                autologging_run.info.run_id,
+            )
+
         auto_end = False
         if not mlflow.active_run():
             global _AUTOLOG_RUN_ID
@@ -925,8 +933,7 @@ def autolog(
                 )
                 try_mlflow_log(mlflow.start_run, _AUTOLOG_RUN_ID)
             else:
-                try_mlflow_log(mlflow.start_run)
-                try_mlflow_log(mlflow.set_tag, MLFLOW_AUTOLOGGING, FLAVOR_NAME)
+                try_mlflow_log(create_autologging_run))
                 auto_end = True
 
         serialized = original(self, *args, **kwargs)
@@ -937,32 +944,6 @@ def autolog(
             tf_signature_def_key="predict",
             artifact_path="model",
         )
-        if (
-            mlflow.active_run() is not None and mlflow.active_run().info.run_id == _AUTOLOG_RUN_ID
-        ) or auto_end:
-            try_mlflow_log(mlflow.end_run)
-        return serialized
-
-    def export_savedmodel(original, self, *args, **kwargs):
-        auto_end = False
-        if not mlflow.active_run():
-            global _AUTOLOG_RUN_ID
-            if _AUTOLOG_RUN_ID:
-                try_mlflow_log(mlflow.start_run, _AUTOLOG_RUN_ID)
-            else:
-                try_mlflow_log(mlflow.start_run)
-                try_mlflow_log(mlflow.set_tag, MLFLOW_AUTOLOGGING, FLAVOR_NAME)
-                auto_end = True
-
-        serialized = original(self, *args, **kwargs)
-        try_mlflow_log(
-            log_model,
-            tf_saved_model_dir=serialized.decode("utf-8"),
-            tf_meta_graph_tags=[tag_constants.SERVING],
-            tf_signature_def_key="predict",
-            artifact_path="model",
-        )
-
         if (
             mlflow.active_run() is not None and mlflow.active_run().info.run_id == _AUTOLOG_RUN_ID
         ) or auto_end:
@@ -1094,22 +1075,11 @@ def autolog(
         def _patch_implementation(
             self, original, inst, *args, **kwargs
         ):  # pylint: disable=arguments-differ
-            active_run = mlflow.active_run()
-            if MLFLOW_AUTOLOGGING in active_run.data.tags:
-                global _AUTOLOG_RUN_ID
-                _AUTOLOG_RUN_ID = active_run.info.run_id
-
-        def __init__(self):
-            self.log_dir = None
-
-        def _patch_implementation(
-            self, original, inst, *args, **kwargs
-        ):  # pylint: disable=arguments-differ
             unlogged_params = ["self", "generator", "callbacks", "validation_data", "verbose"]
 
             log_fn_args_as_params(original, args, kwargs, unlogged_params)
 
-            run_id = active_run.info.run_id
+            run_id = mlflow.active_run().info.run_id
 
             with batch_metrics_logger(run_id) as metrics_logger:
                 # Checking if the 'callback' argument of fit() is set
@@ -1156,11 +1126,8 @@ def autolog(
         return result
 
     managed = [
-        (EventFileWriter, "add_event", add_event),
-        (EventFileWriterV2, "add_event", add_event),
         (tensorflow.estimator.Estimator, "train", train),
         (tensorflow.keras.Model, "fit", FitPatch),
-        (FileWriter, "add_summary", add_summary),
     ]
 
     if LooseVersion(tensorflow.__version__) < LooseVersion("2.1.0"):
@@ -1170,9 +1137,12 @@ def autolog(
         # `fit_generator()` in TF < 2.1.0
         managed.append((tensorflow.keras.Model, "fit_generator", FitGeneratorPatch))
 
-    non_managed = [
+    non_managed =
+        (EventFileWriter, "add_event", add_event),
+        (EventFileWriterV2, "add_event", add_event),
+        (FileWriter, "add_summary", add_summary),
         (tensorflow.estimator.Estimator, "export_saved_model", export_saved_model),
-        (tensorflow.estimator.Estimator, "export_savedmodel", export_savedmodel),
+        (tensorflow.estimator.Estimator, "export_savedmodel", export_saved_model),
     ]
 
     for p in managed:

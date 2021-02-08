@@ -17,7 +17,7 @@ from mlflow.tracking import artifact_utils, _get_store
 from mlflow.tracking.context import registry as context_registry
 from mlflow.store.tracking import SEARCH_MAX_RESULTS_DEFAULT
 from mlflow.utils import env
-from mlflow.utils.autologging_utils import _is_testing
+from mlflow.utils.autologging_utils import _is_testin, autologging_integration
 from mlflow.utils.databricks_utils import is_in_databricks_notebook, get_notebook_id
 from mlflow.utils.import_hooks import register_post_import_hook
 from mlflow.utils.mlflow_tags import MLFLOW_PARENT_RUN_ID, MLFLOW_RUN_NAME
@@ -1329,18 +1329,21 @@ def autolog(
         "pytorch_lightning": pytorch.autolog,
     }
 
+    def get_autologging_params(autolog_fn):
+        try:
+            needed_params = list(inspect.signature(autolog_fn).parameters.keys())
+            return {k: v for k, v in locals_copy if k in needed_params}
+        except Exception:
+            return {}
+
     def setup_autologging(module):
         try:
             autolog_fn = LIBRARY_TO_AUTOLOG_FN[module.__name__]
-            try:
-                needed_params = list(inspect.signature(autolog_fn).parameters.keys())
-                filtered = {k: v for k, v in locals_copy if k in needed_params}
-            except Exception:  # pylint: disable=broad-except
-                filtered = {}
-
-            autolog_fn(**filtered)
-            _logger.info("Autologging successfully enabled for %s.", module.__name__)
-        except Exception as e:  # pylint: disable=broad-except
+            autologging_params = get_autologging_params(autolog_fn)
+            autolog_fn(**autologging_params)
+            if not autologging_params.get("disable", False):
+                _logger.info("Autologging successfully enabled for %s.", module.__name__)
+        except Exception as e:t
             if _is_testing():
                 # Raise unexpected exceptions in test mode in order to detect
                 # errors within dependent autologging integrations
@@ -1369,7 +1372,7 @@ def autolog(
         #   of their session so we want to enable autologging once they do
         if "pyspark" in str(ie):
             register_post_import_hook(setup_autologging, "pyspark", overwrite=True)
-    except Exception as e:  # pylint: disable=broad-except
+    except Exception as e:
         if _is_testing():
             # Raise unexpected exceptions in test mode in order to detect
             # errors within dependent autologging integrations
