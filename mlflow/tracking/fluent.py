@@ -97,7 +97,7 @@ class ActiveRun(Run):  # pylint: disable=W0223
         return exc_type is None
 
 
-def start_run(run_id=None, experiment_id=None, run_name=None, nested=False, tags=None):
+def start_run(run_id=None, experiment_id=None, run_name=None, nested=False, tags=None) -> ActiveRun:
     """
     Start a new MLflow run, setting it as the active run under which metrics and parameters
     will be logged. The return value can be used as a context manager within a ``with`` block;
