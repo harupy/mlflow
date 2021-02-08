@@ -16,6 +16,7 @@ XGBoost (native) format
 .. _scikit-learn API:
     https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn
 """
+from distutils.version import LooseVersion
 import os
 import shutil
 import json
@@ -48,6 +49,14 @@ from mlflow.utils.autologging_utils import (
     ENSURE_AUTOLOGGING_ENABLED_TEXT,
     batch_metrics_logger,
 )
+
+# Pylint doesn't detect objects used in class keyword arguments (e.g., metaclass) and considers
+# `ExceptionSafeAbstractClass` as 'unused-import': https://github.com/PyCQA/pylint/issues/1630
+# To avoid this bug, disable 'unused-import' on this line.
+from mlflow.utils.autologging_utils import (  # pylint: disable=unused-import
+    ExceptionSafeAbstractClass,
+)
+
 from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
 
 FLAVOR_NAME = "xgboost"
@@ -352,7 +361,7 @@ def autolog(
                 input_example_info = _InputExampleInfo(
                     input_example=deepcopy(data[:INPUT_EXAMPLE_SAMPLE_ROWS])
                 )
-            except Exception as e:  # pylint: disable=broad-except
+            except Exception as e:
                 input_example_info = _InputExampleInfo(error_msg=str(e))
 
             setattr(self, "input_example_info", input_example_info)
@@ -370,7 +379,12 @@ def autolog(
                 metrics_logger.record_metrics(dict(env.evaluation_result_list), env.iteration)
                 eval_results.append(dict(env.evaluation_result_list))
 
-            return callback
+            else:
+
+                @exception_safe_function
+                def callback(env):
+                    metrics_logger.record_metrics(dict(env.evaluation_result_list), env.iteration)
+                    eval_results.append(dict(env.evaluation_result_list))
 
         def log_feature_importance_plot(features, importance, importance_type):
             """
@@ -468,7 +482,7 @@ def autolog(
                 imp = model.get_score(importance_type=imp_type)
                 features, importance = zip(*imp.items())
                 log_feature_importance_plot(features, importance, imp_type)
-            except Exception:  # pylint: disable=broad-except
+            except Exception:
                 _logger.exception(
                     "Failed to log feature importance plot. XGBoost autologging "
                     "will ignore the failure and continue. Exception: "

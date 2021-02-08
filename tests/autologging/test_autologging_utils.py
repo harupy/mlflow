@@ -3,6 +3,7 @@
 import inspect
 import time
 import pytest
+from collections import namedtuple
 from unittest.mock import Mock, call
 from unittest import mock
 
@@ -15,6 +16,8 @@ from mlflow.utils.autologging_utils import (
     wrap_patch,
     resolve_input_example_and_signature,
     batch_metrics_logger,
+    AutologgingEventLogger,
+    AutologgingSession,
     BatchMetricsLogger,
     autologging_integration,
     get_autologging_config,

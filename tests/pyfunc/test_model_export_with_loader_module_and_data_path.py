@@ -267,6 +267,77 @@ def test_schema_enforcement():
     res = pyfunc_model.predict(pdf)
     assert res.dtypes.to_dict() == expected_types
 
+    # 8. np.ndarrays can be converted to dataframe but have no columns
+    with pytest.raises(MlflowException) as ex:
+        pyfunc_model.predict(pdf.values)
+    assert "Model input is missing columns" in str(ex)
+
+    # 9. dictionaries of str -> list/nparray work
+    arr = np.array([1, 2, 3])
+    d = {
+        "a": arr.astype("int32"),
+        "b": arr.astype("int64"),
+        "c": arr.astype("float32"),
+        "d": arr.astype("float64"),
+        "e": [True, False, True],
+        "g": ["a", "b", "c"],
+        "f": [bytes(0), bytes(1), bytes(1)],
+    }
+    res = pyfunc_model.predict(d)
+    assert res.dtypes.to_dict() == expected_types
+
+    # 10. dictionaries of str -> list[list] fail
+    d = {
+        "a": [arr.astype("int32")],
+        "b": [arr.astype("int64")],
+        "c": [arr.astype("float32")],
+        "d": [arr.astype("float64")],
+        "e": [[True, False, True]],
+        "g": [["a", "b", "c"]],
+        "f": [[bytes(0), bytes(1), bytes(1)]],
+    }
+    with pytest.raises(MlflowException) as ex:
+        pyfunc_model.predict(d)
+    assert "Incompatible input types" in str(ex)
+
+    # 11. conversion to dataframe fails
+    d = {
+        "a": [1],
+        "b": [1, 2],
+        "c": [1, 2, 3],
+    }
+    with pytest.raises(MlflowException) as ex:
+        pyfunc_model.predict(d)
+    assert "This model contains a model signature, which suggests a DataFrame input." in str(ex)
+
+
+def test_missing_value_hint_is_displayed_when_it_should():
+    class TestModel(object):
+        @staticmethod
+        def predict(pdf):
+            return pdf
+
+    m = Model()
+    input_schema = Schema([ColSpec("integer", "a")])
+    m.signature = ModelSignature(inputs=input_schema)
+    pyfunc_model = PyFuncModel(model_meta=m, model_impl=TestModel())
+    pdf = pd.DataFrame(data=[[1], [None]], columns=["a"],)
+    with pytest.raises(MlflowException) as ex:
+        pyfunc_model.predict(pdf)
+    hint = "Hint: the type mismatch is likely caused by missing values."
+    assert "Incompatible input types" in str(ex.value.message)
+    assert hint in str(ex.value.message)
+    pdf = pd.DataFrame(data=[[1.5], [None]], columns=["a"],)
+    with pytest.raises(MlflowException) as ex:
+        pyfunc_model.predict(pdf)
+    assert "Incompatible input types" in str(ex)
+    assert hint not in str(ex.value.message)
+    pdf = pd.DataFrame(data=[[1], [2]], columns=["a"], dtype=np.float64)
+    with pytest.raises(MlflowException) as ex:
+        pyfunc_model.predict(pdf)
+    assert "Incompatible input types" in str(ex.value.message)
+    assert hint not in str(ex.value.message)
+
 
 def test_missing_value_hint_is_displayed_when_it_should():
     class TestModel(object):
@@ -314,6 +385,9 @@ def test_schema_enforcement_no_col_names():
     # Or can call with a DataFrame without column names
     assert pyfunc_model.predict(pd.DataFrame(test_data)).equals(pd.DataFrame(test_data))
 
+    # # Or can call with a np.ndarray
+    assert pyfunc_model.predict(pd.DataFrame(test_data).values).equals(pd.DataFrame(test_data))
+
     # Or with column names!
     pdf = pd.DataFrame(data=test_data, columns=["a", "b", "c"])
     assert pyfunc_model.predict(pdf).equals(pdf)
@@ -328,10 +402,14 @@ def test_schema_enforcement_no_col_names():
         pyfunc_model.predict([[1, 2, 3]])
     assert "Can not safely convert int64 to float64" in str(ex)
 
-    # Can only provide data frames or lists...
+    # Can only provide data type that can be converted to dataframe...
     with pytest.raises(MlflowException) as ex:
         pyfunc_model.predict(set([1, 2, 3]))
     assert "Expected input to be DataFrame or list. Found: set" in str(ex)
+
+    # 9. dictionaries of str -> list/nparray work
+    d = {"a": [1.0], "b": [2.0], "c": [3.0]}
+    assert pyfunc_model.predict(d).equals(pd.DataFrame(d))
 
 
 @pytest.mark.large

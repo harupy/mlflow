@@ -171,7 +171,7 @@ def resolve_input_example_and_signature(
     if log_input_example or log_model_signature:
         try:
             input_example = get_input_example()
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception as e:
             input_example_failure_msg = str(e)
             input_example_user_msg = "Failed to gather input example: " + str(e)
 
@@ -184,7 +184,7 @@ def resolve_input_example_and_signature(
                     "could not sample data to infer model signature: " + input_example_failure_msg
                 )
             model_signature = infer_model_signature(input_example)
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception as e:
             model_signature_user_msg = "Failed to infer model signature: " + str(e)
 
     if log_input_example and input_example_user_msg is not None:

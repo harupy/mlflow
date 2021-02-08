@@ -2,6 +2,7 @@
 
 import collections
 import pytest
+from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
@@ -289,6 +290,7 @@ def tf_keras_random_data_run_with_callback(
             patience=patience,
             min_delta=99999999,
             restore_best_weights=restore_weights,
+            verbose=1,
         )
     else:
 
@@ -637,3 +639,96 @@ def test_duplicate_autolog_second_overrides(tf_estimator_random_data_run):
     client = mlflow.tracking.MlflowClient()
     metrics = client.get_metric_history(tf_estimator_random_data_run.info.run_id, "loss")
     assert all((x.step - 1) % 4 == 0 for x in metrics)
+
+
+@pytest.mark.large
+def test_flush_queue_is_thread_safe():
+    """
+    Autologging augments TensorBoard event logging hooks with MLflow `log_metric` API
+    calls. To prevent these API calls from blocking TensorBoard event logs, `log_metric`
+    API calls are scheduled via `_flush_queue` on a background thread. Accordingly, this test
+    verifies that `_flush_queue` is thread safe.
+    """
+    from threading import Thread
+    from mlflow.entities import Metric
+    from mlflow.tensorflow import _flush_queue, _metric_queue_lock
+
+    metric_queue_item = ("run_id1", Metric("foo", "bar", 100, 1))
+    mlflow.tensorflow._metric_queue.append(metric_queue_item)
+
+    # Verify that, if another thread holds a lock on the metric queue leveraged by
+    # _flush_queue, _flush_queue terminates and does not modify the queue
+    _metric_queue_lock.acquire()
+    flush_thread1 = Thread(target=_flush_queue)
+    flush_thread1.start()
+    flush_thread1.join()
+    assert len(mlflow.tensorflow._metric_queue) == 1
+    assert mlflow.tensorflow._metric_queue[0] == metric_queue_item
+    _metric_queue_lock.release()
+
+    # Verify that, if no other thread holds a lock on the metric queue leveraged by
+    # _flush_queue, _flush_queue flushes the queue as expected
+    flush_thread2 = Thread(target=_flush_queue)
+    flush_thread2.start()
+    flush_thread2.join()
+    assert len(mlflow.tensorflow._metric_queue) == 0
+
+
+def get_text_vec_model(train_samples):
+    # Taken from: https://github.com/mlflow/mlflow/issues/3910
+
+    from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
+
+    VOCAB_SIZE = 10
+    SEQUENCE_LENGTH = 16
+    EMBEDDING_DIM = 16
+
+    vectorizer_layer = TextVectorization(
+        input_shape=(1,),
+        max_tokens=VOCAB_SIZE,
+        output_mode="int",
+        output_sequence_length=SEQUENCE_LENGTH,
+    )
+    vectorizer_layer.adapt(train_samples)
+    model = tf.keras.Sequential(
+        [
+            vectorizer_layer,
+            tf.keras.layers.Embedding(
+                VOCAB_SIZE, EMBEDDING_DIM, name="embedding", mask_zero=True, input_shape=(1,),
+            ),
+            tf.keras.layers.GlobalAveragePooling1D(),
+            tf.keras.layers.Dense(16, activation="relu"),
+            tf.keras.layers.Dense(1, activation="tanh"),
+        ]
+    )
+    model.compile(optimizer="adam", loss="mse", metrics="mae")
+    return model
+
+
+@pytest.mark.skipif(
+    LooseVersion(tf.__version__) < LooseVersion("2.3.0"),
+    reason=(
+        "Deserializing a model with `TextVectorization` and `Embedding`"
+        "fails in tensorflow < 2.3.0. See this issue:"
+        "https://github.com/tensorflow/tensorflow/issues/38250"
+    ),
+)
+def test_autolog_text_vec_model(tmpdir):
+    """
+    Verifies autolog successfully saves a model that can't be saved in the H5 format
+    """
+    mlflow.tensorflow.autolog()
+
+    train_samples = np.array(["this is an example", "another example"])
+    train_labels = np.array([0.4, 0.2])
+    model = get_text_vec_model(train_samples)
+
+    # Saving in the H5 format should fail
+    with pytest.raises(NotImplementedError, match="is not supported in h5"):
+        model.save(tmpdir.join("model.h5").strpath, save_format="h5")
+
+    with mlflow.start_run() as run:
+        model.fit(train_samples, train_labels, epochs=1)
+
+    loaded_model = mlflow.keras.load_model("runs:/" + run.info.run_id + "/model")
+    np.testing.assert_array_equal(loaded_model.predict(train_samples), model.predict(train_samples))

@@ -1,4 +1,5 @@
 import pytest
+from collections import namedtuple
 from unittest import mock
 
 import mlflow
@@ -37,7 +38,7 @@ def reset_global_states():
     for integration_name in library_to_mlflow_module.keys():
         try:
             del mlflow.utils.import_hooks._post_import_hooks[integration_name.__name__]
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             pass
 
     assert mlflow.utils.import_hooks._post_import_hooks == {}
@@ -47,7 +48,7 @@ def reset_global_states():
     for integration_name in library_to_mlflow_module.keys():
         try:
             del mlflow.utils.import_hooks._post_import_hooks[integration_name.__name__]
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             pass
 
     assert mlflow.utils.import_hooks._post_import_hooks == {}
@@ -124,43 +125,83 @@ def test_universal_autolog_calls_specific_autologs_correctly(library, mlflow_mod
 
 @pytest.mark.large
 def test_universal_autolog_calls_pyspark_immediately():
-    library = pyspark
-    mlflow_module = "spark"
+    mlflow.autolog()
+    assert not autologging_is_disabled(mlflow.spark.FLAVOR_NAME)
 
-    with mock.patch(
-        "mlflow." + mlflow_module + ".autolog", wraps=getattr(mlflow, mlflow_module).autolog
-    ) as autolog_mock:
+    mlflow.autolog(disable=True)
+    assert autologging_is_disabled(mlflow.spark.FLAVOR_NAME)
+
+    mlflow.autolog(disable=False)
+    assert not autologging_is_disabled(mlflow.spark.FLAVOR_NAME)
+
+    with mock.patch("mlflow.spark.autolog", wraps=mlflow.spark.autolog) as autolog_mock:
+        # there should be no import hook on pyspark since autologging was already
+        # applied to an active spark session
+        mlflow.utils.import_hooks.notify_module_loaded(pyspark)
         autolog_mock.assert_not_called()
-
-        mlflow.autolog()
-
-        # pyspark autolog should NOT wait for pyspark to be imported
-        # it should instead initialize autologging immediately
-        autolog_mock.assert_called_once_with()
-
-        # there should also be no import hook on pyspark
-        mlflow.utils.import_hooks.notify_module_loaded(library)
-        autolog_mock.assert_called_once_with()
 
 
 @pytest.mark.large
-def test_universal_autolog_attaches_pyspark_import_hook_if_pyspark_isnt_installed():
-    library = pyspark
-    mlflow_module = "spark"
-
-    with mock.patch(
-        "mlflow." + mlflow_module + ".autolog", wraps=getattr(mlflow, mlflow_module).autolog
-    ) as autolog_mock:
+@pytest.mark.parametrize("config", [{"disable": False}, {"disable": True}])
+def test_universal_autolog_attaches_pyspark_import_hook_if_pyspark_isnt_installed(config):
+    with mock.patch("mlflow.spark.autolog", wraps=mlflow.spark.autolog) as autolog_mock:
         # simulate pyspark not being installed
         autolog_mock.side_effect = ImportError("no module named pyspark blahblah")
 
-        mlflow.autolog()
+        mlflow.autolog(**config)
         autolog_mock.assert_called_once()  # it was called once and failed
 
         # now the user installs pyspark
         autolog_mock.side_effect = None
 
-        mlflow.utils.import_hooks.notify_module_loaded(library)
+        mlflow.utils.import_hooks.notify_module_loaded(pyspark)
 
         # assert autolog is called again once pyspark is imported
         assert autolog_mock.call_count == 2
+        assert autolog_mock.call_args_list[1] == config
+
+
+@pytest.mark.large
+def test_universal_autolog_makes_expected_event_logging_calls():
+    class TestLogger(AutologgingEventLogger):
+
+        LoggerCall = namedtuple("LoggerCall", ["integration", "call_args", "call_kwargs"])
+
+        def __init__(self):
+            self.calls = []
+
+        def reset(self):
+            self.calls = []
+
+        def log_autolog_called(self, integration, call_args, call_kwargs):
+            self.calls.append(TestLogger.LoggerCall(integration, call_args, call_kwargs))
+
+    logger = TestLogger()
+    AutologgingEventLogger.set_logger(logger)
+
+    mlflow.autolog(exclusive=True, disable=True)
+
+    universal_autolog_event_logging_calls = [
+        call for call in logger.calls if call.integration == "mlflow"
+    ]
+    assert len(universal_autolog_event_logging_calls) == 1
+    call = universal_autolog_event_logging_calls[0]
+    assert call.integration == "mlflow"
+    assert {"disable": True, "exclusive": True}.items() <= call.call_kwargs.items()
+
+
+def test_autolog_success_message_obeys_disabled():
+    with mock.patch("mlflow.tracking.fluent._logger.info") as autolog_logger_mock:
+        mlflow.autolog(disable=True)
+        mlflow.utils.import_hooks.notify_module_loaded(tensorflow)
+        autolog_logger_mock.assert_not_called()
+
+        mlflow.autolog()
+        mlflow.utils.import_hooks.notify_module_loaded(tensorflow)
+        autolog_logger_mock.assert_called()
+
+        autolog_logger_mock.reset_mock()
+
+        mlflow.autolog(disable=False)
+        mlflow.utils.import_hooks.notify_module_loaded(tensorflow)
+        autolog_logger_mock.assert_called()
