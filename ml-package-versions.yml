@@ -256,7 +256,11 @@ spark:
     maximum: "3.0.2"
     requirements: ["keras", "tensorflow"]
     run: |
-      ./dev/test-spark-autologging.sh
+      pushd mlflow/java/spark
+      mvn package -DskipTests -q
+      popd
+
+      find tests/spark_autologging -name 'test*.py' | xargs -L 1 pytest --large
 
 statsmodels:
   package_info:
