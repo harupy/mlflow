@@ -9,9 +9,9 @@ import torch.nn.functional as F
 from pytorch_lightning.metrics import Accuracy
 
 
-class IrisClassification(pl.LightningModule):
+class IrisClassificationBase(pl.LightningModule):
     def __init__(self, **kwargs):
-        super(IrisClassification, self).__init__()
+        super().__init__()
 
         self.train_acc = Accuracy()
         self.val_acc = Accuracy()
@@ -32,11 +32,13 @@ class IrisClassification(pl.LightningModule):
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), 0.01)
 
+
+class IrisClassification(IrisClassificationBase):
     def training_step(self, batch, batch_idx):
         x, y = batch
         logits = self.forward(x)
         loss = self.cross_entropy_loss(logits, y)
-        self.train_acc(logits, y)
+        self.train_acc(torch.argmax(logits, dim=1), y)
         self.log("train_acc", self.train_acc.compute(), on_step=False, on_epoch=True)
         self.log("loss", loss)
         return {"loss": loss}
@@ -45,7 +47,7 @@ class IrisClassification(pl.LightningModule):
         x, y = batch
         logits = self.forward(x)
         loss = F.cross_entropy(logits, y)
-        self.val_acc(logits, y)
+        self.val_acc(torch.argmax(logits, dim=1), y)
         self.log("val_acc", self.val_acc.compute())
         self.log("val_loss", loss, sync_dist=True)
 
@@ -53,8 +55,26 @@ class IrisClassification(pl.LightningModule):
         x, y = batch
         logits = self.forward(x)
         loss = F.cross_entropy(logits, y)
-        _, y_hat = torch.max(logits, dim=1)
-        self.test_acc(y_hat, y)
+        self.test_acc(torch.argmax(logits, dim=1), y)
+        self.log("test_loss", loss)
+        self.log("test_acc", self.test_acc.compute())
+
+
+class IrisClassificationWithoutValidation(IrisClassificationBase):
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        logits = self.forward(x)
+        loss = self.cross_entropy_loss(logits, y)
+        self.train_acc(torch.argmax(logits, dim=1), y)
+        self.log("train_acc", self.train_acc.compute(), on_step=False, on_epoch=True)
+        self.log("loss", loss)
+        return {"loss": loss}
+
+    def test_step(self, batch, batch_idx):
+        x, y = batch
+        logits = self.forward(x)
+        loss = F.cross_entropy(logits, y)
+        self.test_acc(torch.argmax(logits, dim=1), y)
         self.log("test_loss", loss)
         self.log("test_acc", self.test_acc.compute())
 
