@@ -37,7 +37,7 @@ from mlflow.utils.environment import _mlflow_conda_env
 from mlflow.utils.model_utils import _get_flavor_configuration
 from mlflow.exceptions import MlflowException
 from mlflow.utils.annotations import experimental
-from mlflow.utils.autologging_utils import (
+from mlflow.utils.autologging import (
     autologging_integration,
     safe_patch,
     exception_safe_function,
@@ -290,6 +290,7 @@ def autolog(
     log_models=True,
     disable=False,
     exclusive=False,
+    disable_for_unsupported_versions=False,
 ):  # pylint: disable=unused-argument
     """
     Enables (or disables) and configures autologging from LightGBM to MLflow. Logs the following:
@@ -325,6 +326,9 @@ def autolog(
     :param exclusive: If ``True``, autologged content is not logged to user-created fluent runs.
                       If ``False``, autologged content is logged to the active fluent run,
                       which may be user-created.
+    :param disable_for_unsupported_versions: If ``True``, disable autologging for versions of
+                      lightgbm that have not been tested against this version of the MLflow client
+                      or are incompatible.
     """
     import lightgbm
     import numpy as np

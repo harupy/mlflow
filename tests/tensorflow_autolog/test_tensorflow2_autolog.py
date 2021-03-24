@@ -12,7 +12,7 @@ from tensorflow.keras import layers
 import mlflow
 import mlflow.tensorflow
 import mlflow.keras
-from mlflow.utils.autologging_utils import BatchMetricsLogger
+from mlflow.utils.autologging import BatchMetricsLogger
 from unittest.mock import patch
 
 import os
@@ -354,7 +354,7 @@ def test_tf_keras_autolog_batch_metrics_logger_logs_expected_metrics(
     original = BatchMetricsLogger.record_metrics
 
     with patch(
-        "mlflow.utils.autologging_utils.BatchMetricsLogger.record_metrics", autospec=True
+        "mlflow.utils.autologging.BatchMetricsLogger.record_metrics", autospec=True
     ) as record_metrics_mock:
 
         def record_metrics_side_effect(self, metrics, step=None):
@@ -456,6 +456,47 @@ def test_tf_keras_autolog_non_early_stop_callback_no_log(tf_keras_random_data_ru
     # Check the test epoch numbers are correct
     assert num_of_epochs == 10
     assert len(metric_history) == num_of_epochs
+
+
+@pytest.mark.parametrize("fit_variant", ["fit", "fit_generator"])
+@pytest.mark.parametrize("positional", [True, False])
+def test_tf_keras_autolog_does_not_mutate_original_callbacks_list(
+    tmpdir, random_train_data, random_one_hot_labels, fit_variant, positional
+):
+    """
+    TensorFlow autologging passes new callbacks to the `fit()` / `fit_generator()` function. If
+    preexisting user-defined callbacks already exist, these new callbacks are added to the
+    user-specified ones. This test verifies that the new callbacks are added to the without
+    permanently mutating the original list of callbacks.
+    """
+    mlflow.tensorflow.autolog()
+
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=tmpdir)
+    callbacks = [tensorboard_callback]
+
+    model = create_tf_keras_model()
+    data = random_train_data
+    labels = random_one_hot_labels
+
+    if fit_variant == "fit_generator":
+
+        def generator():
+            while True:
+                yield data, labels
+
+        if positional:
+            model.fit_generator(generator(), 1, 10, 1, callbacks)
+        else:
+            model.fit_generator(generator(), epochs=10, steps_per_epoch=1, callbacks=callbacks)
+
+    else:
+        if positional:
+            model.fit(data, labels, None, 10, 1, callbacks)
+        else:
+            model.fit(data, labels, epochs=10, callbacks=callbacks)
+
+    assert len(callbacks) == 1
+    assert callbacks == [tensorboard_callback]
 
 
 @pytest.mark.large
