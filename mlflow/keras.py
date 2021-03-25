@@ -27,7 +27,7 @@ from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils.environment import _mlflow_conda_env
 from mlflow.utils.model_utils import _get_flavor_configuration
 from mlflow.utils.annotations import experimental
-from mlflow.utils.autologging_utils import (
+from mlflow.utils.autologging import (
     autologging_integration,
     safe_patch,
     ExceptionSafeClass,
@@ -571,7 +571,9 @@ def load_model(model_uri, **kwargs):
 
 @experimental
 @autologging_integration(FLAVOR_NAME)
-def autolog(log_models=True, disable=False, exclusive=False):  # pylint: disable=unused-argument
+def autolog(
+    log_models=True, disable=False, exclusive=False, disable_for_unsupported_versions=False
+):  # pylint: disable=unused-argument
     # pylint: disable=E0611
     """
     Enables (or disables) and configures autologging from Keras to MLflow. Autologging captures
@@ -627,6 +629,9 @@ def autolog(log_models=True, disable=False, exclusive=False):  # pylint: disable
     :param exclusive: If ``True``, autologged content is not logged to user-created fluent runs.
                       If ``False``, autologged content is logged to the active fluent run,
                       which may be user-created.
+    :param disable_for_unsupported_versions: If ``True``, disable autologging for versions of
+                      keras that have not been tested against this version of the MLflow client
+                      or are incompatible.
     """
     import keras
 

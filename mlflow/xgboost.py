@@ -37,7 +37,7 @@ from mlflow.utils.environment import _mlflow_conda_env
 from mlflow.utils.model_utils import _get_flavor_configuration
 from mlflow.exceptions import MlflowException
 from mlflow.utils.annotations import experimental
-from mlflow.utils.autologging_utils import (
+from mlflow.utils.autologging import (
     autologging_integration,
     safe_patch,
     exception_safe_function,
@@ -53,9 +53,7 @@ from mlflow.utils.autologging_utils import (
 # Pylint doesn't detect objects used in class keyword arguments (e.g., metaclass) and considers
 # `ExceptionSafeAbstractClass` as 'unused-import': https://github.com/PyCQA/pylint/issues/1630
 # To avoid this bug, disable 'unused-import' on this line.
-from mlflow.utils.autologging_utils import (  # pylint: disable=unused-import
-    ExceptionSafeAbstractClass,
-)
+from mlflow.utils.autologging import ExceptionSafeAbstractClass  # pylint: disable=unused-import
 
 from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
 
@@ -301,6 +299,7 @@ def autolog(
     log_models=True,
     disable=False,
     exclusive=False,
+    disable_for_unsupported_versions=False,
 ):  # pylint: disable=W0102,unused-argument
     """
     Enables (or disables) and configures autologging from XGBoost to MLflow. Logs the following:
@@ -337,6 +336,9 @@ def autolog(
     :param exclusive: If ``True``, autologged content is not logged to user-created fluent runs.
                       If ``False``, autologged content is logged to the active fluent run,
                       which may be user-created.
+    :param disable_for_unsupported_versions: If ``True``, disable autologging for versions of
+                      xgboost that have not been tested against this version of the MLflow client
+                      or are incompatible.
     """
     import xgboost
     import numpy as np

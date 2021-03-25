@@ -28,7 +28,7 @@ from mlflow.utils.environment import _mlflow_conda_env
 from mlflow.utils.model_utils import _get_flavor_configuration
 from mlflow.exceptions import MlflowException
 from mlflow.utils.annotations import experimental
-from mlflow.utils.autologging_utils import (
+from mlflow.utils.autologging import (
     try_mlflow_log,
     log_fn_args_as_params,
     autologging_integration,
@@ -310,7 +310,9 @@ class AutologHelpers:
 
 @experimental
 @autologging_integration(FLAVOR_NAME)
-def autolog(log_models=True, disable=False, exclusive=False):  # pylint: disable=unused-argument
+def autolog(
+    log_models=True, disable=False, exclusive=False, disable_for_unsupported_versions=False
+):  # pylint: disable=unused-argument
     """
     Enables (or disables) and configures automatic logging from statsmodels to MLflow.
     Logs the following:
@@ -327,6 +329,9 @@ def autolog(log_models=True, disable=False, exclusive=False):  # pylint: disable
     :param exclusive: If ``True``, autologged content is not logged to user-created fluent runs.
                       If ``False``, autologged content is logged to the active fluent run,
                       which may be user-created.
+    :param disable_for_unsupported_versions: If ``True``, disable autologging for versions of
+                      statsmodels that have not been tested against this version of the MLflow
+                      client or are incompatible.
     """
     import statsmodels
 
