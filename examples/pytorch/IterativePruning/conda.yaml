@@ -8,7 +8,7 @@ dependencies:
 - pip
 - pip:
   - mlflow
-  - torchvision
+  - torchvision==0.9.1
   - cloudpickle==1.6.0
   - pytorch_lightning>=1.0.5
   - ax-platform

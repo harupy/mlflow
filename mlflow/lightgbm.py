@@ -37,7 +37,7 @@ from mlflow.utils.environment import _mlflow_conda_env
 from mlflow.utils.model_utils import _get_flavor_configuration
 from mlflow.exceptions import MlflowException
 from mlflow.utils.annotations import experimental
-from mlflow.utils.autologging import (
+from mlflow.utils.autologging_utils import (
     autologging_integration,
     safe_patch,
     exception_safe_function,
@@ -45,7 +45,7 @@ from mlflow.utils.autologging import (
     log_fn_args_as_params,
     INPUT_EXAMPLE_SAMPLE_ROWS,
     resolve_input_example_and_signature,
-    _InputExampleInfo,
+    InputExampleInfo,
     ENSURE_AUTOLOGGING_ENABLED_TEXT,
     batch_metrics_logger,
 )
@@ -291,6 +291,7 @@ def autolog(
     disable=False,
     exclusive=False,
     disable_for_unsupported_versions=False,
+    silent=False,
 ):  # pylint: disable=unused-argument
     """
     Enables (or disables) and configures autologging from LightGBM to MLflow. Logs the following:
@@ -329,6 +330,9 @@ def autolog(
     :param disable_for_unsupported_versions: If ``True``, disable autologging for versions of
                       lightgbm that have not been tested against this version of the MLflow client
                       or are incompatible.
+    :param silent: If ``True``, suppress all event logs and warnings from MLflow during LightGBM
+                   autologging. If ``False``, show all events and warnings during LightGBM
+                   autologging.
     """
     import lightgbm
     import numpy as np
@@ -347,11 +351,11 @@ def autolog(
                         "cannot gather example input when dataset is loaded from a file."
                     )
 
-                input_example_info = _InputExampleInfo(
+                input_example_info = InputExampleInfo(
                     input_example=deepcopy(data[:INPUT_EXAMPLE_SAMPLE_ROWS])
                 )
             except Exception as e:
-                input_example_info = _InputExampleInfo(error_msg=str(e))
+                input_example_info = InputExampleInfo(error_msg=str(e))
 
             setattr(self, "input_example_info", input_example_info)
 

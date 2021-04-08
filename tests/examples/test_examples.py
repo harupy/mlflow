@@ -106,6 +106,8 @@ def report_free_disk_space(capsys):
         (
             os.path.join("pytorch", "IterativePruning"),
             ["-P", "max_epochs=1", "-P", "total_trials=1"],
+            os.path.join("pytorch", "AxHyperOptimizationPTL"),
+            ["-P", "max_epochs=10", "-P", "total_trials=1"],
         ),
     ],
 )
