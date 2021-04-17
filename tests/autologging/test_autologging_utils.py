@@ -12,22 +12,22 @@ import mlflow
 from mlflow.utils import gorilla
 from mlflow.tracking.client import MlflowClient
 from mlflow.utils.autologging_utils import (
+    AUTOLOGGING_INTEGRATIONS,
     log_fn_args_as_params,
-    wrap_patch,
     resolve_input_example_and_signature,
     batch_metrics_logger,
     AutologgingEventLogger,
-    AutologgingSession,
     BatchMetricsLogger,
     autologging_integration,
     get_autologging_config,
     autologging_is_disabled,
-    _is_autologging_integration_supported,
-    _check_version_in_range,
-    _cross_tested_flavor_to_module_name_and_module_key,
 )
-from mlflow.utils.autologging_utils import AUTOLOGGING_INTEGRATIONS
-
+from mlflow.utils.autologging_utils.safety import _wrap_patch, AutologgingSession
+from mlflow.utils.autologging_utils.versioning import (
+    FLAVOR_TO_MODULE_NAME_AND_VERSION_INFO_KEY,
+    _check_version_in_range,
+    is_flavor_supported_for_associated_package_versions,
+)
 
 from tests.autologging.fixtures import test_mode_off
 
@@ -144,7 +144,7 @@ def test_wrap_patch_with_class():
         return 2 * orig(*args, **kwargs)
 
     before = get_func_attrs(Math.add)
-    wrap_patch(Math, Math.add.__name__, new_add)
+    _wrap_patch(Math, Math.add.__name__, new_add)
     after = get_func_attrs(Math.add)
 
     assert after == before
@@ -167,7 +167,7 @@ def test_wrap_patch_with_module():
     before_attrs = get_func_attrs(mlflow.log_param)
     assert sample_function_to_patch(10, 5) == 15
 
-    wrap_patch(this_module, sample_function_to_patch.__name__, new_sample_function)
+    _wrap_patch(this_module, sample_function_to_patch.__name__, new_sample_function)
     after_attrs = get_func_attrs(mlflow.log_param)
     assert after_attrs == before_attrs
     assert sample_function_to_patch(10, 5) == 5
@@ -417,7 +417,7 @@ def test_batch_metrics_logger_continues_if_log_batch_fails(start_run,):
 
 def test_autologging_integration_calls_underlying_function_correctly():
     @autologging_integration("test_integration")
-    def autolog(foo=7, disable=False):
+    def autolog(foo=7, disable=False, silent=False):
         return foo
 
     assert autolog(foo=10) == 10
@@ -425,22 +425,42 @@ def test_autologging_integration_calls_underlying_function_correctly():
 
 def test_autologging_integration_stores_and_updates_config():
     @autologging_integration("test_integration")
-    def autolog(foo=7, bar=10, disable=False):
+    def autolog(foo=7, bar=10, disable=False, silent=False):
         return foo
 
     autolog()
-    assert AUTOLOGGING_INTEGRATIONS["test_integration"] == {"foo": 7, "bar": 10, "disable": False}
+    assert AUTOLOGGING_INTEGRATIONS["test_integration"] == {
+        "foo": 7,
+        "bar": 10,
+        "disable": False,
+        "silent": False,
+    }
     autolog(bar=11)
-    assert AUTOLOGGING_INTEGRATIONS["test_integration"] == {"foo": 7, "bar": 11, "disable": False}
+    assert AUTOLOGGING_INTEGRATIONS["test_integration"] == {
+        "foo": 7,
+        "bar": 11,
+        "disable": False,
+        "silent": False,
+    }
     autolog(6, disable=True)
-    assert AUTOLOGGING_INTEGRATIONS["test_integration"] == {"foo": 6, "bar": 10, "disable": True}
-    autolog(1, 2, False)
-    assert AUTOLOGGING_INTEGRATIONS["test_integration"] == {"foo": 1, "bar": 2, "disable": False}
+    assert AUTOLOGGING_INTEGRATIONS["test_integration"] == {
+        "foo": 6,
+        "bar": 10,
+        "disable": True,
+        "silent": False,
+    }
+    autolog(1, 2, False, silent=True)
+    assert AUTOLOGGING_INTEGRATIONS["test_integration"] == {
+        "foo": 1,
+        "bar": 2,
+        "disable": False,
+        "silent": True,
+    }
 
 
 def test_autologging_integration_forwards_positional_and_keyword_arguments_as_expected():
     @autologging_integration("test_integration")
-    def autolog(foo=7, bar=10, disable=False):
+    def autolog(foo=7, bar=10, disable=False, silent=False):
         return foo, bar, disable
 
     assert autolog(1, bar=2, disable=True) == (1, 2, True)
@@ -468,11 +488,11 @@ def test_autologging_integration_validates_structure_of_autolog_function():
 
 def test_autologging_integration_makes_expected_event_logging_calls():
     @autologging_integration("test_success")
-    def autolog_success(foo, bar=7, disable=False):
+    def autolog_success(foo, bar=7, disable=False, silent=False):
         pass
 
     @autologging_integration("test_failure")
-    def autolog_failure(biz, baz="val", disable=False):
+    def autolog_failure(biz, baz="val", disable=False, silent=False):
         raise Exception("autolog failed")
 
     class TestLogger(AutologgingEventLogger):
@@ -499,12 +519,12 @@ def test_autologging_integration_makes_expected_event_logging_calls():
     # Positional arguments passed to `autolog()` should be forwarded to `log_autolog_called`
     # in keyword format
     assert call.call_args == ()
-    assert call.call_kwargs == {"foo": "a", "bar": 9, "disable": True}
+    assert call.call_kwargs == {"foo": "a", "bar": 9, "disable": True, "silent": False}
 
     logger.reset()
 
     with pytest.raises(Exception, match="autolog failed"):
-        autolog_failure(82, disable=False)
+        autolog_failure(82, disable=False, silent=True)
     assert len(logger.calls) == 1
     call = logger.calls[0]
     assert call.integration == "test_failure"
@@ -512,13 +532,13 @@ def test_autologging_integration_makes_expected_event_logging_calls():
     # Positional arguments passed to `autolog()` should be forwarded to `log_autolog_called`
     # in keyword format
     assert call.call_args == ()
-    assert call.call_kwargs == {"biz": 82, "baz": "val", "disable": False}
+    assert call.call_kwargs == {"biz": 82, "baz": "val", "disable": False, "silent": True}
 
 
 @pytest.mark.usefixtures(test_mode_off.__name__)
 def test_autologging_integration_succeeds_when_event_logging_throws_in_standard_mode():
     @autologging_integration("test")
-    def autolog(disable=False):
+    def autolog(disable=False, silent=False):
         return "result"
 
     class ThrowingLogger(AutologgingEventLogger):
@@ -540,24 +560,27 @@ def test_get_autologging_config_returns_configured_values_or_defaults_as_expecte
     assert get_autologging_config("nonexistent_integration", "foo") is None
 
     @autologging_integration("test_integration_for_config")
-    def autolog(foo="bar", t=7, disable=False):
+    def autolog(foo="bar", t=7, disable=False, silent=False):
         pass
 
     # Before `autolog()` has been invoked, config values should not be available
     assert get_autologging_config("test_integration_for_config", "foo") is None
     assert get_autologging_config("test_integration_for_config", "disable") is None
+    assert get_autologging_config("test_integration_for_config", "silent") is None
     assert get_autologging_config("test_integration_for_config", "t", 10) == 10
 
     autolog()
 
     assert get_autologging_config("test_integration_for_config", "foo") == "bar"
     assert get_autologging_config("test_integration_for_config", "disable") is False
+    assert get_autologging_config("test_integration_for_config", "silent") is False
     assert get_autologging_config("test_integration_for_config", "t", 10) == 7
     assert get_autologging_config("test_integration_for_config", "nonexistent") is None
 
-    autolog(foo="baz")
+    autolog(foo="baz", silent=True)
 
     assert get_autologging_config("test_integration_for_config", "foo") == "baz"
+    assert get_autologging_config("test_integration_for_config", "silent") is True
 
 
 def test_autologging_is_disabled_returns_expected_values():
@@ -565,7 +588,7 @@ def test_autologging_is_disabled_returns_expected_values():
     assert autologging_is_disabled("nonexistent_integration") is True
 
     @autologging_integration("test_integration_for_disable_check")
-    def autolog(disable=False):
+    def autolog(disable=False, silent=False):
         pass
 
     # Before `autolog()` has been invoked, `autologging_is_disabled` should return False
@@ -695,6 +718,10 @@ _module_version_info_dict_patch = {
         "package_info": {"pip_release": "statsmodels"},
         "autologging": {"minimum": "0.11.1", "maximum": "0.12.2"},
     },
+    "spark": {
+        "package_info": {"pip_release": "pyspark"},
+        "autologging": {"minimum": "3.0.1", "maximum": "3.1.1"},
+    },
 }
 
 
@@ -719,19 +746,23 @@ _module_version_info_dict_patch = {
         ("sklearn", "0.20.2", False),
         ("pytorch", "1.0.5", True),
         ("pytorch", "1.0.4", False),
+        ("pyspark.ml", "3.1.0", True),
+        ("pyspark.ml", "3.0.0", False),
     ],
 )
 @mock.patch(
-    "mlflow.utils.autologging_utils._module_version_info_dict", _module_version_info_dict_patch
+    "mlflow.utils.autologging_utils.versioning._module_version_info_dict",
+    _module_version_info_dict_patch,
 )
 def test_is_autologging_integration_supported(flavor, module_version, expected_result):
-    module_name, _ = _cross_tested_flavor_to_module_name_and_module_key[flavor]
+    module_name, _ = FLAVOR_TO_MODULE_NAME_AND_VERSION_INFO_KEY[flavor]
     with mock.patch(module_name + ".__version__", module_version):
-        assert expected_result == _is_autologging_integration_supported(flavor)
+        assert expected_result == is_flavor_supported_for_associated_package_versions(flavor)
 
 
 @mock.patch(
-    "mlflow.utils.autologging_utils._module_version_info_dict", _module_version_info_dict_patch
+    "mlflow.utils.autologging_utils.versioning._module_version_info_dict",
+    _module_version_info_dict_patch,
 )
 def test_disable_for_unsupported_versions_warning_sklearn_integration():
     log_warn_fn_name = "mlflow.utils.autologging_utils._logger.warning"

@@ -1,14 +1,18 @@
 channels:
+- pytorch
 - defaults
 - conda-forge
-- pytorch
 dependencies:
 - python=3.8.2
-- pytorch=1.8.0
-- pytorch-lightning==1.0.2
-- torchvision=0.9.0
+- pytorch
 - pip
 - pip:
   - mlflow
-  - cloudpickle==1.6.0
+  - pandas
+  - scipy
+  - captum
   - boto3
+  - sklearn
+  - prettytable
+  - ipython
+
