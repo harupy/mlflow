@@ -26,7 +26,7 @@ export MLFLOW_HOME=$(pwd)
 # pytest --verbose tests/shap --large
 # pytest --verbose tests/utils/test_model_utils.py --large
 # pytest --verbose tests/tracking/fluent/test_fluent_autolog.py --large
-# pytest --verbose tests/autologging --large
-find tests/spark_autologging/ml -name 'test*.py' | xargs -L 1 pytest --large
+pytest --verbose tests/autologging --large
+# find tests/spark_autologging/ml -name 'test*.py' | xargs -L 1 pytest --large
 
 test $err = 0
