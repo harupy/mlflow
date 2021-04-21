@@ -247,5 +247,6 @@ def test_autolog_respects_silent_mode(tmpdir):
 
     a = mlflow.active_run()
     if a:
-        print(a.info, a.data)
+        r = mlflow.get_run(a.info.run_id)
+        print(r.info, r.data)
     assert not a
