@@ -183,7 +183,7 @@ def test_autolog_respects_disable_flag_across_import_orders():
 
 
 @pytest.mark.usefixtures(test_mode_off.__name__)
-def test_autolog_respects_silent_mode(tmpdir):
+def test_autolog_respects_silent_mode(tmpdir, capsys):
     # Use file-based experiment storage for this test. Otherwise, concurrent experiment creation in
     # multithreaded contexts may fail for other storage backends (e.g. SQLAlchemy)
     mlflow.set_tracking_uri(str(tmpdir))
@@ -237,6 +237,9 @@ def test_autolog_respects_silent_mode(tmpdir):
     with ThreadPoolExecutor(max_workers=50) as executor:
         for _ in range(100):
             executor.submit(train_model)
+
+    with capsys.disabled():
+        print(mlflow.tracking.fluent._active_run_stack)
 
     assert stream.getvalue()
     # Verify that `warnings.showwarning` was restored to its original value after training
