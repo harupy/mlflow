@@ -246,4 +246,6 @@ def test_autolog_respects_silent_mode(tmpdir, capsys):
     assert "verify that event logs are enabled" in stream.getvalue()
 
     with capsys.disabled():
-        print(mlflow.tracking.fluent._active_run_stack)
+        active_run = mlflow.active_run()
+        if active_run:
+            print(mlflow.get_run(active_run.info.run_id))
