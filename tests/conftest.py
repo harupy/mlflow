@@ -67,8 +67,6 @@ def clean_up_leaked_runs():
         yield
         ALL_TESTS_AFTER.append(test_info)
         if mlflow.active_run():
-            leakd_run = mlflow.get_run(mlflow.active_run().info.run_id)
-            print(leakd_run)
             msg = (
                 "test case unexpectedly leaked a run!: "
                 + mlflow.get_tracking_uri()
