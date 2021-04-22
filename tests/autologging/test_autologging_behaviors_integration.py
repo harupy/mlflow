@@ -244,9 +244,3 @@ def test_autolog_respects_silent_mode(tmpdir):
     assert warnings.showwarning == og_showwarning
     logger.info("verify that event logs are enabled")
     assert "verify that event logs are enabled" in stream.getvalue()
-
-    a = mlflow.active_run()
-    if a:
-        r = mlflow.get_run(a.info.run_id)
-        print(r.info, r.data)
-    assert not a
