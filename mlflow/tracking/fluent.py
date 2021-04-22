@@ -270,11 +270,11 @@ def end_run(status=RunStatus.to_string(RunStatus.FINISHED)) -> None:
         Active run: None
     """
     global _active_run_stack
-    if len(_active_run_stack) > 0:
-        # Clear out the global existing run environment variable as well.
-        env.unset_variable(_RUN_ID_ENV_VAR)
-        run = _active_run_stack.pop()
-        MlflowClient().set_terminated(run.info.run_id, status)
+    # if len(_active_run_stack) > 0:
+    # Clear out the global existing run environment variable as well.
+    env.unset_variable(_RUN_ID_ENV_VAR)
+    run = _active_run_stack.pop()
+    MlflowClient().set_terminated(run.info.run_id, status)
 
 
 atexit.register(end_run)
