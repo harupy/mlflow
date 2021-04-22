@@ -238,12 +238,12 @@ def test_autolog_respects_silent_mode(tmpdir, capsys):
         for _ in range(100):
             executor.submit(train_model)
 
-    with capsys.disabled():
-        print(mlflow.tracking.fluent._active_run_stack)
-
     assert stream.getvalue()
     # Verify that `warnings.showwarning` was restored to its original value after training
     # and that MLflow event logs are enabled
     assert warnings.showwarning == og_showwarning
     logger.info("verify that event logs are enabled")
     assert "verify that event logs are enabled" in stream.getvalue()
+
+    with capsys.disabled():
+        print(mlflow.tracking.fluent._active_run_stack)
