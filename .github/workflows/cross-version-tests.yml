@@ -51,7 +51,7 @@ jobs:
           echo "/usr/share/miniconda/bin" >> $GITHUB_PATH
       - name: Update python
         run: |
-          conda install python=3.6
+          conda install python=3.7
           python --version
       - name: Install dependencies
         run: |
