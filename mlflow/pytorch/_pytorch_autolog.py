@@ -1,14 +1,18 @@
+from distutils.version import LooseVersion
 import logging
 import mlflow.pytorch
 import os
-import pytorch_lightning as pl
 import shutil
 import tempfile
+import pytorch_lightning as pl
 from pytorch_lightning.core.memory import ModelSummary
 from pytorch_lightning.utilities import rank_zero_only
-from mlflow.utils.autologging_utils import try_mlflow_log, wrap_patch, BatchMetricsLogger
-from mlflow.utils.annotations import experimental
-from mlflow.utils import gorilla
+
+from mlflow.utils.autologging_utils import (
+    ExceptionSafeAbstractClass,
+    try_mlflow_log,
+    BatchMetricsLogger,
+)
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -29,17 +33,43 @@ every_n_epoch = 1
 # once the above mentioned issues have been addressed
 
 
-@rank_zero_only
-@experimental
-def _autolog(log_every_n_epoch=1, log_models=True):
+def _get_optimizer_name(optimizer):
     """
-    Enable automatic logging from pytorch to MLflow.
-    Logs loss and any other metrics specified in the fit
-    function, and optimizer data as parameters. Model checkpoints
-    are logged as artifacts and pytorch model is stored under `model` directory.
+    In pytorch-lightining 1.1.0, `LightningOptimizer` was introduced:
+    https://github.com/PyTorchLightning/pytorch-lightning/pull/4658
 
-    MLflow will also log the parameters of the
-    `EarlyStoppingCallback <https://pytorch-lightning.readthedocs.io/en/latest/early_stopping.html>`
+    If a user sets `enable_pl_optimizer` to True when instantiating a `Trainer` object,
+    each optimizer will be wrapped by `LightningOptimizer`:
+    https://pytorch-lightning.readthedocs.io/en/stable/api/pytorch_lightning.trainer.trainer.html
+    #pytorch_lightning.trainer.trainer.Trainer.params.enable_pl_optimizer
+    """
+    if LooseVersion(pl.__version__) < LooseVersion("1.1.0"):
+        return optimizer.__class__.__name__
+    else:
+        from pytorch_lightning.core.optimizer import LightningOptimizer
+
+        return (
+            optimizer._optimizer.__class__.__name__
+            if isinstance(optimizer, LightningOptimizer)
+            else optimizer.__class__.__name__
+        )
+
+
+@rank_zero_only
+def _create_patch_fit(log_every_n_epoch=1, log_models=True):
+    """
+    Creates a patch implementation of `pytorch_lightning.Trainer.fit` which enables logging the
+    following parameters, metrics and artifacts.
+
+    - Training epochs
+    - Optimizer parameters
+    - `EarlyStoppingCallback`_ parameters
+    - Metrics stored in `trainer.callback_metrics`
+    - Model checkpoints
+    - Trained model
+
+    .. _EarlyStoppingCallback:
+        https://pytorch-lightning.readthedocs.io/en/latest/early_stopping.html
 
     :param log_every_n_epoch: parameter to log metrics once in `n` epoch. By default, metrics
                        are logged after every epoch.
@@ -50,7 +80,7 @@ def _autolog(log_every_n_epoch=1, log_models=True):
     every_n_epoch = log_every_n_epoch
 
     def getPLCallback(log_models, metrics_logger):
-        class __MLflowPLCallback(pl.Callback):
+        class __MLflowPLCallback(pl.Callback, metaclass=ExceptionSafeAbstractClass):
             """
             Callback for auto-logging metrics and parameters.
             """
@@ -58,14 +88,16 @@ def _autolog(log_every_n_epoch=1, log_models=True):
             def __init__(self):
                 self.early_stopping = False
 
-            def on_epoch_end(self, trainer, pl_module):
-                """
-                Log loss and other metrics values after each epoch
+            def _log_metrics(self, trainer, pl_module):
+                # pytorch-lightning runs a few steps of validation in the beginning of training
+                # as a sanity check to catch bugs without having to wait for the training routine
+                # to complete. During this check, we should skip logging metrics.
+                # https://pytorch-lightning.readthedocs.io/en/stable/common/trainer.html#num-sanity-val-steps # noqa
+                if trainer.running_sanity_check:
+                    return
 
-                :param trainer: pytorch lightning trainer instance
-                :param pl_module: pytorch lightning base module
-                """
                 if (pl_module.current_epoch + 1) % every_n_epoch == 0:
+                    # `trainer.callback_metrics` contains both training and validation metrics
                     cur_metrics = trainer.callback_metrics
                     # Cast metric value as  float before passing into logger.
                     metrics = dict(map(lambda x: (x[0], float(x[1])), cur_metrics.items()))
@@ -75,6 +107,53 @@ def _autolog(log_every_n_epoch=1, log_models=True):
                 for callback in trainer.callbacks:
                     if isinstance(callback, pl.callbacks.early_stopping.EarlyStopping):
                         self._early_stop_check(callback)
+
+            # In pytorch-lightning >= 1.2.0, logging metrics in `on_epoch_end` results in duplicate
+            # metrics records because `on_epoch_end` is called after both train and validation
+            # epochs (related PR: https://github.com/PyTorchLightning/pytorch-lightning/pull/5986)
+            # As a workaround, use `on_train_epoch_end` and `on_validation_epoch_end` instead
+            # in pytorch-lightning >= 1.2.0.
+            if LooseVersion(pl.__version__) >= LooseVersion("1.2.0"):
+
+                # NB: Override `on_train_epoch_end` with an additional `*args` parameter for
+                # compatibility with versions of pytorch-lightning <= 1.2.0, which required an
+                # `outputs` argument that was not used and is no longer defined in
+                # pytorch-lightning >= 1.3.0
+
+                def on_train_epoch_end(
+                    self, trainer, pl_module, *args
+                ):  # pylint: disable=signature-differs,arguments-differ,unused-argument
+                    """
+                    Log loss and other metrics values after each train epoch
+
+                    :param trainer: pytorch lightning trainer instance
+                    :param pl_module: pytorch lightning base module
+                    """
+                    # If validation loop is enabled (meaning `validation_step` is overridden),
+                    # log metrics in `on_validaion_epoch_end` to avoid logging the same metrics
+                    # records twice
+                    if trainer.disable_validation:
+                        self._log_metrics(trainer, pl_module)
+
+                def on_validation_epoch_end(self, trainer, pl_module):
+                    """
+                    Log loss and other metrics values after each validation epoch
+
+                    :param trainer: pytorch lightning trainer instance
+                    :param pl_module: pytorch lightning base module
+                    """
+                    self._log_metrics(trainer, pl_module)
+
+            else:
+
+                def on_epoch_end(self, trainer, pl_module):
+                    """
+                    Log loss and other metrics values after each epoch
+
+                    :param trainer: pytorch lightning trainer instance
+                    :param pl_module: pytorch lightning base module
+                    """
+                    self._log_metrics(trainer, pl_module)
 
             def on_train_start(self, trainer, pl_module):
                 """
@@ -101,7 +180,9 @@ def _autolog(log_every_n_epoch=1, log_models=True):
 
                 if hasattr(trainer, "optimizers"):
                     optimizer = trainer.optimizers[0]
-                    try_mlflow_log(mlflow.log_param, "optimizer_name", type(optimizer).__name__)
+                    try_mlflow_log(
+                        mlflow.log_param, "optimizer_name", _get_optimizer_name(optimizer)
+                    )
 
                     if hasattr(optimizer, "defaults"):
                         try_mlflow_log(mlflow.log_params, optimizer.defaults)
@@ -204,11 +285,6 @@ def _autolog(log_every_n_epoch=1, log_models=True):
         This method would be called from patched fit method and
         It adds the custom callback class into callback list.
         """
-        if not mlflow.active_run():
-            try_mlflow_log(mlflow.start_run)
-            auto_end_run = True
-        else:
-            auto_end_run = False
 
         # The run_id is not set here. Rather it will be retrieved from
         # the current mlfow run's training session inside of BatchMetricsLogger.
@@ -218,16 +294,12 @@ def _autolog(log_every_n_epoch=1, log_models=True):
             self.callbacks += [__MLflowPLCallback()]
         result = original(self, *args, **kwargs)
 
-        if auto_end_run:
-            try_mlflow_log(mlflow.end_run)
         return result
 
-    @gorilla.patch(pl.Trainer)
-    def fit(self, *args, **kwargs):
+    def fit(original, self, *args, **kwargs):
         """
         Patching trainer.fit method to add autolog class into callback
         """
-        original = gorilla.get_original_attribute(pl.Trainer, "fit")
         return _run_and_log_function(self, original, args, kwargs)
 
-    wrap_patch(pl.Trainer, "fit", fit)
+    return fit
