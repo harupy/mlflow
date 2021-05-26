@@ -88,7 +88,7 @@ def pytest_ignore_collect(path, config):
             "tests/spacy",
             "tests/spark_autologging",
             "tests/fastai",
-            "tests/models",
+            # "tests/models",
             "tests/shap",
             "tests/utils/test_model_utils.py",
             # this test is included here because it imports many big libraries like tf, keras, etc
