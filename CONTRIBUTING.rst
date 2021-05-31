@@ -139,7 +139,13 @@ by running the following from your checkout of MLflow:
 .. code-block:: bash
 
     conda create --name mlflow-dev-env python=3.6
-    source activate mlflow-dev-env
+    conda activate mlflow-dev-env
+    pip install -e . [extras] # installs mlflow from current checkout with some useful extra utilities
+
+If you plan on doing development and testing, you will also need to install the following into the conda environment:
+
+.. code-block:: bash
+
     pip install -r dev-requirements.txt
     pip install -r test-requirements.txt
     pip install -e .[extras]  # installs mlflow from current checkout
@@ -160,6 +166,17 @@ JavaScript and UI
 The MLflow UI is written in JavaScript. ``npm`` is required to run the Javascript dev server and the tracking UI.
 You can verify that ``npm`` is on the PATH by running ``npm -v``, and
 `install npm <https://www.npmjs.com/get-npm>`_ if needed.
+
+Install Node Module Dependencies
+++++++++++++++++++++++++++++++++
+
+On OSX, install the following packages required by the node modules:
+
+.. code-block:: bash
+
+    brew install pixman cairo pango jpeg
+
+Linux/Windows users will need to source these dependencies using the appropriate package manager on their platforms.
 
 Install Node Modules
 ++++++++++++++++++++
@@ -351,7 +368,7 @@ run tests annotated with @pytest.mark.large. For example, to run all pyfunc test
 Note: Certain model tests are not well-isolated (can result in OOMs when run in the same Python
 process), so simply invoking ``pytest`` or ``pytest tests`` may not work. If you'd like to
 run multiple model tests, we recommend doing so via separate ``pytest`` invocations, e.g.
-``pytest --verbose tests/sklearn --large && pytest --verbose tests/tensorflow --large``
+``pytest tests/sklearn --large && pytest tests/tensorflow --large``
 
 If opening a PR that changes or adds new APIs, please update or add Python documentation as
 described in `Writing Docs`_ and commit the docs to your PR branch.
@@ -570,3 +587,7 @@ Then add a line to every git commit message::
 
 Use your real name (sorry, no pseudonyms or anonymous contributions). You can sign your commit 
 automatically with ``git commit -s`` after you set your ``user.name`` and ``user.email`` git configs.
+
+Code of Conduct
+###############
+Refer to the `MLflow Contributor Covenant Code of Conduct <./CODE_OF_CONDUCT.rst>`_ for more information.

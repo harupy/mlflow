@@ -63,7 +63,7 @@ def get_default_conda_env(include_cloudpickle=False):
         import cloudpickle
 
         pip_deps += ["cloudpickle=={}".format(cloudpickle.__version__)]
-    return _mlflow_conda_env(additional_pip_deps=pip_deps, additional_conda_channels=None)
+    return _mlflow_conda_env(additional_pip_deps=pip_deps)
 
 
 def save_model(
@@ -463,6 +463,7 @@ def autolog(
     exclusive=False,
     disable_for_unsupported_versions=False,
     silent=False,
+    max_tuning_runs=5,
 ):  # pylint: disable=unused-argument
     """
     Enables (or disables) and configures autologging for scikit-learn estimators.
@@ -654,6 +655,16 @@ def autolog(
     :param silent: If ``True``, suppress all event logs and warnings from MLflow during scikit-learn
                    autologging. If ``False``, show all events and warnings during scikit-learn
                    autologging.
+    :param max_tuning_runs: The maximum number of child Mlflow runs created for hyperparameter
+                            search estimators. To create child runs for the best `k` results from
+                            the search, set `max_tuning_runs` to `k`. The default value is to track
+                            the best 5 search parameter sets. If `max_tuning_runs=None`, then
+                            a child run is created for each search parameter set. Note: The best k
+                            results is based on ordering in `rank_test_score`. In the case of
+                            multi-metric evaluation with a custom scorer, the first scorer’s
+                            `rank_test_score_<scorer_name>` will be used to select the best k
+                            results. To change metric used for selecting best k results, change
+                            ordering of dict passed as `scoring` parameter for estimator.
     """
     import pandas as pd
     import sklearn
@@ -681,6 +692,14 @@ def autolog(
         MAX_PARAM_VAL_LENGTH,
         MAX_ENTITY_KEY_LENGTH,
     )
+
+    if max_tuning_runs is not None and max_tuning_runs < 0:
+        raise MlflowException(
+            message=(
+                "`max_tuning_runs` must be non-negative, instead got {}.".format(max_tuning_runs)
+            ),
+            error_code=INVALID_PARAMETER_VALUE,
+        )
 
     if not _is_supported_version():
         warnings.warn(
@@ -756,7 +775,7 @@ def autolog(
         (X, y_true, sample_weight) = _get_args_for_metrics(estimator.fit, args, kwargs)
 
         # log common metrics and artifacts for estimators (classifier, regressor)
-        _log_estimator_content(
+        logged_metrics = _log_estimator_content(
             estimator=estimator,
             prefix=_TRAINING_PREFIX,
             run_id=mlflow.active_run().info.run_id,
@@ -764,6 +783,12 @@ def autolog(
             y_true=y_true,
             sample_weight=sample_weight,
         )
+        if y_true is None and not logged_metrics:
+            _logger.warning(
+                "Training metrics will not be recorded because training labels were not specified."
+                " To automatically record training metrics, provide training labels as inputs to"
+                " the model training function."
+            )
 
         def get_input_example():
             # Fetch an input example using the first several rows of the array-like
@@ -818,6 +843,7 @@ def autolog(
                     _create_child_runs_for_parameter_search(
                         cv_estimator=estimator,
                         parent_run=mlflow.active_run(),
+                        max_tuning_runs=max_tuning_runs,
                         child_tags=child_tags,
                     )
                 except Exception as e:
