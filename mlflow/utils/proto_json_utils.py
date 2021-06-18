@@ -64,7 +64,7 @@ class NumpyEncoder(JSONEncoder):
 
         if isinstance(o, np.ndarray):
             if o.dtype == np.object:
-                return [self.try_convert(x)[0] for x in o.tolist()]
+                return [self.try_convert(x)[0] for x in o.tolist()], True
             elif o.dtype == np.bytes_:
                 return np.vectorize(encode_binary)(o), True
             else:
