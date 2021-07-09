@@ -219,9 +219,8 @@ onnx:
   package_info:
     pip_release: "onnx"
     install_dev: |
-      export CFLAGS=-fPIC
-      export CXXFLAGS=-fPIC
       sudo apt-get install protobuf-compiler libprotoc-dev
+      export CMAKE_ARGS=-DCMAKE_POSITION_INDEPENDENT_CODE=ON
       pip install git+https://github.com/onnx/onnx.git
 
   models:
