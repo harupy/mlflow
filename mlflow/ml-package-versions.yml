@@ -97,7 +97,8 @@ keras:
     minimum: "2.2.4"
     maximum: "2.4.3"
     requirements:
-      "< 2.3.1": ["tensorflow==1.15.4", "h5py<3.0", "scikit-learn", "pyspark", "pyarrow"]
+      "< 2.3.1":
+        ["tensorflow==1.15.4", "h5py<3.0", "scikit-learn", "pyspark", "pyarrow"]
       "== 2.3.1": ["tensorflow==2.2.1", "scikit-learn", "pyspark", "pyarrow"]
       "> 2.3.1": ["tensorflow<2.5.0", "scikit-learn", "pyspark", "pyarrow"]
     run: |
@@ -219,9 +220,11 @@ onnx:
   package_info:
     pip_release: "onnx"
     install_dev: |
-      # Reference: https://github.com/onnx/onnx/blob/31f0fd6103e231664d1cfd3b25264f672f5de960/.github/workflows/manylinux/entrypoint.sh#L18-L29
+      # The code to build protobuf is fetched from:
+      # https://github.com/onnx/onnx/blob/31f0fd6103e231664d1cfd3b25264f672f5de960/.github/workflows/manylinux/entrypoint.sh#L18-L30
 
       # Build protobuf
+      pushd ..
       git clone https://github.com/protocolbuffers/protobuf.git
       cd protobuf
       git checkout v3.11.3
@@ -237,6 +240,9 @@ onnx:
         -DCMAKE_BUILD_TYPE=Release
       make -j$(nproc)
       make install
+      popd
+
+      # Install onnx
       pip install git+https://github.com/onnx/onnx.git
 
   models:
