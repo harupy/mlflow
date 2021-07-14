@@ -227,8 +227,8 @@ onnx:
       tmp_dir=$(mktemp -d)
       git clone git+https://github.com/onnx/onnx.git $tmp_dir
       cd $tmp_dir
-      docker run --rm -v $(pwd):/io --entrypoint bash quay.io/pypa/manylinux2010_x86_64 \
-        .github/workflows/manylinux/entrypoint.sh 3.6 manylinux2010_x86_64 pull_request
+      docker run --rm -v $(pwd):/github/workspace --workdir /github/workspace --entrypoint bash \
+        quay.io/pypa/manylinux2010_x86_64 .github/workflows/manylinux/entrypoint.sh 3.6 manylinux2010_x86_64 pull_request
 
       # Build protobuf
       # git clone https://github.com/protocolbuffers/protobuf.git
