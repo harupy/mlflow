@@ -219,8 +219,24 @@ onnx:
   package_info:
     pip_release: "onnx"
     install_dev: |
-      sudo apt-get install protobuf-compiler libprotoc-dev
-      export CMAKE_ARGS=-DCMAKE_POSITION_INDEPENDENT_CODE=ON
+      # Reference: https://github.com/onnx/onnx/blob/31f0fd6103e231664d1cfd3b25264f672f5de960/.github/workflows/manylinux/entrypoint.sh#L18-L29
+
+      # Build protobuf
+      git clone https://github.com/protocolbuffers/protobuf.git
+      cd protobuf
+      git checkout v3.11.3
+      git submodule update --init --recursive
+      mkdir build_source && cd build_source
+
+      cmake ../cmake \
+        -Dprotobuf_BUILD_SHARED_LIBS=OFF \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DCMAKE_INSTALL_SYSCONFDIR=/etc \
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+        -Dprotobuf_BUILD_TESTS=OFF \
+        -DCMAKE_BUILD_TYPE=Release
+      make -j$(nproc)
+      make install
       pip install git+https://github.com/onnx/onnx.git
 
   models:
