@@ -221,12 +221,15 @@ onnx:
     pip_release: "onnx"
     install_dev: |
       # The build command is fetched from:
-      # https://github.com/onnx/onnx/blob/31f0fd6103e231664d1cfd3b25264f672f5de960/.github/workflows/manylinux/entrypoint.sh
+      # https://github.com/onnx/onnx/blob/51a7d932356cbb1205341660a4a52f8c121d8f4b/.github/workflows/release_linux_x86_64.yml
 
       # Clone the ONNX repository
       tmp_dir=$(mktemp -d)
       git clone https://github.com/onnx/onnx.git $tmp_dir
       cd $tmp_dir
+      auth_header="$(git config --local --get http.https://github.com/.extraheader)"
+      git submodule sync --recursive
+      git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
       docker run --rm -v $(pwd):/github/workspace --workdir /github/workspace --entrypoint bash \
         quay.io/pypa/manylinux2010_x86_64 .github/workflows/manylinux/entrypoint.sh 3.6 manylinux2010_x86_64 pull_request
 
