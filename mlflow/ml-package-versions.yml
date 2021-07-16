@@ -224,38 +224,18 @@ onnx:
       # https://github.com/onnx/onnx/blob/51a7d932356cbb1205341660a4a52f8c121d8f4b/.github/workflows/release_linux_x86_64.yml
 
       auth_header="$(git config --local --get http.https://github.com/.extraheader)"
-      # Clone the ONNX repository
       tmp_dir=$(mktemp -d)
       git clone https://github.com/onnx/onnx.git $tmp_dir
       cd $tmp_dir
       git submodule sync --recursive
       git -c "http.extraheader=$auth_header" -c protocol.version=2 submodule update --init --force --recursive --depth=1
+
+      # Build wheel
       docker run --rm -v $(pwd):/github/workspace --workdir /github/workspace --entrypoint bash \
         quay.io/pypa/manylinux2010_x86_64 .github/workflows/manylinux/entrypoint.sh 3.6 manylinux2010_x86_64 pull_request
 
-      # Build protobuf
-      # git clone https://github.com/protocolbuffers/protobuf.git
-      # pushd protobuf
-      # git checkout v3.11.3
-      # git submodule update --init --recursive
-      # mkdir build_source && cd build_source
-
-      # cmake ../cmake \
-      #   -Dprotobuf_BUILD_SHARED_LIBS=OFF \
-      #   -DCMAKE_INSTALL_PREFIX=/usr \
-      #   -DCMAKE_INSTALL_SYSCONFDIR=/etc \
-      #   -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-      #   -Dprotobuf_BUILD_TESTS=OFF \
-      #   -DCMAKE_BUILD_TYPE=Release
-      # make -j$(nproc)
-      # make install
-      # popd
-
-      # Install build requirements
-      # pip install numpy==1.16.6 protobuf==3.16.0
-
-      # Install onnx
-      # python setup.py install
+      # Install wheel
+      pip install dist/*manylinux2010_x86_64.whl
 
   models:
     minimum: "1.5.0"
