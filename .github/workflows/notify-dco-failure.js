@@ -10,7 +10,7 @@ module.exports = async ({ context, github }) => {
   async function getDcoCheck() {
     const backoffs = [0, 2, 4, 6, 8];
     const numAttempts = backoffs.length;
-    for (const [index, backoff] of backoff.entries()) {
+    for (const [index, backoff] of backoffs.entries()) {
       await sleep(backoff * 1000);
       const resp = await github.checks.listForRef({
         owner,
