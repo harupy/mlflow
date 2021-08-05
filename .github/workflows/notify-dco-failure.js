@@ -31,9 +31,11 @@ module.exports = async ({ context, github }) => {
   }
 
   const dcoCheck = await getDcoCheck();
-  const { html_url, conclusion } = dcoCheck;
-  if (conclusion !== "success") {
-    const body = `@${user.login} The DCO check failed. Please sign off your commits:\n${html_url}`;
+  if (dcoCheck.conclusion === "success") {
+    const body = [
+      `@${user.login} The DCO check failed. Please sign off your commits:`,
+      `${dcoCheck.html_url}`,
+    ].join("\n");
     await github.issues.createComment({
       owner,
       repo,
