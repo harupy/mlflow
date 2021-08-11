@@ -63,10 +63,14 @@ class MlflowException(Exception):
         return ERROR_CODE_TO_HTTP_STATUS.get(self.error_code, 500)
 
 
+import traceback
+
+
 class RestException(MlflowException):
     """Exception thrown on non 200-level responses from the REST API"""
 
     def __init__(self, json):
+        print(traceback.extract_stack())
         error_code = json.get("error_code", ErrorCode.Name(INTERNAL_ERROR))
         message = "%s: %s" % (
             error_code,
