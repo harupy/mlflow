@@ -2,6 +2,7 @@ package org.mlflow.spark.autologging
 
 import org.apache.spark.scheduler._
 import org.apache.spark.sql.execution.ui.SparkListenerSQLExecutionEnd
+import org.apache.spark.sql.SparkAutologgingUtils
 import org.slf4j.LoggerFactory
 
 
@@ -21,7 +22,7 @@ class SparkDataSourceListener(
 
   // Exposed for testing
   private[autologging] def onSQLExecutionEnd(event: SparkListenerSQLExecutionEnd): Unit = {
-    publisher.logEvent(s"${getClass.getName}.onSQLExecutionEnd called with event: ${event}")
+    publisher.logEvent(s"${getClass.getName}.onSQLExecutionEnd called with qe: ${SparkAutologgingUtils.getQueryExecution(event)}")
     val extractor = getDatasourceAttributeExtractor
     val tableInfos = extractor.getTableInfos(event)
     publisher.logEvent(s"tableInfos: ${tableInfos}")
