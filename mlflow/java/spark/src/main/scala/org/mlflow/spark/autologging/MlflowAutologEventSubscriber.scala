@@ -26,4 +26,6 @@ trait MlflowAutologEventSubscriber {
    * expected to be unique across all subscribers (e.g. a UUID).
    */
   def replId: String
+
+  def appendEvent(eventName: String): Any
 }

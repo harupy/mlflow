@@ -28,6 +28,7 @@ _logger = logging.getLogger(__name__)
 _lock = threading.Lock()
 _table_infos = []
 _spark_table_info_listener = None
+_events = []
 
 # Queue & singleton consumer thread for logging Spark datasource info asynchronously
 _metric_queue = []
@@ -192,12 +193,15 @@ class PythonSubscriber(object, metaclass=ExceptionSafeClass):
         return "PythonSubscriber<replId=%s>" % self.replId()
 
     def ping(self):
+        self.appendEvent("ping called")
         return None
 
     def notify(self, path, version, data_format):
+        self.appendEvent("notify called")
         try:
             self._notify(path, version, data_format)
         except Exception as e:
+            self.appendEvent(f"notify failed: {e}")
             _logger.error(
                 "Unexpected exception %s while attempting to log Spark datasource "
                 "info. Exception:\n",
@@ -205,11 +209,13 @@ class PythonSubscriber(object, metaclass=ExceptionSafeClass):
             )
 
     def _notify(self, path, version, data_format):
+        self.appendEvent("_notify called")
         """
         Method called by Scala SparkListener to propagate datasource read events to the current
         Python process
         """
         if autologging_is_disabled(FLAVOR_NAME):
+            self.appendEvent("exit _notify since autologging is disabled")
             return
         # If there's an active run, simply set the tag on it
         # Note that there's a TOCTOU race condition here - active_run() here can actually throw
@@ -218,11 +224,17 @@ class PythonSubscriber(object, metaclass=ExceptionSafeClass):
         active_run = mlflow.active_run()
         if active_run:
             _set_run_tag_async(active_run.info.run_id, path, version, data_format)
+            self.appendEvent("_set_run_tag_async called")
         else:
             add_table_info_to_context_provider(path, version, data_format)
+            self.appendEvent("add_table_info_to_context_provider called")
 
     def replId(self):
+        self.appendEvent("replId called")
         return self._repl_id
+
+    def appendEvent(self, eventName):
+        _events.append(eventName)
 
     class Java:
         implements = ["{}.MlflowAutologEventSubscriber".format(_JAVA_PACKAGE)]

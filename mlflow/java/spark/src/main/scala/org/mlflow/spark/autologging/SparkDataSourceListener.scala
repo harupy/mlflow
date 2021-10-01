@@ -21,16 +21,20 @@ class SparkDataSourceListener(
 
   // Exposed for testing
   private[autologging] def onSQLExecutionEnd(event: SparkListenerSQLExecutionEnd): Unit = {
+    publisher.logEvent("onSQLExecutionEnd called")
     val extractor = getDatasourceAttributeExtractor
     val tableInfos = extractor.getTableInfos(event)
+    publisher.logEvent(s"tableInfos: ${tableInfos}")
     tableInfos.foreach { tableInfo =>
       publisher.publishEvent(getReplIdOpt(event), tableInfo)
     }
   }
 
   override def onOtherEvent(event: SparkListenerEvent): Unit = {
+    publisher.logEvent("onOtherEvent called")
     event match {
       case e: SparkListenerSQLExecutionEnd =>
+        publisher.logEvent("matched SparkListenerSQLExecutionEnd")
         // Defensively catch exceptions while attempting to extract datasource read information
         // from the SparkListenerSQLExecutionEnd event. In particular, we do this to defend
         // against changes in the internal APIs we access (e.g. changes in Delta table classnames
@@ -41,7 +45,9 @@ class SparkDataSourceListener(
           logger, "when attempting to handle SparkListenerSQLExecutionEnd event", {
           onSQLExecutionEnd(e)
         })
-      case _ =>
+      case x => {
+        publisher.logEvent(s"did not match SparkListenerSQLExecutionEnd: ${x.getClass}")
+      }
     }
   }
 }

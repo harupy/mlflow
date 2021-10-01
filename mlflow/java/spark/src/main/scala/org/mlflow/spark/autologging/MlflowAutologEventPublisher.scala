@@ -145,12 +145,20 @@ private[autologging] trait MlflowAutologEventPublisherImpl {
     }
   }
 
+  private[autologging] def logEvent(eventName: String): Unit = synchronized {
+    for ((replId, listener) <- getSubscribers) {
+      listener.appendEvent(eventName)
+    }
+  }
+
   private[autologging] def publishEvent(
       replIdOpt: Option[String],
       sparkTableInfo: SparkTableInfo): Unit = synchronized {
+    logEvent("publishEvent called")
     sparkTableInfo match {
       case SparkTableInfo(path, version, format) =>
         for ((replId, listener) <- getSubscribers) {
+          listener.appendEvent(s"Comparing (replIdOpt: ${replIdOpt}, replId: ${replId})")
           if (replIdOpt.isEmpty || replId == replIdOpt.get) {
             try {
               listener.notify(path, version.getOrElse("unknown"), format.getOrElse("unknown"))
@@ -161,7 +169,9 @@ private[autologging] trait MlflowAutologEventPublisherImpl {
             }
           }
         }
-      case _ =>
+      case x => {
+        logEvent(s"did not match SparkTableInfo: ${x.getClass}")
+      }
     }
   }
 }
