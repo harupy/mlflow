@@ -170,7 +170,7 @@ private[autologging] trait MlflowAutologEventPublisherImpl {
           }
         }
       case x => {
-        logEvent(s"did not match SparkTableInfo: ${x.getClass}")
+        logEvent(s"did not match SparkTableInfo: ${x.getClass.getName}")
       }
     }
   }

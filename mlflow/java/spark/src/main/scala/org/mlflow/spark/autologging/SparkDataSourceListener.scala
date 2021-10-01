@@ -21,7 +21,7 @@ class SparkDataSourceListener(
 
   // Exposed for testing
   private[autologging] def onSQLExecutionEnd(event: SparkListenerSQLExecutionEnd): Unit = {
-    publisher.logEvent("onSQLExecutionEnd called")
+    publisher.logEvent(s"${getClass.getName}.onSQLExecutionEnd called with event: ${event}")
     val extractor = getDatasourceAttributeExtractor
     val tableInfos = extractor.getTableInfos(event)
     publisher.logEvent(s"tableInfos: ${tableInfos}")
@@ -46,7 +46,7 @@ class SparkDataSourceListener(
           onSQLExecutionEnd(e)
         })
       case x => {
-        publisher.logEvent(s"did not match SparkListenerSQLExecutionEnd: ${x.getClass}")
+        publisher.logEvent(s"did not match SparkListenerSQLExecutionEnd: ${x.getClass.getName}")
       }
     }
   }
