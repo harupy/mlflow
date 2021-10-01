@@ -26,6 +26,8 @@ private[autologging] class MockSubscriber extends MlflowAutologEventSubscriber {
   }
 
   override def ping(): Unit = {}
+
+  override def appendEvent(eventName: String): Unit = {}
 }
 
 private[autologging] class BrokenSubscriber extends MockSubscriber {
@@ -37,6 +39,7 @@ private[autologging] class BrokenSubscriber extends MockSubscriber {
     throw new RuntimeException("Unable to notify subscriber!")
   }
 
+  override def appendEvent(eventName: String): Unit = {}
 }
 
 class SparkAutologgingSuite extends FunSuite with Matchers with BeforeAndAfterAll
