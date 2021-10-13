@@ -65,6 +65,12 @@ export const ExperimentViewPersistedState = Immutable.Record(
       [COLUMN_TYPES.METRICS]: [],
       [COLUMN_TYPES.TAGS]: [],
     },
+    categorizedHiddenKeys: {
+      [COLUMN_TYPES.ATTRIBUTES]: [],
+      [COLUMN_TYPES.PARAMS]: [],
+      [COLUMN_TYPES.METRICS]: [],
+      [COLUMN_TYPES.TAGS]: [],
+    },
     // Switch to select only columns with differences
     diffSwitchSelected: false,
   },

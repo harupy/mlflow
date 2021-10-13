@@ -463,6 +463,7 @@ export class ExperimentView extends Component {
       unbaggedParams,
       unbaggedMetrics,
       categorizedUncheckedKeys,
+      categorizedHiddenKeys,
       diffSwitchSelected,
     } = persistedState;
     const filteredParamKeys = this.getFilteredKeys(paramKeyList, COLUMN_TYPES.PARAMS);
@@ -952,6 +953,7 @@ export class ExperimentView extends Component {
                 metricKeyList={filteredMetricKeys}
                 visibleTagKeyList={filteredVisibleTagKeyList}
                 categorizedUncheckedKeys={categorizedUncheckedKeys}
+                categorizedHiddenKeys={categorizedHiddenKeys}
                 isAllChecked={this.isAllChecked()}
                 onSortBy={this.onSortBy}
                 orderByKey={orderByKey}
@@ -1166,7 +1168,7 @@ export class ExperimentView extends Component {
         }).toJSON(),
       },
       () => {
-        const categorizedUncheckedKeys = this.state.persistedState.diffSwitchSelected
+        const categorizedHiddenKeys = this.state.persistedState.diffSwitchSelected
           ? ExperimentViewUtil.getCategorizedColumnsDiffView(this.props)
           : {
               [COLUMN_TYPES.ATTRIBUTES]: [],
@@ -1174,7 +1176,12 @@ export class ExperimentView extends Component {
               [COLUMN_TYPES.METRICS]: [],
               [COLUMN_TYPES.TAGS]: [],
             };
-        this.handleColumnSelectionCheck(categorizedUncheckedKeys);
+        this.setState({
+          persistedState: new ExperimentViewPersistedState({
+            ...this.state.persistedState,
+            categorizedHiddenKeys,
+          }).toJSON(),
+        });
       },
     );
   }

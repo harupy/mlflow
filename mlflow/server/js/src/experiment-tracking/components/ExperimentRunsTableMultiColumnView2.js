@@ -62,6 +62,7 @@ export class ExperimentRunsTableMultiColumnView2 extends React.Component {
     loadingMore: PropTypes.bool.isRequired,
     isLoading: PropTypes.bool.isRequired,
     categorizedUncheckedKeys: PropTypes.object.isRequired,
+    categorizedHiddenKeys: PropTypes.object.isRequired,
     nestChildren: PropTypes.bool,
   };
 
@@ -147,6 +148,7 @@ export class ExperimentRunsTableMultiColumnView2 extends React.Component {
       metricKeyList,
       paramKeyList,
       categorizedUncheckedKeys,
+      categorizedHiddenKeys,
       visibleTagKeyList,
       orderByKey,
       orderByAsc,
@@ -240,7 +242,12 @@ export class ExperimentRunsTableMultiColumnView2 extends React.Component {
           cellRenderer: 'modelsCellRenderer',
           initialWidth: 200,
         },
-      ].filter((c) => !categorizedUncheckedKeys[COLUMN_TYPES.ATTRIBUTES].includes(c.headerName)),
+      ]
+        .filter((c) => !categorizedUncheckedKeys[COLUMN_TYPES.ATTRIBUTES].includes(c.headerName))
+        .map((c) => ({
+          ...c,
+          hide: categorizedHiddenKeys[COLUMN_TYPES.ATTRIBUTES].includes(c.headerName),
+        })),
       {
         headerName: 'Metrics',
         children: metricKeyList.map((metricKey, i) => {
@@ -261,6 +268,7 @@ export class ExperimentRunsTableMultiColumnView2 extends React.Component {
               computedStylesOnSortKey: headerStyle,
             },
             cellStyle,
+            hide: categorizedHiddenKeys[COLUMN_TYPES.METRICS].includes(metricKey),
           };
         }),
       },
@@ -284,6 +292,7 @@ export class ExperimentRunsTableMultiColumnView2 extends React.Component {
               computedStylesOnSortKey: headerStyle,
             },
             cellStyle,
+            hide: categorizedHiddenKeys[COLUMN_TYPES.PARAMS].includes(paramKey),
           };
         }),
       },
@@ -294,6 +303,7 @@ export class ExperimentRunsTableMultiColumnView2 extends React.Component {
           headerTooltip: tagKey,
           field: `${TAG_PREFIX}-${tagKey}`,
           ...(i >= MAX_TAG_COLS ? { columnGroupShow: 'open' } : null),
+          hide: categorizedHiddenKeys[COLUMN_TYPES.TAGS].includes(tagKey),
         })),
       },
     ];
@@ -474,6 +484,8 @@ export class ExperimentRunsTableMultiColumnView2 extends React.Component {
       prevProps.visibleTagKeyList.length !== this.props.visibleTagKeyList.length ||
       prevProps.categorizedUncheckedKeys[COLUMN_TYPES.ATTRIBUTES].length !==
         this.props.categorizedUncheckedKeys[COLUMN_TYPES.ATTRIBUTES].length ||
+      prevProps.categorizedHiddenKeys[COLUMN_TYPES.ATTRIBUTES].length !==
+        this.props.categorizedHiddenKeys[COLUMN_TYPES.ATTRIBUTES].length ||
       prevProps.orderByKey !== this.props.orderByKey ||
       prevProps.orderByAsc !== this.props.orderByAsc ||
       prevProps.onSortBy !== this.props.onSortBy
