@@ -558,6 +558,91 @@ export default class ExperimentViewUtil {
     return numRunsFromLatestSearch < SEARCH_MAX_RESULTS;
   }
 
+  static getCategorizedUncheckedKeysDiffView2({
+    categorizedUncheckedKeys,
+    paramKeyList,
+    metricKeyList,
+    runInfos,
+    paramsList,
+    metricsList,
+    tagsList,
+  }) {
+    const tagKeyList = Utils.getVisibleTagKeyList(tagsList);
+    let paramColumnsToUncheck = _.difference(
+      paramKeyList,
+      categorizedUncheckedKeys[COLUMN_TYPES.PARAMS],
+    );
+    let metricColumnsToUncheck = _.difference(
+      metricKeyList,
+      categorizedUncheckedKeys[COLUMN_TYPES.METRICS],
+    );
+    let tagColumnsToUncheck = _.difference(tagKeyList, categorizedUncheckedKeys[COLUMN_TYPES.TAGS]);
+
+    const dropDiffColumns = (columns, prevRow, currRow) => {
+      // # What each argument represents:
+      // | a   | b   | c   | d   | e   | <- columns
+      // | --- | --- | --- | --- | --- |
+      // | -   | 1   | -   | 1   | 1   | <- prevRow
+      // | -   | -   | 1   | 1   | 2   | <- currRow
+      // | ?   | ?   | ?   | ?   | ?   |
+
+      // a: may be a diff column, we need to take a look at the next row
+      // b: is a diff column, we don't need to take a look at the next row
+      // c: is a diff column
+      // d: may be a diff column
+      // e: is a diff column
+
+      return columns.filter((col) => {
+        const prevValue = prevRow[col];
+        const currValue = currRow[col];
+        if (!prevValue && !currValue) {
+          // Case a
+          return true;
+        } else if (!prevValue || !currValue) {
+          // Case b & c
+          return false;
+        } else if (prevValue.getValue() === currValue.getValue()) {
+          // Case d
+          return true;
+        } else {
+          // Case e
+          return false;
+        }
+      });
+    };
+
+    for (const [index] of runInfos.entries()) {
+      if (index === 0) {
+        continue;
+      }
+
+      paramColumnsToUncheck = dropDiffColumns(
+        paramColumnsToUncheck,
+        ExperimentViewUtil.toParamsMap(paramsList[index - 1]),
+        ExperimentViewUtil.toParamsMap(paramsList[index]),
+      );
+
+      metricColumnsToUncheck = dropDiffColumns(
+        metricColumnsToUncheck,
+        ExperimentViewUtil.toMetricsMap(metricsList[index - 1]),
+        ExperimentViewUtil.toMetricsMap(metricsList[index]),
+      );
+
+      tagColumnsToUncheck = dropDiffColumns(
+        tagColumnsToUncheck,
+        tagsList[index - 1],
+        tagsList[index],
+      );
+    }
+
+    return {
+      [COLUMN_TYPES.ATTRIBUTES]: [], // TODO: Update attribute columns
+      [COLUMN_TYPES.PARAMS]: paramColumnsToUncheck,
+      [COLUMN_TYPES.METRICS]: metricColumnsToUncheck,
+      [COLUMN_TYPES.TAGS]: tagColumnsToUncheck,
+    };
+  }
+
   /**
    * Obtain the categorized columns for which the values in them
    * have only a single value (or are undefined)

@@ -1173,14 +1173,14 @@ export class ExperimentView extends Component {
       },
       () => {
         const categorizedUncheckedKeys = this.state.persistedState.diffSwitchSelected
-          ? ExperimentViewUtil.getCategorizedUncheckedKeysDiffView({
+          ? ExperimentViewUtil.getCategorizedUncheckedKeysDiffView2({
               ...this.props,
               categorizedUncheckedKeys: this.state.persistedState.categorizedUncheckedKeys,
             })
           : ExperimentViewUtil.getRestoredCategorizedUncheckedKeys({
               preSwitchCategorizedUncheckedKeys: this.state.preSwitchCategorizedUncheckedKeys,
               // eslint-disable-next-line max-len
-              postSwitchCategorizedUncheckedKeys: ExperimentViewUtil.getCategorizedUncheckedKeysDiffView(
+              postSwitchCategorizedUncheckedKeys: ExperimentViewUtil.getCategorizedUncheckedKeysDiffView2(
                 {
                   ...this.props,
                   categorizedUncheckedKeys: this.state.preSwitchCategorizedUncheckedKeys,
