@@ -425,4 +425,3 @@ jobs:
       - name: Run tests
         run: |
           pytest --ignore-flavors --ignore=tests/projects tests
-      - 
