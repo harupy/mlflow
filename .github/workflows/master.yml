@@ -419,6 +419,7 @@ jobs:
           tzutil /s "Tokyo Standard Time"
           npm i
           npm run test -t timezone --verbose
+          tzutil /g
       - name: Install dependecies
         run: |
           pip install -r dev-requirements.txt
