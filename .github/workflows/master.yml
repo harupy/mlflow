@@ -415,6 +415,7 @@ jobs:
       - name: Run timezone test
         working-directory: mlflow/server/js
         run: |
+          tzutil /s "Tokyo Standard Time"
           npm i
           npm run test -t timezone --verbose
       - name: Install dependecies

@@ -12,7 +12,7 @@ module.exports = () => {
       execSync(`tzutil /s "${previousTZ}"`);
       console.log(`timezone was restored to ${previousTZ}`);
     };
-    execSync(`tzutil /s "GMT"`);
+    execSync(`tzutil /s "GMT Standard Time"`);
     console.warn(`timezone changed, if process is killed, run manually: tzutil /s "${previousTZ}"`);
     process.on('exit', cleanup);
     process.on('SIGINT', function() {
