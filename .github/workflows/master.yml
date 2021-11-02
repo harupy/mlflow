@@ -408,6 +408,18 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
+      - name: Set up Node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 10.x
+      - name: Run timezone test
+        working-directory: mlflow/server/js
+        shell: pwsh
+        run: |
+          tzutil /s "Tokyo Standard Time"
+          npm i
+          npm run test -t timezone --verbose
+          tzutil /g
       - name: Install dependecies
         run: |
           pip install -r dev-requirements.txt
