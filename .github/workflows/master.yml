@@ -414,6 +414,7 @@ jobs:
           node-version: 10.x
       - name: Run timezone test
         working-directory: mlflow/server/js
+        shell: pwsh
         run: |
           tzutil /s "Tokyo Standard Time"
           npm i
