@@ -415,6 +415,7 @@ jobs:
       - name: Run timezone test
         working-directory: mlflow/server/js
         run: |
+          npm i
           npm run test -t timezone --verbose
       - name: Install dependecies
         run: |
