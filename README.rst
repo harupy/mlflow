@@ -106,7 +106,7 @@ Start it with::
 **Note:** Running ``mlflow ui`` from within a clone of MLflow is not recommended - doing so will
 run the dev UI from source. We recommend running the UI from a different working directory,
 specifying a backend store via the ``--backend-store-uri`` option. Alternatively, see
-instructions for running the dev UI in the `contributor guide <CONTRIBUTING.rst>`_.
+instructions for running the dev UI in the `contributor guide <CONTRIBUTING.md>`_.
 
 
 Running a Project from a URI
@@ -140,4 +140,4 @@ Contributing
 ------------
 We happily welcome contributions to MLflow. We are also seeking contributions to items on the
 `MLflow Roadmap <https://github.com/mlflow/mlflow/milestone/3>`_. Please see our
-`contribution guide <CONTRIBUTING.rst>`_ to learn more about contributing to MLflow.
+`contribution guide <CONTRIBUTING.md>`_ to learn more about contributing to MLflow.

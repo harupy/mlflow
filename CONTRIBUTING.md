@@ -11,28 +11,28 @@ Governance of MLflow is conducted by the Technical Steering Committee (TSC), whi
 - Reynold Xin (reynoldx@gmail.com)
 - Matei Zaharia (matei@cs.stanford.edu)
 
-The founding technical charter can be found [here](https://github.com/mlflow/mlflow/blob/master/mlflow-charter.pdf).
+The founding technical charter can be found [here](mlflow-charter.pdf).
 
 ## Contribution process
 
 The MLflow contribution process starts with filing a GitHub issue. MLflow defines four
 categories of issues: feature requests, bug reports, documentation fixes, and installation issues.
-Details about each issue type and the issue lifecycle are discussed in the [MLflow Issue Policy](https://github.com/mlflow/mlflow/blob/master/ISSUE_POLICY.md).
+Details about each issue type and the issue lifecycle are discussed in the [MLflow Issue Policy](ISSUE_POLICY.md).
 
-MLflow committers actively [triage](./ISSUE_TRIAGE.rst) and respond to GitHub issues. In general, we
+MLflow committers actively [triage](ISSUE_TRIAGE.rst) and respond to GitHub issues. In general, we
 recommend waiting for feebdack from an MLflow committer or community member before proceeding to
 implement a feature or patch. This is particularly important for
-[significant changes](https://github.com/mlflow/mlflow/blob/master/CONTRIBUTING.rst#write-designs-for-significant-changes),
+[significant changes](#write-designs-for-significant-changes),
 and will typically be labeled during triage with `needs design`.
 
 After you have agreed upon an implementation strategy for your feature or patch with an MLflow
-committer, the next step is to introduce your changes (see [developing changes](https://github.com/mlflow/mlflow/blob/master/CONTRIBUTING.rst#developing-and-testing-mlflow)
+committer, the next step is to introduce your changes (see [developing changes](#developing-and-testing-mlflow)
 as a pull request against the MLflow Repository or as a standalone MLflow Plugin. MLflow committers
 actively review pull requests and are also happy to provide implementation guidance for Plugins.
 
 Once your pull request against the MLflow Repository has been merged, your corresponding changes
 will be automatically included in the next MLflow release. Every change is listed in the MLflow
-release notes and [Changelog](https://github.com/mlflow/mlflow/blob/master/CHANGELOG.rst).
+release notes and [Changelog](CHANGELOG.rst).
 
 Congratulations, you have just contributed to MLflow. We appreciate your contribution!
 
