@@ -1,0 +1,50 @@
+name: Autoformat
+on: issue_comment
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -exo pipefail {0}
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    # Commenting '/autoformat' on a pull request triggers this workflow.
+    # This allows both maintainers and contributors to trigger this workflow.
+    if: ${{ github.event.issue.pull_request && github.event.comment.body == '/autoformat' }}
+    steps:
+      - uses: actions/github-script@v4
+        id: get-pr
+        with:
+          script: |
+            const {
+              repo: { owner, repo },
+              issue: { number: pull_number },
+            } = context;
+            const pr = await github.pulls.get({ owner, repo, pull_number });
+            return pr.data
+      - uses: actions/checkout@v2
+        with:
+          repository: ${{ fromJSON(steps.get-pr.outputs.result).head.repo.full_name }}
+          ref: ${{ fromJSON(steps.get-pr.outputs.result).head.ref }}
+          # As mentioned in the doc below, if we use `secrets.GITHUB_TOKEN`, a commit cerated by
+          # this workflow will not trigger other GitHub Actions workflows:
+          # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow
+          #
+          # To make it work, we use the mlflow-automation bot's personal access token.
+          token: ${{ secrets.MLFLOW_AUTOMATION_PAT }}
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.6'
+      - name: Install black
+        run: |
+          pip install $(cat dev/lint-requirements | grep '^black==')
+      - name: Run black
+        run: |
+          black .
+      - name: Commit changes
+        run: |
+          git config --global user.name 'mlflow-automation'
+          git config --global user.email 'mlflow-automation@users.noreply.github.com'
+          git add -A
+          git commit --signoff -m "Autoformat"
+          git push
