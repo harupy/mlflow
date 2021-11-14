@@ -6,7 +6,7 @@ defaults:
     shell: bash --noprofile --norc -exo pipefail {0}
 
 jobs:
-  report:
+  autoformat:
     runs-on: ubuntu-latest
     # Commenting '/autoformat' on a pull request triggers this workflow.
     # This allows both maintainers and contributors to trigger this workflow.
@@ -37,7 +37,7 @@ jobs:
           python-version: '3.6'
       - name: Install black
         run: |
-          pip install $(cat dev/lint-requirements | grep '^black==')
+          pip install $(cat dev/lint-requirements.txt | grep '^black==')
       - name: Run black
         run: |
           black .
