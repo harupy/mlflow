@@ -6,11 +6,25 @@ defaults:
     shell: bash --noprofile --norc -exo pipefail {0}
 
 jobs:
+  # Commenting '/autoformat' on a pull request triggers this workflow.
+  # This allows both maintainers and contributors to trigger this workflow.
+  parse-comment:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.issue.pull_request }}
+    outputs:
+      matched: ${{ steps.parse-comment.outputs.matched }}
+    steps:
+      - name: Parse comment
+        id: parse-comment
+        run: |
+          # Trim whitespaces and newlines
+          trimmed=$(echo "${{ github.event.comment.body }}" | tr -d '[:space:]')
+          matched=$([[ "$trimmed" == "/autoformat" ]] && echo "true" || echo "false")
+          echo "::set-output name=matched::$matched"
   autoformat:
     runs-on: ubuntu-latest
-    # Commenting '/autoformat' on a pull request triggers this workflow.
-    # This allows both maintainers and contributors to trigger this workflow.
-    if: ${{ github.event.issue.pull_request && github.event.comment.body == '/autoformat' }}
+    needs: parse-comment
+    if: ${{ needs.parse-comment.outputs.matched == 'true' }}
     steps:
       - uses: actions/github-script@v4
         id: get-pr
@@ -44,7 +58,7 @@ jobs:
       - name: Check diff
         id: check-diff
         run: |
-          has_diff=$([[ -z $(git diff) ]] && echo false || echo true)
+          has_diff=$([[ -z "$(git diff)" ]] && echo "false" || echo "true")
           echo "::set-output name=has_diff::$has_diff"
       - name: Commit changes
         if: ${{ steps.check-diff.outputs.has_diff == 'true' }}
