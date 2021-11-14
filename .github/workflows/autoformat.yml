@@ -41,10 +41,17 @@ jobs:
       - name: Run black
         run: |
           black .
+      - name: Check diff
+        id: check-diff
+        run: |
+          has_diff=$([[ -z $(git diff) ]] && echo false || echo true)
+          echo "::set-output name=has_diff::$has_diff"
       - name: Commit changes
+        if: ${{ steps.check-diff.outputs.has_diff == 'true' }}
         run: |
           git config --global user.name 'mlflow-automation'
           git config --global user.email 'mlflow-automation@users.noreply.github.com'
           git add -A
-          git commit --signoff -m "Autoformat"
+          run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          git commit --signoff -m "Autoformat (run URL: $run_url)"
           git push
