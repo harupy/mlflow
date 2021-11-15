@@ -14,7 +14,7 @@ import {
   X_AXIS_STEP,
 } from './MetricsPlotControls';
 import qs from 'qs';
-import { message } from 'antd';
+import { message, Icon } from 'antd';
 import { withRouter } from 'react-router-dom';
 import Routes from '../routes';
 import { RunLinksPopover } from './RunLinksPopover';
@@ -68,6 +68,8 @@ export class MetricsPlotPanel extends React.Component {
 
   DURATION_BETWEEN_HISTORY_UPDATES_MS = 3000;
 
+  DURATION_THRESHOLD = 1000 * 60 * 60;
+
   constructor(props) {
     super(props);
     this.state = {
@@ -77,9 +79,11 @@ export class MetricsPlotPanel extends React.Component {
       popoverY: 0,
       popoverRunItems: [],
       timerId: null,
+      focused: true,
     };
     this.displayPopover = false;
     this.intervalId = null;
+    this.mountedAt = new Date();
     this.loadMetricHistory(this.props.runUuids, this.getUrlState().selectedMetricKeys);
   }
 
@@ -89,24 +93,29 @@ export class MetricsPlotPanel extends React.Component {
     }
   };
 
+  onFocus = () => {
+    this.setState({ focused: true });
+  };
+
+  onBlur = () => {
+    this.setState({ focused: false });
+  };
+
   componentDidMount() {
+    window.addEventListener('focus', this.onFocus);
+    window.addEventListener('blur', this.onBlur);
+
     if (!this.props.allRunsCompleted) {
       this.intervalId = setInterval(() => {
-        const { runUuids } = this.props;
-        // Use `message` for demo purposes.
-        message.success({
-          content: 'Updated',
-          duration: 0.5,
-          style: {
-            marginTop: '20vh',
-          },
-        });
-        this.loadMetricHistory(runUuids, this.getUrlState().selectedMetricKeys);
-        if (this.props.allRunsCompleted) {
-          message.success('All runs completed');
+        if (this.state.focused) {
+          const { runUuids } = this.props;
+          this.loadMetricHistory(runUuids, this.getUrlState().selectedMetricKeys);
+          runUuids.forEach(this.props.getRunApi);
+        }
+        const diff = new Date().getTime() - this.mountedAt.getTime();
+        if (diff > this.DURATION_THRESHOLD) {
           this.clearIntervalIfExists();
         }
-        runUuids.forEach(this.props.getRunApi);
       }, this.DURATION_BETWEEN_HISTORY_UPDATES_MS);
     }
   }
@@ -510,6 +519,20 @@ export class MetricsPlotPanel extends React.Component {
     return boolean;
   }
 
+  renderProgress = () => {
+    const { allRunsCompleted } = this.props;
+    const progressMessage = allRunsCompleted
+      ? 'All runs completed'
+      : 'Waiting for runs to complete...';
+    const icon = allRunsCompleted ? 'check-circle' : 'loading';
+    return (
+      <>
+        <Icon type={icon} style={{ fontSize: 32 }} />
+        <div>{progressMessage}</div>
+      </>
+    );
+  };
+
   render() {
     const { experimentId, runUuids, runDisplayNames, distinctMetricKeys, location } = this.props;
     const { popoverVisible, popoverX, popoverY, popoverRunItems } = this.state;
@@ -522,6 +545,7 @@ export class MetricsPlotPanel extends React.Component {
     return (
       <div className='metrics-plot-container'>
         <MetricsPlotControls
+          allRunsCompleted={this.props.allRunsCompleted}
           distinctMetricKeys={distinctMetricKeys}
           selectedXAxis={selectedXAxis}
           selectedMetricKeys={selectedMetricKeys}
@@ -553,6 +577,7 @@ export class MetricsPlotPanel extends React.Component {
             handleVisibleChange={(visible) => this.setState({ popoverVisible: visible })}
           />
           <MetricsPlotView
+            allRunsCompleted={this.props.allRunsCompleted}
             runUuids={runUuids}
             runDisplayNames={runDisplayNames}
             xAxis={selectedXAxis}

@@ -44,6 +44,18 @@ export class MetricsPlotControlsImpl extends React.Component {
     }));
   };
 
+  renderProgress = () => {
+    const { allRunsCompleted } = this.props;
+    const progressMessage = allRunsCompleted ? 'All runs completed' : 'Fetching metrics...';
+    const icon = allRunsCompleted ? 'check-circle' : 'loading';
+    return (
+      <div className='control-label'>
+        <Icon type={icon} style={{ fontSize: 16 }} />
+        <span style={{ fontSize: 16 }}> {progressMessage}</span>
+      </div>
+    );
+  };
+
   render() {
     const { chartType, yAxisLogScale, initialLineSmoothness, showPoint } = this.props;
     const wrapperStyle = chartType === CHART_TYPE_LINE ? styles.linechartControlsWrapper : {};
@@ -56,6 +68,7 @@ export class MetricsPlotControlsImpl extends React.Component {
     );
     return (
       <div className='plot-controls' style={wrapperStyle}>
+        <div className='block-control'>{this.renderProgress()}</div>
         {chartType === CHART_TYPE_LINE ? (
           <div>
             <div className='inline-control'>

@@ -5,6 +5,7 @@ import PropTypes from 'prop-types';
 import { X_AXIS_STEP, X_AXIS_RELATIVE, MAX_LINE_SMOOTHNESS } from './MetricsPlotControls';
 import { CHART_TYPE_BAR } from './MetricsPlotPanel';
 import { LazyPlot } from './LazyPlot';
+import { Icon } from 'antd';
 
 const MAX_RUN_NAME_DISPLAY_LENGTH = 24;
 
@@ -156,6 +157,20 @@ export class MetricsPlotView extends React.Component {
       ...this.props.extraLayout,
     };
     return props;
+  };
+
+  renderProgress = () => {
+    const { allRunsCompleted } = this.props;
+    const progressMessage = allRunsCompleted
+      ? 'All runs completed'
+      : 'Waiting for runs to complete...';
+    const icon = allRunsCompleted ? 'check-circle' : 'loading';
+    return (
+      <>
+        <Icon type={icon} style={{ fontSize: 32 }} />
+        <span>{progressMessage}</span>
+      </>
+    );
   };
 
   render() {
