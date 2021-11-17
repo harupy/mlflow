@@ -39,7 +39,7 @@ export class MetricsPlotPanel extends React.Component {
     location: PropTypes.object.isRequired,
     history: PropTypes.object.isRequired,
     runDisplayNames: PropTypes.arrayOf(PropTypes.string).isRequired,
-    allRunsCompleted: PropTypes.bool.isRequired,
+    runsCompleted: PropTypes.bool.isRequired,
   };
 
   // The fields below are exposed as instance attributes rather than component state so that they
@@ -105,7 +105,7 @@ export class MetricsPlotPanel extends React.Component {
     window.addEventListener('focus', this.onFocus);
     window.addEventListener('blur', this.onBlur);
 
-    if (!this.props.allRunsCompleted) {
+    if (!this.props.runsCompleted !== this.props.runUuids.length) {
       this.intervalId = setInterval(() => {
         if (this.state.focused) {
           const { runUuids } = this.props;
@@ -520,11 +520,11 @@ export class MetricsPlotPanel extends React.Component {
   }
 
   renderProgress = () => {
-    const { allRunsCompleted } = this.props;
-    const progressMessage = allRunsCompleted
+    const { runsCompleted, runUuids } = this.props;
+    const progressMessage = runsCompleted
       ? 'All runs completed'
-      : 'Waiting for runs to complete...';
-    const icon = allRunsCompleted ? 'check-circle' : 'loading';
+      : `Tracking active runs ${runsCompleted}/${runUuids.length}...`;
+    const icon = runsCompleted === runUuids.length ? 'check-circle' : 'loading';
     return (
       <>
         <Icon type={icon} style={{ fontSize: 32 }} />
@@ -545,7 +545,8 @@ export class MetricsPlotPanel extends React.Component {
     return (
       <div className='metrics-plot-container'>
         <MetricsPlotControls
-          allRunsCompleted={this.props.allRunsCompleted}
+          runsCompleted={this.props.runsCompleted}
+          totalRuns={this.props.runUuids.length}
           distinctMetricKeys={distinctMetricKeys}
           selectedXAxis={selectedXAxis}
           selectedMetricKeys={selectedMetricKeys}
@@ -610,9 +611,9 @@ const mapStateToProps = (state, ownProps) => {
     return latestMetrics ? Object.keys(latestMetrics) : [];
   });
   const distinctMetricKeys = [...new Set(metricKeys)].sort();
-  const allRunsCompleted = runUuids
-    .map((runUuid) => getRunInfo(runUuid, state))
-    .every(({ status }) => status !== 'RUNNING');
+  const runsCompleted = runUuids.filter(
+    (runUuid) => getRunInfo(runUuid, state).status !== 'RUNNING',
+  ).length;
 
   const runDisplayNames = [];
 
@@ -640,7 +641,7 @@ const mapStateToProps = (state, ownProps) => {
     latestMetricsByRunUuid,
     distinctMetricKeys,
     metricsWithRunInfoAndHistory,
-    allRunsCompleted,
+    runsCompleted,
   };
 };
 

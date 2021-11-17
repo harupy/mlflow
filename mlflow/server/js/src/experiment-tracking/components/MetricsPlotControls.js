@@ -45,9 +45,12 @@ export class MetricsPlotControlsImpl extends React.Component {
   };
 
   renderProgress = () => {
-    const { allRunsCompleted } = this.props;
-    const progressMessage = allRunsCompleted ? 'All runs completed' : 'Fetching metrics...';
-    const icon = allRunsCompleted ? 'check-circle' : 'loading';
+    const { runsCompleted, totalRuns } = this.props;
+    const progressMessage =
+      runsCompleted === totalRuns
+        ? 'All runs completed'
+        : `${runsCompleted}/${totalRuns} runs completed...`;
+    const icon = runsCompleted === totalRuns ? 'check-circle' : 'loading';
     return (
       <div className='control-label'>
         <Icon type={icon} style={{ fontSize: 16 }} />
