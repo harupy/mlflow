@@ -54,7 +54,7 @@ jobs:
           node-version: 10.x
       - name: Install python dependencies
         run: |
-          pip install requirements/lint-requirements.txt
+          pip install -r requirements/lint-requirements.txt
       - name: Install JS dependencies
         working-directory: mlflow/server/js
         run: |
