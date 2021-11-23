@@ -11,9 +11,9 @@ black --check .
 
 if [ $? -ne 0 ]; then
   echo '
-How to apply black formatting:
-1. Run `pip install $(cat dev/lint-requirements.txt | grep "black==") && black .`
-2. Comment `/autoformat` on the PR'
+To apply black foramtting, do one of the following:
+- Run `pip install $(cat requirements/lint-requirements.txt | grep "^black==") && black .`
+- Comment `/autoformat` on the PR'.
 fi
 
 echo -e "\n========== pylint ==========\n"
