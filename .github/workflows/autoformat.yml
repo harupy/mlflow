@@ -51,7 +51,7 @@ jobs:
           python-version: '3.6'
       - uses: actions/setup-node@v1
         with:
-          node-version: 10.x
+          node-version: 12.x
       - name: Install python dependencies
         run: |
           pip install -r requirements/lint-requirements.txt
