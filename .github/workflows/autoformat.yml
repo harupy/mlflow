@@ -51,7 +51,7 @@ jobs:
           python-version: '3.6'
       - name: Install black
         run: |
-          pip install $(cat dev/lint-requirements.txt | grep '^black==')
+          pip install $(cat requirements/lint-requirements.txt | grep '^black==')
       - name: Run black
         run: |
           black .
