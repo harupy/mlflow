@@ -45,7 +45,7 @@ jobs:
           # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow
           # To make it work, register a personal access token for the mlflow-automation bot as
           # a secret in the repository and use it.
-          token: ${{ secrets.MLFLOW_AUTOMATION_PAT }}
+          token: ${{ secrets.MLFLOW_AUTOMATION_TOKEN }}
       - uses: actions/setup-python@v2
         with:
           python-version: '3.6'
