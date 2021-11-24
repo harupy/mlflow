@@ -6,7 +6,7 @@ defaults:
     shell: bash --noprofile --norc -exo pipefail {0}
 
 jobs:
-  # Commenting '/autoformat' on a pull request triggers this workflow.
+  # Commenting 'autoformat' on a pull request triggers this workflow.
   # This allows both maintainers and contributors to trigger this workflow.
   parse-comment:
     runs-on: ubuntu-latest
