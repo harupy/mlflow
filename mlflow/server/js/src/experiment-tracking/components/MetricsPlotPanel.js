@@ -77,7 +77,6 @@ export class MetricsPlotPanel extends React.Component {
       popoverX: 0,
       popoverY: 0,
       popoverRunItems: [],
-      timerId: null,
       focused: true,
     };
     this.displayPopover = false;
