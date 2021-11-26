@@ -517,19 +517,6 @@ export class MetricsPlotPanel extends React.Component {
     }, 300);
   };
 
-  // renderProgress = () => {
-  //   const { numCompletedRuns, runUuids } = this.props;
-  //   const message = `Completed runs: ${numCompletedRuns}/${runUuids.length}`;
-  //   return (
-  //     <>
-  //       {message}{' '}
-  //       <Tooltip title={'foo'}>
-  //         <QuestionCircleOutlined />
-  //       </Tooltip>
-  //     </>
-  //   );
-  // };
-
   render() {
     const { experimentId, runUuids, runDisplayNames, distinctMetricKeys, location } = this.props;
     const { popoverVisible, popoverX, popoverY, popoverRunItems } = this.state;
@@ -575,7 +562,6 @@ export class MetricsPlotPanel extends React.Component {
             handleVisibleChange={(visible) => this.setState({ popoverVisible: visible })}
           />
           <MetricsPlotView
-            renderProgress={this.renderProgress}
             runUuids={runUuids}
             runDisplayNames={runDisplayNames}
             xAxis={selectedXAxis}

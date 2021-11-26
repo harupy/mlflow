@@ -73,7 +73,6 @@ export class MetricsPlotControlsImpl extends React.Component {
     );
     return (
       <div className='plot-controls' style={wrapperStyle}>
-        {/* <div className='block-control'>{this.renderProgress()}</div> */}
         {chartType === CHART_TYPE_LINE ? (
           <div>
             <div className='inline-control'>
