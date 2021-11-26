@@ -1,7 +1,7 @@
 import React from 'react';
 import _ from 'lodash';
 import { QuestionCircleOutlined } from '@ant-design/icons';
-import { Radio, Switch, TreeSelect, Tooltip } from 'antd';
+import { Radio, Switch, TreeSelect, Tooltip, Progress } from 'antd';
 import PropTypes from 'prop-types';
 import { CHART_TYPE_LINE } from './MetricsPlotPanel';
 import { LineSmoothSlider } from './LineSmoothSlider';
@@ -31,6 +31,8 @@ export class MetricsPlotControlsImpl extends React.Component {
     yAxisLogScale: PropTypes.bool.isRequired,
     showPoint: PropTypes.bool.isRequired,
     intl: PropTypes.shape({ formatMessage: PropTypes.func.isRequired }).isRequired,
+    numRuns: PropTypes.number.isRequired,
+    numCompletedRuns: PropTypes.number.isRequired,
   };
 
   handleMetricsSelectFilterChange = (text, option) =>
@@ -45,23 +47,15 @@ export class MetricsPlotControlsImpl extends React.Component {
     }));
   };
 
-  renderProgress = () => {
-    const { runsCompleted, totalRuns } = this.props;
-    const progressMessage =
-      runsCompleted === totalRuns
-        ? 'All runs completed'
-        : `${runsCompleted}/${totalRuns} runs completed...`;
-    const icon = runsCompleted === totalRuns ? 'check-circle' : 'loading';
-    return (
-      <div className='control-label'>
-        <Icon type={icon} style={{ fontSize: 16 }} />
-        <span style={{ fontSize: 16 }}> {progressMessage}</span>
-      </div>
-    );
-  };
-
   render() {
-    const { chartType, yAxisLogScale, initialLineSmoothness, showPoint } = this.props;
+    const {
+      chartType,
+      yAxisLogScale,
+      initialLineSmoothness,
+      showPoint,
+      numRuns,
+      numCompletedRuns,
+    } = this.props;
     const wrapperStyle = chartType === CHART_TYPE_LINE ? styles.linechartControlsWrapper : {};
     const lineSmoothnessTooltipText = (
       <FormattedMessage
@@ -70,11 +64,36 @@ export class MetricsPlotControlsImpl extends React.Component {
         description='Helpful tooltip message to help with line smoothness for the metrics plot'
       />
     );
+    const completedRunsTooltipText = (
+      <FormattedMessage
+        // eslint-disable-next-line max-len
+        defaultMessage='MLflow UI periodically fetches metric histories for active runs and updates the metrics plot.'
+        description='Helpful tooltip message to explain the automatic metrics plot update'
+      />
+    );
     return (
       <div className='plot-controls' style={wrapperStyle}>
-        <div className='block-control'>{this.renderProgress()}</div>
+        {/* <div className='block-control'>{this.renderProgress()}</div> */}
         {chartType === CHART_TYPE_LINE ? (
           <div>
+            <div className='inline-control'>
+              <div className='control-label'>
+                <FormattedMessage
+                  defaultMessage='Completed Runs'
+                  // eslint-disable-next-line max-len
+                  description='Label for the progress bar to show the number of completed runs'
+                />{' '}
+                <Tooltip title={completedRunsTooltipText}>
+                  <QuestionCircleOutlined />
+                </Tooltip>
+                <Progress
+                  percent={Math.round((100 * numCompletedRuns) / numRuns)}
+                  size='small'
+                  format={() => `${numCompletedRuns}/${numRuns}`}
+                  status='normal'
+                />
+              </div>
+            </div>
             <div className='inline-control'>
               <div className='control-label'>
                 <FormattedMessage

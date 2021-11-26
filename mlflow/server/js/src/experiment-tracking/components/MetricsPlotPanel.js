@@ -14,7 +14,6 @@ import {
   X_AXIS_STEP,
 } from './MetricsPlotControls';
 import qs from 'qs';
-import { message, Icon } from 'antd';
 import { withRouter } from 'react-router-dom';
 import Routes from '../routes';
 import { RunLinksPopover } from './RunLinksPopover';
@@ -39,7 +38,7 @@ export class MetricsPlotPanel extends React.Component {
     location: PropTypes.object.isRequired,
     history: PropTypes.object.isRequired,
     runDisplayNames: PropTypes.arrayOf(PropTypes.string).isRequired,
-    runsCompleted: PropTypes.bool.isRequired,
+    numCompletedRuns: PropTypes.number.isRequired,
   };
 
   // The fields below are exposed as instance attributes rather than component state so that they
@@ -66,9 +65,9 @@ export class MetricsPlotPanel extends React.Component {
   // a single-click event.
   SINGLE_CLICK_EVENT_DELAY_MS = this.MAX_DOUBLE_CLICK_INTERVAL_MS + 10;
 
-  DURATION_BETWEEN_HISTORY_UPDATES_MS = 3000;
+  DURATION_BETWEEN_HISTORY_UPDATES_MS = 5000;
 
-  DURATION_THRESHOLD = 1000 * 60 * 60;
+  DURATION_THRESHOLD_MS = 3600 * 1000; // 1 hour
 
   constructor(props) {
     super(props);
@@ -83,15 +82,9 @@ export class MetricsPlotPanel extends React.Component {
     };
     this.displayPopover = false;
     this.intervalId = null;
-    this.mountedAt = new Date();
+    this.constructedAt = new Date().getTime();
     this.loadMetricHistory(this.props.runUuids, this.getUrlState().selectedMetricKeys);
   }
-
-  clearIntervalIfExists = () => {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-    }
-  };
 
   onFocus = () => {
     this.setState({ focused: true });
@@ -101,20 +94,37 @@ export class MetricsPlotPanel extends React.Component {
     this.setState({ focused: false });
   };
 
+  clearIntervalIfExists = () => {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+    }
+  };
+
+  loadMetricHistoryAndRuns = () => {
+    const { runUuids } = this.props;
+    this.loadMetricHistory(runUuids, this.getUrlState().selectedMetricKeys);
+    runUuids.forEach(this.props.getRunApi);
+  };
+
+  allRunsCompleted = () => {
+    return this.props.numCompletedRuns === this.props.runUuids.length;
+  };
+
+  exceedsDurationThreshold = () => {
+    return new Date().getTime() - this.constructedAt > this.DURATION_THRESHOLD_MS;
+  };
+
   componentDidMount() {
     window.addEventListener('focus', this.onFocus);
     window.addEventListener('blur', this.onBlur);
 
-    if (!this.props.runsCompleted !== this.props.runUuids.length) {
+    if (!this.allRunsCompleted()) {
       this.intervalId = setInterval(() => {
         if (this.state.focused) {
-          const { runUuids } = this.props;
-          this.loadMetricHistory(runUuids, this.getUrlState().selectedMetricKeys);
-          runUuids.forEach(this.props.getRunApi);
-        }
-        const diff = new Date().getTime() - this.mountedAt.getTime();
-        if (diff > this.DURATION_THRESHOLD) {
-          this.clearIntervalIfExists();
+          this.loadMetricHistoryAndRuns();
+          if (this.exceedsDurationThreshold() || this.allRunsCompleted()) {
+            this.clearIntervalIfExists();
+          }
         }
       }, this.DURATION_BETWEEN_HISTORY_UPDATES_MS);
     }
@@ -507,31 +517,18 @@ export class MetricsPlotPanel extends React.Component {
     }, 300);
   };
 
-  checkOnRunUnfinished() {
-    const { runs } = this.props;
-
-    let boolean = false;
-    runs &&
-      runs.forEach((run) => {
-        if (run.getStatus() === 'RUNNING') boolean = true;
-      });
-
-    return boolean;
-  }
-
-  renderProgress = () => {
-    const { runsCompleted, runUuids } = this.props;
-    const progressMessage = runsCompleted
-      ? 'All runs completed'
-      : `Tracking active runs ${runsCompleted}/${runUuids.length}...`;
-    const icon = runsCompleted === runUuids.length ? 'check-circle' : 'loading';
-    return (
-      <>
-        <Icon type={icon} style={{ fontSize: 32 }} />
-        <div>{progressMessage}</div>
-      </>
-    );
-  };
+  // renderProgress = () => {
+  //   const { numCompletedRuns, runUuids } = this.props;
+  //   const message = `Completed runs: ${numCompletedRuns}/${runUuids.length}`;
+  //   return (
+  //     <>
+  //       {message}{' '}
+  //       <Tooltip title={'foo'}>
+  //         <QuestionCircleOutlined />
+  //       </Tooltip>
+  //     </>
+  //   );
+  // };
 
   render() {
     const { experimentId, runUuids, runDisplayNames, distinctMetricKeys, location } = this.props;
@@ -545,8 +542,8 @@ export class MetricsPlotPanel extends React.Component {
     return (
       <div className='metrics-plot-container'>
         <MetricsPlotControls
-          runsCompleted={this.props.runsCompleted}
-          totalRuns={this.props.runUuids.length}
+          numRuns={this.props.runUuids.length}
+          numCompletedRuns={this.props.numCompletedRuns}
           distinctMetricKeys={distinctMetricKeys}
           selectedXAxis={selectedXAxis}
           selectedMetricKeys={selectedMetricKeys}
@@ -578,7 +575,7 @@ export class MetricsPlotPanel extends React.Component {
             handleVisibleChange={(visible) => this.setState({ popoverVisible: visible })}
           />
           <MetricsPlotView
-            allRunsCompleted={this.props.allRunsCompleted}
+            renderProgress={this.renderProgress}
             runUuids={runUuids}
             runDisplayNames={runDisplayNames}
             xAxis={selectedXAxis}
@@ -611,7 +608,7 @@ const mapStateToProps = (state, ownProps) => {
     return latestMetrics ? Object.keys(latestMetrics) : [];
   });
   const distinctMetricKeys = [...new Set(metricKeys)].sort();
-  const runsCompleted = runUuids.filter(
+  const numCompletedRuns = runUuids.filter(
     (runUuid) => getRunInfo(runUuid, state).status !== 'RUNNING',
   ).length;
 
@@ -641,7 +638,7 @@ const mapStateToProps = (state, ownProps) => {
     latestMetricsByRunUuid,
     distinctMetricKeys,
     metricsWithRunInfoAndHistory,
-    runsCompleted,
+    numCompletedRuns,
   };
 };
 
