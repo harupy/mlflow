@@ -87,7 +87,6 @@ export class MetricsPlotControlsImpl extends React.Component {
                 </Tooltip>
                 <Progress
                   percent={Math.round((100 * numCompletedRuns) / numRuns)}
-                  size='small'
                   format={() => `${numCompletedRuns}/${numRuns}`}
                   status='normal'
                 />
