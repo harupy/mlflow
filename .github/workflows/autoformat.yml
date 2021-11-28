@@ -1,45 +1,45 @@
+# A workflow to apply autoformatting when a PR is commented with 'autoformat'.
+
 name: Autoformat
-on: issue_comment
+on:
+  issue_comment:
+    types: [created, edited]
 
 defaults:
   run:
     shell: bash --noprofile --norc -exo pipefail {0}
 
 jobs:
-  # Commenting 'autoformat' on a pull request triggers this workflow.
-  # This allows both maintainers and contributors to trigger this workflow.
-  parse-comment:
+  check-comment:
     runs-on: ubuntu-latest
-    if: ${{ github.event.issue.pull_request }}
+    if: ${{ github.event.issue.pull_request && contains(github.event.comment.body, 'autoformat') }}
     outputs:
-      matched: ${{ steps.parse-comment.outputs.matched }}
+      matched: ${{ steps.check-comment.outputs.result }}
+      check_run_id: ${{ steps.create-check-run.outputs.result }}
     steps:
-      - name: Parse comment
-        id: parse-comment
-        run: |
-          trimmed=$(echo "${{ github.event.comment.body }}" | tr -d '[:space:]')
-          matched=$([[ "$trimmed" == "autoformat" ]] && echo "true" || echo "false")
-          echo "::set-output name=matched::$matched"
-      - name: Create reaction
-        if: ${{ steps.parse-comment.outputs.matched == 'true' }}
+      - uses: actions/checkout@v2
+      - name: Check comment
+        id: check-comment
         uses: actions/github-script@v4
         with:
-          github-token: ${{ secrets.MLFLOW_AUTOMATION_TOKEN }}
+          result-encoding: string
           script: |
-            const { owner, repo } = context.repo;
-            const comment_id = context.payload.comment.id;
-            const content = 'rocket';
-            await github.reactions.createForIssueComment({
-              owner,
-              repo,
-              comment_id,
-              content,
-            });
+            return context.payload.comment.body.trim() === 'autoformat';
+      - name: Create check run
+        id: create-check-run
+        if: ${{ steps.check-comment.outputs.result == 'true' }}
+        uses: actions/github-script@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          result-encoding: string
+          script: |
+            const autoformat = require('./.github/workflows/autoformat.js');
+            return await autoformat.createCheckRun(context, github);
 
   check-diff:
     runs-on: ubuntu-latest
-    needs: parse-comment
-    if: ${{ needs.parse-comment.outputs.matched == 'true' }}
+    needs: check-comment
+    if: ${{ needs.check-comment.outputs.matched == 'true' }}
     outputs:
       repository: ${{ steps.format-result.outputs.repository }}
       ref: ${{ steps.format-result.outputs.ref }}
@@ -53,7 +53,7 @@ jobs:
             const { owner, repo } = context.repo;
             const pull_number = context.issue.number;
             const pr = await github.pulls.get({ owner, repo, pull_number });
-            return pr.data
+            return pr.data;
       - name: Format result
         id: format-result
         run: |
@@ -84,6 +84,7 @@ jobs:
           echo "::set-output name=ui_changed::$ui_changed"
 
   python:
+    # Generate a patch to format python files.
     runs-on: ubuntu-latest
     needs: check-diff
     if: ${{ needs.check-diff.outputs.py_changed == 'true' }}
@@ -112,12 +113,13 @@ jobs:
       - uses: actions/upload-artifact@v2
         if: ${{ steps.check-diff.outputs.has_diff == 'true' }}
         with:
-          name: python.diff
+          name: python.${{ github.run_id }}.diff
           path: python.diff
           if-no-files-found: error
           retention-days: 1
 
   ui:
+    # Generate a patch to format files for MLflow UI.
     runs-on: ubuntu-latest
     needs: check-diff
     if: ${{ needs.check-diff.outputs.ui_changed == 'true' }}
@@ -137,11 +139,9 @@ jobs:
       - name: Install dependencies
         run: |
           npm i
-      - name: Run lint:fix
-        run: |
+      - run: |
           npm run lint:fix
-      - name: Run extract-i18n
-        run: |
+      - run: |
           npm run extract-i18n
       - name: Check diff
         id: check-diff
@@ -152,46 +152,63 @@ jobs:
       - uses: actions/upload-artifact@v2
         if: ${{ steps.check-diff.outputs.has_diff == 'true' }}
         with:
-          name: ui.diff
+          name: ui.${{ github.run_id }}.diff
           path: mlflow/server/js/ui.diff
           if-no-files-found: error
           retention-days: 1
 
-  commit-changes:
+  apply-patches:
+    # Apply the patches and commit changes to the PR branch.
     runs-on: ubuntu-latest
-    # Without `always()`, this job would be skipped when one of the dependent jobs is skipped.
-    if: ${{ always() }}
     needs: [check-diff, python, ui]
+    if: |
+      always() &&
+      (needs.python.result == 'success' && needs.python.outputs.has_diff == 'true') ||
+      (needs.ui.result == 'success' && needs.ui.outputs.has_diff == 'true')
     steps:
       - uses: actions/checkout@v2
         with:
           repository: ${{ needs.check-diff.outputs.repository }}
           ref: ${{ needs.check-diff.outputs.ref }}
-          # As described in the doc below, if we use `secrets.GITHUB_TOKEN`, a commit cerated by
-          # this workflow will not trigger other GitHub Actions workflows:
+          # As described in the doc below, if we use `secrets.GITHUB_TOKEN`, a commit created by
+          # this workflow will not trigger other workflows:
           # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow
-          # To make it work, register a personal access token for the mlflow-automation bot as
-          # a secret in the repository and use it.
+          # To make it work, commit changes using the mlflow-automation bot (https://github.com/mlflow-automation).
           token: ${{ secrets.MLFLOW_AUTOMATION_TOKEN }}
       - uses: actions/download-artifact@v2
         if: ${{ needs.python.result == 'success' && needs.python.outputs.has_diff == 'true' }}
         with:
-          name: python.diff
-          path: /tmp/patches/python.diff
+          name: python.${{ github.run_id }}.diff
+          path: /tmp/patches
       - uses: actions/download-artifact@v2
         if: ${{ needs.ui.result == 'success' && needs.ui.outputs.has_diff == 'true' }}
         with:
-          name: ui.diff
-          path: /tmp/patches/ui.diff
-      - name: Apply patches and commit changes
-        if: |
-          (needs.python.result == 'success' && needs.python.outputs.has_diff == 'true') ||
-          (needs.ui.result == 'success' && needs.ui.outputs.has_diff == 'true')
+          name: ui.${{ github.run_id }}.diff
+          path: /tmp/patches
+      - name: Apply patches
         run: |
-          find /tmp/patches -type f -name '*.diff' | xargs git apply --verbose
+          find /tmp/patches -maxdepth 1 -type f -name '*.diff' | xargs git apply --verbose
+          git diff
+      - name: Commit changes
+        run: |
           git config --global user.name 'mlflow-automation'
           git config --global user.email 'mlflow-automation@users.noreply.github.com'
-          git add -A
           run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          git commit --signoff -m "Autoformat: $run_url"
+          git commit -sam "Autoformat: $run_url"
           git push
+
+  update-status:
+    runs-on: ubuntu-latest
+    needs: [check-comment, check-diff, python, ui, apply-patches]
+    if: ${{ always() && needs.check-comment.outputs.check_run_id != '' }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Update status
+        uses: actions/github-script@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const needs = ${{ toJson(needs) }};
+            const check_run_id = '${{ needs.check-comment.outputs.check_run_id }}';
+            const autoformat = require('./.github/workflows/autoformat.js');
+            await autoformat.updateCheckRun(context, github, check_run_id, needs);
