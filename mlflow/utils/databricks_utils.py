@@ -207,7 +207,7 @@ def get_job_group_id():
         return None
 
 
-@_use_repl_context_if_available("replId")
+# @_use_repl_context_if_available("replId")
 def get_repl_id():
     """
     :return: The ID of the current Databricks Python REPL
