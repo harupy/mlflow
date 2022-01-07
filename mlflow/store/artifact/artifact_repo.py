@@ -1,12 +1,11 @@
+from abc import ABCMeta, abstractmethod
 import os
 import posixpath
 import tempfile
-from abc import abstractmethod, ABCMeta
-
-from mlflow.utils.validation import path_not_unique, bad_path_message
 
 from mlflow.exceptions import MlflowException
 from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE, RESOURCE_DOES_NOT_EXIST
+from mlflow.utils.validation import bad_path_message, path_not_unique
 
 
 class ArtifactRepository:

@@ -29,22 +29,24 @@ For a lower level API, see the :py:mod:`mlflow.tracking` module.
 """
 import sys
 
-from mlflow.version import VERSION as __version__  # pylint: disable=unused-import
-from mlflow.utils.logging_utils import _configure_mlflow_loggers
-import mlflow.tracking._model_registry.fluent
-import mlflow.tracking.fluent
-
 # Filter annoying Cython warnings that serve no good purpose, and so before
 # importing other modules.
 # See: https://github.com/numpy/numpy/pull/432/commits/170ed4e33d6196d7
 import warnings
 
+import mlflow.tracking._model_registry.fluent
+import mlflow.tracking.fluent
+from mlflow.utils.logging_utils import _configure_mlflow_loggers
+from mlflow.version import VERSION as __version__  # pylint: disable=unused-import
+
+
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 
+import mlflow.models
 import mlflow.projects as projects
 import mlflow.tracking as tracking
-import mlflow.models
+
 
 # model flavors
 _model_flavors_supported = []
@@ -58,18 +60,18 @@ try:
     import mlflow.lightgbm as lightgbm
     import mlflow.mleap as mleap
     import mlflow.onnx as onnx
+    import mlflow.paddle as paddle
+    import mlflow.prophet as prophet
     import mlflow.pyfunc as pyfunc
+    import mlflow.pyspark as pyspark
     import mlflow.pytorch as pytorch
+    import mlflow.shap as shap
     import mlflow.sklearn as sklearn
     import mlflow.spacy as spacy
     import mlflow.spark as spark
     import mlflow.statsmodels as statsmodels
     import mlflow.tensorflow as tensorflow
     import mlflow.xgboost as xgboost
-    import mlflow.shap as shap
-    import mlflow.pyspark as pyspark
-    import mlflow.paddle as paddle
-    import mlflow.prophet as prophet
 
     _model_flavors_supported = [
         "catboost",

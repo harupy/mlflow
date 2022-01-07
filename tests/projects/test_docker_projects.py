@@ -1,26 +1,24 @@
 import os
-
-import pytest
 from unittest import mock
 
 from databricks_cli.configure.provider import DatabricksConfig
+import pytest
 
 import mlflow
 from mlflow.entities import ViewType
-from mlflow.projects.docker import _get_docker_image_uri
-from mlflow.projects import ExecutionException
+from mlflow.exceptions import MlflowException
+from mlflow.projects import _project_spec, ExecutionException
 from mlflow.projects.backend.local import _get_docker_command
+from mlflow.projects.docker import _get_docker_image_uri
 from mlflow.store.tracking import file_store
 from mlflow.utils.mlflow_tags import (
-    MLFLOW_PROJECT_ENV,
-    MLFLOW_PROJECT_BACKEND,
-    MLFLOW_DOCKER_IMAGE_URI,
     MLFLOW_DOCKER_IMAGE_ID,
+    MLFLOW_DOCKER_IMAGE_URI,
+    MLFLOW_PROJECT_BACKEND,
+    MLFLOW_PROJECT_ENV,
 )
 from tests.projects.utils import TEST_DOCKER_PROJECT_DIR
 from tests.projects.utils import docker_example_base_image  # pylint: disable=unused-import
-from mlflow.projects import _project_spec
-from mlflow.exceptions import MlflowException
 
 
 def _build_uri(base_uri, subdirectory):

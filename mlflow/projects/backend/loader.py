@@ -1,5 +1,6 @@
-import entrypoints
 import logging
+
+import entrypoints
 
 from mlflow.projects.backend.local import LocalBackend
 

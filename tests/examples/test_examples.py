@@ -1,15 +1,17 @@
+import hashlib
+import json
 import os
 import os.path
 import re
 import shutil
 
+import pytest
+
 import mlflow
 from mlflow import cli
 from mlflow.utils import process
 from tests.integration.utils import invoke_cli_runner
-import pytest
-import json
-import hashlib
+
 
 EXAMPLES_DIR = "examples"
 

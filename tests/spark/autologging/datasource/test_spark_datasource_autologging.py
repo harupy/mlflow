@@ -1,24 +1,22 @@
 import time
-
-import pytest
 from unittest import mock
 
 from pyspark.sql import Row
-from pyspark.sql.types import StructType, IntegerType, StructField
+from pyspark.sql.types import IntegerType, StructField, StructType
+import pytest
 
 import mlflow
+from mlflow._spark_autologging import _SPARK_TABLE_INFO_TAG_NAME
 import mlflow.spark
 from mlflow.utils.validation import MAX_TAG_VAL_LENGTH
-from mlflow._spark_autologging import _SPARK_TABLE_INFO_TAG_NAME
-
-from tests.tracking.test_rest_tracking import BACKEND_URIS
-from tests.tracking.test_rest_tracking import tracking_server_uri  # pylint: disable=unused-import
-from tests.tracking.test_rest_tracking import mlflow_client  # pylint: disable=unused-import
 from tests.spark.autologging.utils import _assert_spark_data_logged
-from tests.spark.autologging.utils import spark_session  # pylint: disable=unused-import
-from tests.spark.autologging.utils import format_to_file_path  # pylint: disable=unused-import
 from tests.spark.autologging.utils import data_format  # pylint: disable=unused-import
 from tests.spark.autologging.utils import file_path  # pylint: disable=unused-import
+from tests.spark.autologging.utils import format_to_file_path  # pylint: disable=unused-import
+from tests.spark.autologging.utils import spark_session  # pylint: disable=unused-import
+from tests.tracking.test_rest_tracking import BACKEND_URIS
+from tests.tracking.test_rest_tracking import mlflow_client  # pylint: disable=unused-import
+from tests.tracking.test_rest_tracking import tracking_server_uri  # pylint: disable=unused-import
 
 
 def pytest_generate_tests(metafunc):

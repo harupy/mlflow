@@ -16,6 +16,9 @@ To apply black foramtting, do one of the following:
 - Comment `autoformat` on the PR'
 fi
 
+echo -e "\n========== isort ==========\n"
+isort . --check
+
 echo -e "\n========== pylint ==========\n"
 pylint $(git ls-files | grep '\.py$')
 

@@ -1,12 +1,12 @@
 import os
 
 import numpy as np
+import shap
 from sklearn.datasets import load_boston
 from sklearn.linear_model import LinearRegression
-import shap
+from utils import to_pandas_Xy
 
 import mlflow
-from utils import to_pandas_Xy
 
 
 # prepare training data

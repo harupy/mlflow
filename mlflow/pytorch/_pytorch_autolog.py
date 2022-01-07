@@ -1,19 +1,21 @@
-from packaging.version import Version
 import logging
-import mlflow.pytorch
 import os
 import shutil
 import tempfile
+
+from packaging.version import Version
 import pytorch_lightning as pl
 from pytorch_lightning.core.memory import ModelSummary
 from pytorch_lightning.utilities import rank_zero_only
 
+import mlflow.pytorch
 from mlflow.utils.autologging_utils import (
-    ExceptionSafeAbstractClass,
     BatchMetricsLogger,
-    MlflowAutologgingQueueingClient,
+    ExceptionSafeAbstractClass,
     get_autologging_config,
+    MlflowAutologgingQueueingClient,
 )
+
 
 logging.basicConfig(level=logging.ERROR)
 

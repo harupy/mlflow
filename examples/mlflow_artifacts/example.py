@@ -1,6 +1,6 @@
 import os
-import tempfile
 from pprint import pprint
+import tempfile
 
 import mlflow
 

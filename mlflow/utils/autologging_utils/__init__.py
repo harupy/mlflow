@@ -1,41 +1,40 @@
 # pylint: disable=unused-wildcard-import,wildcard-import
 
+import contextlib
 import inspect
 import logging
 import time
-import contextlib
 
 import mlflow
 from mlflow.entities import Metric
 from mlflow.tracking.client import MlflowClient
 from mlflow.utils.validation import MAX_METRICS_PER_BATCH
 
+
 # Define the module-level logger for autologging utilities before importing utilities defined in
 # submodules (e.g., `safety`, `events`) that depend on the module-level logger. Add the `noqa: E402`
 # comment after each subsequent import to ignore "import not at top of file" code style errors
 _logger = logging.getLogger(__name__)
+
+from mlflow.utils.autologging_utils.client import *
+from mlflow.utils.autologging_utils.events import *
 
 # Import autologging utilities used by this module
 from mlflow.utils.autologging_utils.logging_and_warnings import (
     set_mlflow_events_and_warnings_behavior_globally,
     set_non_mlflow_warnings_behavior_for_current_thread,
 )
-from mlflow.utils.autologging_utils.safety import (
-    update_wrapper_extended,
-    revert_patches,
-)
-from mlflow.utils.autologging_utils.versioning import (
-    FLAVOR_TO_MODULE_NAME_AND_VERSION_INFO_KEY,
-    get_min_max_version_and_pip_release,
-    is_flavor_supported_for_associated_package_versions,
-)
 
 # Wildcard import other autologging utilities (e.g. safety utilities, event logging utilities) used
 # in autologging integration implementations, which reference them via the
 # `mlflow.utils.autologging_utils` module
 from mlflow.utils.autologging_utils.safety import *
-from mlflow.utils.autologging_utils.events import *
-from mlflow.utils.autologging_utils.client import *
+from mlflow.utils.autologging_utils.safety import revert_patches, update_wrapper_extended
+from mlflow.utils.autologging_utils.versioning import (
+    FLAVOR_TO_MODULE_NAME_AND_VERSION_INFO_KEY,
+    get_min_max_version_and_pip_release,
+    is_flavor_supported_for_associated_package_versions,
+)
 
 
 INPUT_EXAMPLE_SAMPLE_ROWS = 5

@@ -1,6 +1,7 @@
 import os
-import requests
 import posixpath
+
+import requests
 
 from mlflow.entities import FileInfo
 from mlflow.store.artifact.artifact_repo import ArtifactRepository, verify_artifact_path

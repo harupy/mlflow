@@ -5,16 +5,15 @@ ALS model, and uses the ALS model to train a Keras neural network.
 See README.rst for more details.
 """
 
-import click
 import os
 
+import click
 
 import mlflow
-from mlflow.utils import mlflow_tags
 from mlflow.entities import RunStatus
-from mlflow.utils.logging_utils import eprint
-
 from mlflow.tracking.fluent import _get_experiment_id
+from mlflow.utils import mlflow_tags
+from mlflow.utils.logging_utils import eprint
 
 
 def _already_ran(entry_point_name, parameters, git_commit, experiment_id=None):

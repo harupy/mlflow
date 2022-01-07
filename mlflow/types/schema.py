@@ -1,10 +1,10 @@
-import json
 from enum import Enum
+import json
+import string
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
-import string
-from typing import Dict, Any, List, Union, Optional
 
 from mlflow.exceptions import MlflowException
 from mlflow.utils.annotations import deprecated
@@ -382,7 +382,7 @@ class Schema(object):
             raise MlflowException("TensorSpec cannot be converted to spark dataframe")
         if len(self.inputs) == 1 and self.inputs[0].name is None:
             return self.inputs[0].type.to_spark()
-        from pyspark.sql.types import StructType, StructField
+        from pyspark.sql.types import StructField, StructType
 
         return StructType(
             [

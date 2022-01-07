@@ -1,7 +1,7 @@
 import unittest
 
 from mlflow.entities import FileInfo
-from tests.helper_functions import random_str, random_int
+from tests.helper_functions import random_int, random_str
 
 
 class TestFileInfo(unittest.TestCase):

@@ -1,5 +1,5 @@
-import subprocess
 import re
+import subprocess
 
 
 def get_pylint_msg_ids():

@@ -1,16 +1,18 @@
 import collections
-from packaging.version import Version
 import inspect
 import logging
 from numbers import Number
-import numpy as np
 import time
 import warnings
 
+import numpy as np
+from packaging.version import Version
+
 from mlflow.tracking.client import MlflowClient
+from mlflow.utils.arguments_utils import _get_arg_names
 from mlflow.utils.file_utils import TempDir
 from mlflow.utils.mlflow_tags import MLFLOW_PARENT_RUN_ID
-from mlflow.utils.arguments_utils import _get_arg_names
+
 
 _logger = logging.getLogger(__name__)
 
@@ -769,21 +771,22 @@ def _backported_all_estimators(type_filter=None):
         and ``class`` is the actuall type of the class.
     """
     # lazy import to avoid circular imports from sklearn.base
-    import pkgutil
-    import platform
-    import sklearn
     from importlib import import_module
     from operator import itemgetter
+    import pkgutil
+    import platform
 
-    # pylint: disable=no-name-in-module, import-error
-    from sklearn.utils.testing import ignore_warnings
+    import sklearn
     from sklearn.base import (
         BaseEstimator,
         ClassifierMixin,
+        ClusterMixin,
         RegressorMixin,
         TransformerMixin,
-        ClusterMixin,
     )
+
+    # pylint: disable=no-name-in-module, import-error
+    from sklearn.utils.testing import ignore_warnings
 
     IS_PYPY = platform.python_implementation() == "PyPy"
 

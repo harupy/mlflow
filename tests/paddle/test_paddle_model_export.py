@@ -1,31 +1,30 @@
 from collections import namedtuple
-import pytest
-import numpy as np
-import pandas as pd
 import os
 from unittest import mock
-import yaml
 
+import numpy as np
 import paddle
 from paddle.nn import Linear
 import paddle.nn.functional as F
+import pandas as pd
+import pytest
+from sklearn import preprocessing
 from sklearn.datasets import load_boston
 from sklearn.model_selection import train_test_split
-from sklearn import preprocessing
+import yaml
 
+from mlflow.models import Model
+import mlflow.paddle
 import mlflow.pyfunc as pyfunc
 import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
-import mlflow.paddle
-from mlflow.models import Model
 from mlflow.store.artifact.s3_artifact_repo import S3ArtifactRepository
+from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils.environment import _mlflow_conda_env
 from mlflow.utils.model_utils import _get_flavor_configuration
-from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
-
+from tests.helper_functions import _assert_pip_requirements, pyfunc_serve_and_score_model
 from tests.helper_functions import mock_s3_bucket  # pylint: disable=unused-import
 from tests.helper_functions import set_boto_credentials  # pylint: disable=unused-import
-from tests.helper_functions import pyfunc_serve_and_score_model, _assert_pip_requirements
 
 
 ModelWithData = namedtuple("ModelWithData", ["model", "inference_dataframe"])

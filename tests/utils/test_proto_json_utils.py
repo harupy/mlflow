@@ -1,26 +1,27 @@
 import base64
 import json
+
+from google.protobuf.text_format import Parse as ParseTextIntoProto
 import numpy as np
 import pandas as pd
 import pytest
 
 from mlflow.entities import Experiment, Metric
-from mlflow.entities.model_registry import RegisteredModel, ModelVersion
+from mlflow.entities.model_registry import ModelVersion, RegisteredModel
 from mlflow.exceptions import MlflowException
+from mlflow.protos.model_registry_pb2 import RegisteredModel as ProtoRegisteredModel
 from mlflow.protos.service_pb2 import Experiment as ProtoExperiment
 from mlflow.protos.service_pb2 import Metric as ProtoMetric
-from mlflow.types import Schema, TensorSpec, ColSpec
-from mlflow.protos.model_registry_pb2 import RegisteredModel as ProtoRegisteredModel
-from tests.protos.test_message_pb2 import TestMessage
-from google.protobuf.text_format import Parse as ParseTextIntoProto
-
+from mlflow.types import ColSpec, Schema, TensorSpec
 from mlflow.utils.proto_json_utils import (
+    _dataframe_from_json,
+    _stringify_all_experiment_ids,
     message_to_json,
     parse_dict,
-    _stringify_all_experiment_ids,
     parse_tf_serving_input,
-    _dataframe_from_json,
 )
+from tests.protos.test_message_pb2 import TestMessage
+
 
 # Prevent pytest from trying to collect TestMessage as a test class:
 TestMessage.__test__ = False

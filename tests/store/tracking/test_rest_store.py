@@ -1,53 +1,48 @@
 import json
 import unittest
-
 from unittest import mock
+
 import pytest
 
 import mlflow
 from mlflow.entities import (
-    Param,
+    Experiment,
+    ExperimentTag,
+    LifecycleStage,
     Metric,
+    Param,
     RunTag,
     SourceType,
     ViewType,
-    ExperimentTag,
-    Experiment,
-    LifecycleStage,
 )
 from mlflow.exceptions import MlflowException
 from mlflow.models import Model
+from mlflow.protos.databricks_pb2 import (
+    ENDPOINT_NOT_FOUND,
+    ErrorCode,
+    INTERNAL_ERROR,
+    REQUEST_LIMIT_EXCEEDED,
+    RESOURCE_DOES_NOT_EXIST,
+)
 from mlflow.protos.service_pb2 import (
     CreateRun,
     DeleteExperiment,
     DeleteRun,
+    DeleteTag,
+    GetExperimentByName,
+    ListExperiments,
     LogBatch,
     LogMetric,
+    LogModel,
     LogParam,
     RestoreExperiment,
     RestoreRun,
-    RunTag as ProtoRunTag,
-    SearchRuns,
-    SetTag,
-    DeleteTag,
-    SetExperimentTag,
-    GetExperimentByName,
-    ListExperiments,
-    LogModel,
 )
-from mlflow.protos.databricks_pb2 import (
-    RESOURCE_DOES_NOT_EXIST,
-    ENDPOINT_NOT_FOUND,
-    REQUEST_LIMIT_EXCEEDED,
-    INTERNAL_ERROR,
-    ErrorCode,
-)
-from mlflow.store.tracking.rest_store import (
-    RestStore,
-    DatabricksRestStore,
-)
+from mlflow.protos.service_pb2 import RunTag as ProtoRunTag
+from mlflow.protos.service_pb2 import SearchRuns, SetExperimentTag, SetTag
+from mlflow.store.tracking.rest_store import DatabricksRestStore, RestStore
 from mlflow.utils.proto_json_utils import message_to_json
-from mlflow.utils.rest_utils import MlflowHostCreds, _DEFAULT_HEADERS
+from mlflow.utils.rest_utils import _DEFAULT_HEADERS, MlflowHostCreds
 
 
 class MyCoolException(Exception):

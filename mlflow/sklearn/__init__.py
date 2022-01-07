@@ -10,17 +10,18 @@ Python (native) `pickle <https://scikit-learn.org/stable/modules/model_persisten
     NOTE: The `mlflow.pyfunc` flavor is only added for scikit-learn models that define `predict()`,
     since `predict()` is required for pyfunc model inference.
 """
-import inspect
+from collections import defaultdict, OrderedDict
 import functools
-import os
+import inspect
 import logging
-import numpy as np
+import os
 import pickle
-import yaml
 import warnings
 import weakref
-from collections import defaultdict, OrderedDict
+
+import numpy as np
 from packaging.version import Version
+import yaml
 
 import mlflow
 from mlflow import pyfunc
@@ -28,38 +29,41 @@ from mlflow.exceptions import MlflowException
 from mlflow.models import Model
 from mlflow.models.model import MLMODEL_FILE_NAME
 from mlflow.models.signature import ModelSignature
-from mlflow.models.utils import ModelInputExample, _save_example
-from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE, INTERNAL_ERROR
-from mlflow.protos.databricks_pb2 import RESOURCE_ALREADY_EXISTS
-from mlflow.tracking.artifact_utils import _download_artifact_from_uri
-from mlflow.utils import _inspect_original_var_name
-from mlflow.utils.autologging_utils import get_instance_method_first_arg_value
-from mlflow.utils.environment import (
-    _mlflow_conda_env,
-    _validate_env_arguments,
-    _process_pip_requirements,
-    _process_conda_env,
-    _CONDA_ENV_FILE_NAME,
-    _REQUIREMENTS_FILE_NAME,
-    _CONSTRAINTS_FILE_NAME,
-)
-from mlflow.utils import gorilla
-from mlflow.utils.requirements_utils import _get_pinned_requirement
-from mlflow.utils.file_utils import write_to
-from mlflow.utils.docstring_utils import format_docstring, LOG_MODEL_PARAM_DOCS
-from mlflow.utils.mlflow_tags import MLFLOW_AUTOLOGGING
-from mlflow.utils.model_utils import _get_flavor_configuration
-from mlflow.utils.autologging_utils import (
-    autologging_integration,
-    safe_patch,
-    INPUT_EXAMPLE_SAMPLE_ROWS,
-    resolve_input_example_and_signature,
-    _get_new_training_session_class,
-    MlflowAutologgingQueueingClient,
-    disable_autologging,
-    update_wrapper_extended,
+from mlflow.models.utils import _save_example, ModelInputExample
+from mlflow.protos.databricks_pb2 import (
+    INTERNAL_ERROR,
+    INVALID_PARAMETER_VALUE,
+    RESOURCE_ALREADY_EXISTS,
 )
 from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
+from mlflow.tracking.artifact_utils import _download_artifact_from_uri
+from mlflow.utils import _inspect_original_var_name, gorilla
+from mlflow.utils.autologging_utils import (
+    _get_new_training_session_class,
+    autologging_integration,
+    disable_autologging,
+    get_instance_method_first_arg_value,
+    INPUT_EXAMPLE_SAMPLE_ROWS,
+    MlflowAutologgingQueueingClient,
+    resolve_input_example_and_signature,
+    safe_patch,
+    update_wrapper_extended,
+)
+from mlflow.utils.docstring_utils import format_docstring, LOG_MODEL_PARAM_DOCS
+from mlflow.utils.environment import (
+    _CONDA_ENV_FILE_NAME,
+    _CONSTRAINTS_FILE_NAME,
+    _mlflow_conda_env,
+    _process_conda_env,
+    _process_pip_requirements,
+    _REQUIREMENTS_FILE_NAME,
+    _validate_env_arguments,
+)
+from mlflow.utils.file_utils import write_to
+from mlflow.utils.mlflow_tags import MLFLOW_AUTOLOGGING
+from mlflow.utils.model_utils import _get_flavor_configuration
+from mlflow.utils.requirements_utils import _get_pinned_requirement
+
 
 FLAVOR_NAME = "sklearn"
 
@@ -73,10 +77,7 @@ _SklearnTrainingSession = _get_new_training_session_class()
 
 
 def _gen_estimators_to_patch():
-    from mlflow.sklearn.utils import (
-        _all_estimators,
-        _get_meta_estimators_for_autologging,
-    )
+    from mlflow.sklearn.utils import _all_estimators, _get_meta_estimators_for_autologging
 
     _, estimators_to_patch = zip(*_all_estimators())
     # Ensure that relevant meta estimators (e.g. GridSearchCV, Pipeline) are selected
@@ -1193,18 +1194,18 @@ def _autolog(
 
     from mlflow.models import infer_signature
     from mlflow.sklearn.utils import (
-        _MIN_SKLEARN_VERSION,
-        _TRAINING_PREFIX,
-        _is_supported_version,
-        _get_X_y_and_sample_weight,
-        _gen_xgboost_sklearn_estimators_to_patch,
-        _log_estimator_content,
         _all_estimators,
+        _create_child_runs_for_parameter_search,
+        _gen_xgboost_sklearn_estimators_to_patch,
         _get_estimator_info_tags,
         _get_meta_estimators_for_autologging,
+        _get_X_y_and_sample_weight,
         _is_parameter_search_estimator,
+        _is_supported_version,
+        _log_estimator_content,
         _log_parameter_search_results_as_artifact,
-        _create_child_runs_for_parameter_search,
+        _MIN_SKLEARN_VERSION,
+        _TRAINING_PREFIX,
     )
     from mlflow.tracking.context import registry as context_registry
 
@@ -1722,8 +1723,9 @@ def eval_and_log_metrics(model, X, y_true, *, prefix, sample_weight=None):
 
 
 def _eval_and_log_metrics_impl(model, X, y_true, *, prefix, sample_weight=None):
-    from mlflow.sklearn.utils import _log_estimator_content
     from sklearn.base import BaseEstimator
+
+    from mlflow.sklearn.utils import _log_estimator_content
 
     if prefix is None or prefix == "":
         raise ValueError("Must specify a non-empty prefix")

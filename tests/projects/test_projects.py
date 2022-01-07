@@ -1,35 +1,31 @@
 import json
 import os
-import git
 import shutil
-import yaml
-
-import pytest
 from unittest import mock
 
 from databricks_cli.configure.provider import DatabricksConfig
+import git
+import pytest
+import yaml
 
 import mlflow
-
-from mlflow.entities import RunStatus, ViewType, SourceType
+from mlflow.entities import RunStatus, SourceType, ViewType
 from mlflow.exceptions import ExecutionException, MlflowException
-from mlflow.projects import _parse_kubernetes_config
-from mlflow.projects import _resolve_experiment_id
+from mlflow.projects import _parse_kubernetes_config, _resolve_experiment_id
 from mlflow.store.tracking.file_store import FileStore
 from mlflow.utils.mlflow_tags import (
-    MLFLOW_PARENT_RUN_ID,
-    MLFLOW_USER,
-    MLFLOW_SOURCE_NAME,
-    MLFLOW_SOURCE_TYPE,
-    MLFLOW_GIT_BRANCH,
-    MLFLOW_GIT_REPO_URL,
     LEGACY_MLFLOW_GIT_BRANCH_NAME,
     LEGACY_MLFLOW_GIT_REPO_URL,
-    MLFLOW_PROJECT_ENTRY_POINT,
+    MLFLOW_GIT_BRANCH,
+    MLFLOW_GIT_REPO_URL,
+    MLFLOW_PARENT_RUN_ID,
     MLFLOW_PROJECT_BACKEND,
+    MLFLOW_PROJECT_ENTRY_POINT,
     MLFLOW_PROJECT_ENV,
+    MLFLOW_SOURCE_NAME,
+    MLFLOW_SOURCE_TYPE,
+    MLFLOW_USER,
 )
-
 from tests.projects.utils import TEST_PROJECT_DIR, TEST_PROJECT_NAME, validate_exit_status
 
 

@@ -1,9 +1,10 @@
-import os
 import logging
+import os
 
 from mlflow.tracking.context.abstract_context import RunContextProvider
 from mlflow.tracking.context.default_context import _get_main_file
 from mlflow.utils.mlflow_tags import MLFLOW_GIT_COMMIT
+
 
 _logger = logging.getLogger(__name__)
 

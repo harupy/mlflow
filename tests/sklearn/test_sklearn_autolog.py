@@ -1,44 +1,45 @@
 import functools
 import inspect
-from unittest import mock
 import os
+import re
+from unittest import mock
+
 import matplotlib.pyplot as plt
 import numpy as np
+from packaging.version import Version
 import pandas as pd
 import pytest
-import re
-from packaging.version import Version
-
+from scipy.sparse import csc_matrix, csr_matrix
+from scipy.stats import uniform
 import sklearn
 import sklearn.base
 import sklearn.cluster
 import sklearn.datasets
-import sklearn.pipeline
 import sklearn.model_selection
-from scipy.stats import uniform
-from scipy.sparse import csr_matrix, csc_matrix
+import sklearn.pipeline
 
+from mlflow.entities import RunStatus
 from mlflow.exceptions import MlflowException
 from mlflow.models import Model
 from mlflow.models.signature import infer_signature
 from mlflow.models.utils import _read_example
 import mlflow.sklearn
-from mlflow.entities import RunStatus
 from mlflow.sklearn.utils import (
-    _is_supported_version,
+    _get_arg_names,
     _is_metric_supported,
     _is_plotting_supported,
-    _get_arg_names,
+    _is_supported_version,
     _log_child_runs_info,
 )
 from mlflow.utils import _truncate_dict
 from mlflow.utils.mlflow_tags import MLFLOW_AUTOLOGGING
 from mlflow.utils.validation import (
-    MAX_PARAMS_TAGS_PER_BATCH,
+    MAX_ENTITY_KEY_LENGTH,
     MAX_METRICS_PER_BATCH,
     MAX_PARAM_VAL_LENGTH,
-    MAX_ENTITY_KEY_LENGTH,
+    MAX_PARAMS_TAGS_PER_BATCH,
 )
+
 
 FIT_FUNC_NAMES = ["fit", "fit_transform", "fit_predict"]
 TRAINING_SCORE = "training_score"
@@ -1027,11 +1028,11 @@ def test_autolog_does_not_capture_runs_for_preprocessing_or_feature_manipulation
     client = mlflow.tracking.MlflowClient()
     run_id = client.create_run(experiment_id=0).info.run_id
 
-    from sklearn.preprocessing import Normalizer, LabelEncoder, MinMaxScaler
-    from sklearn.impute import SimpleImputer
+    from sklearn.compose import ColumnTransformer
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.feature_selection import VarianceThreshold
-    from sklearn.compose import ColumnTransformer
+    from sklearn.impute import SimpleImputer
+    from sklearn.preprocessing import LabelEncoder, MinMaxScaler, Normalizer
 
     with mlflow.start_run(run_id=run_id):
         Normalizer().fit_transform(np.random.random((5, 5)))
@@ -1447,8 +1448,8 @@ def test_eval_and_log_metrics_with_noscore_estimator():
 
 
 def test_eval_and_log_metrics_throws_with_invalid_args():
-    from sklearn.linear_model import LinearRegression
     from sklearn.cluster import SpectralClustering
+    from sklearn.linear_model import LinearRegression
 
     X, y_true = get_iris()
     model = LinearRegression()
@@ -1615,6 +1616,7 @@ def test_basic_post_training_metric_autologging():
 @pytest.mark.parametrize("metric_name", mlflow.sklearn._get_metric_name_list())
 def test_run_metric_api_doc_example(metric_name):
     import doctest
+
     from sklearn import metrics
 
     mlflow.sklearn.autolog()
@@ -1719,8 +1721,8 @@ def test_multi_model_interleaved_fit_and_post_train_metric_call():
     "scoring", [None, sklearn.metrics.make_scorer(sklearn.metrics.accuracy_score)]
 )
 def test_meta_estimator_disable_nested_post_training_autologging(scoring):
-    import sklearn.svm
     import sklearn.metrics
+    import sklearn.svm
 
     mlflow.sklearn.autolog()
 

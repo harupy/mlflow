@@ -1,17 +1,17 @@
-import os
-import time
-
 from contextlib import contextmanager
 import logging
+import os
+import time
 
 from alembic.migration import MigrationContext  # pylint: disable=import-error
 from alembic.script import ScriptDirectory
 import sqlalchemy
 
 from mlflow.exceptions import MlflowException
-from mlflow.store.tracking.dbmodels.initial_models import Base as InitialBase
 from mlflow.protos.databricks_pb2 import INTERNAL_ERROR
 from mlflow.store.db.db_types import SQLITE
+from mlflow.store.tracking.dbmodels.initial_models import Base as InitialBase
+
 
 _logger = logging.getLogger(__name__)
 

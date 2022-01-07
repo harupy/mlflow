@@ -7,56 +7,56 @@ TensorFlow (native) format
 :py:mod:`mlflow.pyfunc`
     Produced for use by generic pyfunc-based deployment tools and batch inference.
 """
+import atexit
+from collections import namedtuple
+import concurrent.futures
+import logging
 import os
 import shutil
-import yaml
-import logging
-import concurrent.futures
-import warnings
-import atexit
-import time
 import tempfile
-from collections import namedtuple
-import pandas
-from packaging.version import Version
 from threading import RLock
+import time
+import warnings
 
+from packaging.version import Version
+import pandas
+import yaml
 
 import mlflow
-import mlflow.keras
 from mlflow import pyfunc
+from mlflow.entities import Metric
 from mlflow.exceptions import MlflowException
+import mlflow.keras
 from mlflow.models import Model
-from mlflow.models.model import MLMODEL_FILE_NAME, _LOG_MODEL_METADATA_WARNING_TEMPLATE
+from mlflow.models.model import _LOG_MODEL_METADATA_WARNING_TEMPLATE, MLMODEL_FILE_NAME
 from mlflow.models.signature import ModelSignature
-from mlflow.models.utils import ModelInputExample, _save_example
+from mlflow.models.utils import _save_example, ModelInputExample
 from mlflow.protos.databricks_pb2 import DIRECTORY_NOT_EMPTY
 from mlflow.tracking import MlflowClient
+from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri, get_artifact_uri
 from mlflow.utils.annotations import keyword_only
-from mlflow.utils.environment import (
-    _mlflow_conda_env,
-    _validate_env_arguments,
-    _process_pip_requirements,
-    _process_conda_env,
-    _CONDA_ENV_FILE_NAME,
-    _REQUIREMENTS_FILE_NAME,
-    _CONSTRAINTS_FILE_NAME,
-)
-from mlflow.utils.requirements_utils import _get_pinned_requirement
-from mlflow.utils.docstring_utils import format_docstring, LOG_MODEL_PARAM_DOCS
-from mlflow.utils.file_utils import _copy_file_or_tree, TempDir, write_to
-from mlflow.utils.model_utils import _get_flavor_configuration
 from mlflow.utils.autologging_utils import (
     autologging_integration,
-    safe_patch,
-    picklable_exception_safe_function,
-    PatchFunction,
-    log_fn_args_as_params,
     batch_metrics_logger,
+    log_fn_args_as_params,
+    PatchFunction,
+    picklable_exception_safe_function,
+    safe_patch,
 )
-from mlflow.entities import Metric
-from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
+from mlflow.utils.docstring_utils import format_docstring, LOG_MODEL_PARAM_DOCS
+from mlflow.utils.environment import (
+    _CONDA_ENV_FILE_NAME,
+    _CONSTRAINTS_FILE_NAME,
+    _mlflow_conda_env,
+    _process_conda_env,
+    _process_pip_requirements,
+    _REQUIREMENTS_FILE_NAME,
+    _validate_env_arguments,
+)
+from mlflow.utils.file_utils import _copy_file_or_tree, TempDir, write_to
+from mlflow.utils.model_utils import _get_flavor_configuration
+from mlflow.utils.requirements_utils import _get_pinned_requirement
 
 
 FLAVOR_NAME = "tensorflow"
@@ -602,7 +602,7 @@ def _setup_callbacks(lst, log_models, metrics_logger):
     input list, and returns the new list and appropriate log directory.
     """
     # pylint: disable=no-name-in-module
-    from mlflow.tensorflow._autolog import _TensorBoard, __MLflowTfKeras2Callback
+    from mlflow.tensorflow._autolog import __MLflowTfKeras2Callback, _TensorBoard
 
     tb = _get_tensorboard_callback(lst)
     if tb is None:
@@ -703,9 +703,9 @@ def autolog(
         return
 
     try:
+        from tensorflow.python.saved_model import tag_constants
         from tensorflow.python.summary.writer.event_file_writer import EventFileWriter
         from tensorflow.python.summary.writer.event_file_writer_v2 import EventFileWriterV2
-        from tensorflow.python.saved_model import tag_constants
         from tensorflow.python.summary.writer.writer import FileWriter
     except ImportError:
         warnings.warn("Could not log to MLflow. TensorFlow versions below 1.12 are not supported.")

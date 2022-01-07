@@ -9,10 +9,11 @@ $ python dev/update_ml_package_versions.py
 """
 import argparse
 import json
-from packaging.version import Version
 import re
 import sys
 import urllib.request
+
+from packaging.version import Version
 import yaml
 
 

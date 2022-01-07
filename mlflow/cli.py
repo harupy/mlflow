@@ -1,28 +1,29 @@
 import json
+import logging
 import os
 import sys
-import logging
 
 import click
 from click import UsageError
 
+from mlflow import tracking
 import mlflow.db
-import mlflow.experiments
 import mlflow.deployments.cli
+from mlflow.entities.lifecycle_stage import LifecycleStage
+from mlflow.exceptions import MlflowException
+import mlflow.experiments
 import mlflow.projects as projects
 import mlflow.runs
-import mlflow.store.artifact.cli
-from mlflow import tracking
-from mlflow.store.tracking import DEFAULT_LOCAL_FILE_AND_ARTIFACT_PATH, DEFAULT_ARTIFACTS_URI
 from mlflow.store.artifact.artifact_repository_registry import get_artifact_repository
+import mlflow.store.artifact.cli
+from mlflow.store.tracking import DEFAULT_ARTIFACTS_URI, DEFAULT_LOCAL_FILE_AND_ARTIFACT_PATH
 from mlflow.tracking import _get_store
 from mlflow.utils import cli_args
 from mlflow.utils.annotations import experimental
 from mlflow.utils.logging_utils import eprint
 from mlflow.utils.process import ShellCommandException
 from mlflow.utils.uri import resolve_default_artifact_root
-from mlflow.entities.lifecycle_stage import LifecycleStage
-from mlflow.exceptions import MlflowException
+
 
 _logger = logging.getLogger(__name__)
 
@@ -489,8 +490,8 @@ cli.add_command(mlflow.db.commands)
 
 try:
     # pylint: disable=unused-import
-    import mlflow.models.cli
     import mlflow.azureml.cli
+    import mlflow.models.cli
     import mlflow.sagemaker.cli
 
     cli.add_command(mlflow.azureml.cli.commands)

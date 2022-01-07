@@ -1,32 +1,32 @@
 import base64
+from collections import namedtuple
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import os
 import posixpath
-import requests
-import uuid
 import tempfile
-from collections import namedtuple
-from concurrent.futures import ThreadPoolExecutor
+import uuid
+
+import requests
 
 from mlflow.azure.client import put_block, put_block_list
-import mlflow.tracking
 from mlflow.entities import FileInfo
 from mlflow.exceptions import MlflowException
+from mlflow.protos.databricks_artifacts_pb2 import (
+    ArtifactCredentialType,
+    DatabricksMlflowArtifactsService,
+    GetCredentialsForRead,
+    GetCredentialsForWrite,
+)
 from mlflow.protos.databricks_pb2 import (
-    INVALID_PARAMETER_VALUE,
     INTERNAL_ERROR,
+    INVALID_PARAMETER_VALUE,
     RESOURCE_DOES_NOT_EXIST,
 )
-
-from mlflow.protos.databricks_artifacts_pb2 import (
-    DatabricksMlflowArtifactsService,
-    GetCredentialsForWrite,
-    GetCredentialsForRead,
-    ArtifactCredentialType,
-)
-from mlflow.protos.service_pb2 import MlflowService, GetRun, ListArtifacts
+from mlflow.protos.service_pb2 import GetRun, ListArtifacts, MlflowService
 from mlflow.store.artifact.artifact_repo import ArtifactRepository
-from mlflow.utils import chunk_list
+import mlflow.tracking
+from mlflow.utils import chunk_list, rest_utils
 from mlflow.utils.databricks_utils import get_databricks_host_creds
 from mlflow.utils.file_utils import (
     download_file_using_http_uri,
@@ -34,12 +34,11 @@ from mlflow.utils.file_utils import (
     yield_file_in_chunks,
 )
 from mlflow.utils.proto_json_utils import message_to_json
-from mlflow.utils import rest_utils
 from mlflow.utils.rest_utils import (
-    call_endpoint,
-    extract_api_info_for_service,
     _REST_API_PATH_PREFIX,
     augmented_raise_for_status,
+    call_endpoint,
+    extract_api_info_for_service,
 )
 from mlflow.utils.uri import (
     extract_and_normalize_path,
@@ -48,6 +47,7 @@ from mlflow.utils.uri import (
     is_valid_dbfs_uri,
     remove_databricks_profile_info_from_artifact_uri,
 )
+
 
 _logger = logging.getLogger(__name__)
 _AZURE_MAX_BLOCK_CHUNK_SIZE = 100000000  # Max. size of each block allowed is 100 MB in stage_block

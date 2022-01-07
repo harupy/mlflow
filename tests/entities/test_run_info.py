@@ -2,8 +2,8 @@ import random
 import unittest
 import uuid
 
-from mlflow.entities import RunInfo, LifecycleStage, RunStatus
-from tests.helper_functions import random_str, random_int
+from mlflow.entities import LifecycleStage, RunInfo, RunStatus
+from tests.helper_functions import random_int, random_str
 
 
 class TestRunInfo(unittest.TestCase):

@@ -1,19 +1,20 @@
 import os
+import random
 import shutil
 import sys
-import random
 import tempfile
 
 import mlflow
 from mlflow import (
-    log_metric,
-    log_param,
-    log_artifacts,
-    get_artifact_uri,
     active_run,
+    get_artifact_uri,
     get_tracking_uri,
     log_artifact,
+    log_artifacts,
+    log_metric,
+    log_param,
 )
+
 
 if __name__ == "__main__":
     print("Running {} with tracking URI {}".format(sys.argv[0], get_tracking_uri()))

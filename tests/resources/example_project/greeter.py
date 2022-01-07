@@ -4,6 +4,7 @@ the MLproject file.
 """
 import argparse
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("greeting", help="Greeting to use", type=str)

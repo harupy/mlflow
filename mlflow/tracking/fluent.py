@@ -2,45 +2,43 @@
 Internal module implementing the fluent API, allowing management of an active
 MLflow run. This module is exposed to users at the top-level :py:mod:`mlflow` module.
 """
-import os
-
 import atexit
-import time
-import logging
-import inspect
 from copy import deepcopy
-from packaging.version import Version
-from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
+import inspect
+import logging
+import os
+import time
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union
 
-from mlflow.entities import Experiment, Run, RunInfo, RunStatus, Param, RunTag, Metric, ViewType
+from packaging.version import Version
+
+from mlflow.entities import Experiment, Metric, Param, Run, RunInfo, RunStatus, RunTag, ViewType
 from mlflow.entities.lifecycle_stage import LifecycleStage
 from mlflow.exceptions import MlflowException
-from mlflow.protos.databricks_pb2 import (
-    INVALID_PARAMETER_VALUE,
-    RESOURCE_DOES_NOT_EXIST,
-)
-from mlflow.tracking.client import MlflowClient
-from mlflow.tracking import artifact_utils, _get_store
-from mlflow.tracking.context import registry as context_registry
+from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE, RESOURCE_DOES_NOT_EXIST
 from mlflow.store.tracking import SEARCH_MAX_RESULTS_DEFAULT
+from mlflow.tracking import _get_store, artifact_utils
+from mlflow.tracking.client import MlflowClient
+from mlflow.tracking.context import registry as context_registry
 from mlflow.utils import env
 from mlflow.utils.autologging_utils import (
-    is_testing,
     autologging_integration,
     AUTOLOGGING_INTEGRATIONS,
     autologging_is_disabled,
+    is_testing,
 )
-from mlflow.utils.databricks_utils import is_in_databricks_notebook, get_notebook_id
+from mlflow.utils.databricks_utils import get_notebook_id, is_in_databricks_notebook
 from mlflow.utils.import_hooks import register_post_import_hook
 from mlflow.utils.mlflow_tags import MLFLOW_PARENT_RUN_ID, MLFLOW_RUN_NAME
 from mlflow.utils.validation import _validate_run_id
 
+
 if TYPE_CHECKING:
-    import pandas  # pylint: disable=unused-import
-    import matplotlib  # pylint: disable=unused-import
-    import plotly  # pylint: disable=unused-import
-    import numpy  # pylint: disable=unused-import
     import PIL  # pylint: disable=unused-import
+    import matplotlib  # pylint: disable=unused-import
+    import numpy  # pylint: disable=unused-import
+    import pandas  # pylint: disable=unused-import
+    import plotly  # pylint: disable=unused-import
 
 
 _EXPERIMENT_ID_ENV_VAR = "MLFLOW_EXPERIMENT_ID"
@@ -1448,17 +1446,17 @@ def autolog(
                'estimator_name': 'LinearRegression'}
     """
     from mlflow import (
-        tensorflow,
-        keras,
+        fastai,
         gluon,
-        xgboost,
+        keras,
         lightgbm,
         pyspark,
-        statsmodels,
-        spark,
-        sklearn,
-        fastai,
         pytorch,
+        sklearn,
+        spark,
+        statsmodels,
+        tensorflow,
+        xgboost,
     )
 
     locals_copy = locals().items()

@@ -12,12 +12,12 @@ This example currently does not support parallel execution.
 """
 
 import click
+from hyperopt import fmin, hp, rand, tpe
 import numpy as np
-
-from hyperopt import fmin, hp, tpe, rand
 
 import mlflow.projects
 from mlflow.tracking.client import MlflowClient
+
 
 _inf = np.finfo(np.float64).max
 

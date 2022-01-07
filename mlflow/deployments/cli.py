@@ -1,9 +1,11 @@
-import click
-import sys
 import json
-from mlflow.utils import cli_args
+import sys
+
+import click
+
 from mlflow.deployments import interface
-from mlflow.utils.proto_json_utils import NumpyEncoder, _get_jsonable_obj
+from mlflow.utils import cli_args
+from mlflow.utils.proto_json_utils import _get_jsonable_obj, NumpyEncoder
 
 
 def _user_args_to_dict(user_list):

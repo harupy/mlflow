@@ -1,9 +1,9 @@
 import json
 import os
-
-import pytest
 from unittest import mock
 from unittest.mock import Mock
+
+import pytest
 
 from mlflow.exceptions import MlflowException
 from mlflow.store.artifact.artifact_repository_registry import get_artifact_repository

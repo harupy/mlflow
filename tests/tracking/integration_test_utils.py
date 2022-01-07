@@ -1,17 +1,15 @@
-from subprocess import Popen
-
-from unittest import mock
 import os
-from threading import Thread
-
 import socket
-import time
+from subprocess import Popen
 import tempfile
+from threading import Thread
+import time
+from unittest import mock
 
 import mlflow
-from mlflow.server import BACKEND_STORE_URI_ENV_VAR, ARTIFACT_ROOT_ENV_VAR
-from mlflow.utils.file_utils import path_to_local_file_uri, local_file_uri_to_path
-from tests.helper_functions import LOCALHOST, get_safe_port
+from mlflow.server import ARTIFACT_ROOT_ENV_VAR, BACKEND_STORE_URI_ENV_VAR
+from mlflow.utils.file_utils import local_file_uri_to_path, path_to_local_file_uri
+from tests.helper_functions import get_safe_port, LOCALHOST
 
 
 def _await_server_up_or_die(port, timeout=60):

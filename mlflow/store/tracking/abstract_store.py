@@ -1,4 +1,4 @@
-from abc import abstractmethod, ABCMeta
+from abc import ABCMeta, abstractmethod
 
 from mlflow.entities import ViewType
 from mlflow.store.entities.paged_list import PagedList

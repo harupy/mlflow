@@ -1,10 +1,11 @@
 import os
-
-import pytest
 from unittest import mock
 from unittest.mock import PropertyMock
 
+import pytest
+
 from mlflow.store.artifact.artifact_repository_registry import get_artifact_repository
+
 
 TEST_FILE_1_CONTENT = "Hello 🍆🍔".encode("utf-8")
 TEST_FILE_2_CONTENT = "World 🍆🍔🍆".encode("utf-8")

@@ -6,11 +6,13 @@ from sklearn.linear_model import LinearRegression
 
 import mlflow
 import mlflow.spark
-
-from tests.spark.autologging.utils import _assert_spark_data_logged
-from tests.spark.autologging.utils import spark_session  # pylint: disable=unused-import
+from tests.spark.autologging.utils import (  # pylint: disable=unused-import
+    _assert_spark_data_logged,
+    data_format,
+    file_path,
+)
 from tests.spark.autologging.utils import format_to_file_path  # pylint: disable=unused-import
-from tests.spark.autologging.utils import file_path, data_format  # pylint: disable=unused-import
+from tests.spark.autologging.utils import spark_session  # pylint: disable=unused-import
 
 
 @pytest.fixture()

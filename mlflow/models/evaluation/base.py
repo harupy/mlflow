@@ -1,17 +1,18 @@
-from typing import Dict, Union
-import mlflow
+from contextlib import contextmanager
 import hashlib
 import json
+import logging
 import os
-from contextlib import contextmanager
-from mlflow.exceptions import MlflowException
-from mlflow.utils.file_utils import TempDir
+import struct
+from typing import Dict, Union
+
+import mlflow
 from mlflow.entities import RunTag
+from mlflow.exceptions import MlflowException
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils import _get_fully_qualified_class_name
 from mlflow.utils.class_utils import _get_class_from_string
-import logging
-import struct
+from mlflow.utils.file_utils import TempDir
 
 
 _logger = logging.getLogger(__name__)
@@ -277,9 +278,9 @@ class EvaluationDataset:
         Helper method to convert pandas dataframe/numpy array/list into bytes for
         MD5 calculation purpose.
         """
-        from pandas.util import hash_pandas_object, hash_array
         import numpy as np
         import pandas as pd
+        from pandas.util import hash_array, hash_pandas_object
 
         if isinstance(data, pd.DataFrame):
             return EvaluationDataset._convert_uint64_ndarray_to_bytes(hash_pandas_object(data))

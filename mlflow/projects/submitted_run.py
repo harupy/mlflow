@@ -1,10 +1,10 @@
 from abc import abstractmethod
-
+import logging
 import os
 import signal
-import logging
 
 from mlflow.entities import RunStatus
+
 
 _logger = logging.getLogger(__name__)
 

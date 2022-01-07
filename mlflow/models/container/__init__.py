@@ -6,22 +6,22 @@ To be executed only during the model deployment.
 """
 import multiprocessing
 import os
-import signal
 import shutil
+import signal
 from subprocess import check_call, Popen
 import sys
 
 from pkg_resources import resource_filename
 
 import mlflow
-import mlflow.version
-
-from mlflow import pyfunc, mleap
+from mlflow import mleap, pyfunc
 from mlflow.models import Model
-from mlflow.models.model import MLMODEL_FILE_NAME
 from mlflow.models.docker_utils import DISABLE_ENV_CREATION
-from mlflow.pyfunc import scoring_server, mlserver
+from mlflow.models.model import MLMODEL_FILE_NAME
+from mlflow.pyfunc import mlserver, scoring_server
+import mlflow.version
 from mlflow.version import VERSION as MLFLOW_VERSION
+
 
 MODEL_PATH = "/opt/ml/model"
 

@@ -1,13 +1,14 @@
-import sys
 import posixpath
+import sys
 import urllib.parse
 
 from mlflow.exceptions import MlflowException
 from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE
 from mlflow.store.db.db_types import DATABASE_ENGINES
-from mlflow.store.tracking import DEFAULT_LOCAL_FILE_AND_ARTIFACT_PATH, DEFAULT_ARTIFACTS_URI
-from mlflow.utils.validation import _validate_db_type_string
+from mlflow.store.tracking import DEFAULT_ARTIFACTS_URI, DEFAULT_LOCAL_FILE_AND_ARTIFACT_PATH
 from mlflow.utils.logging_utils import eprint
+from mlflow.utils.validation import _validate_db_type_string
+
 
 _INVALID_DB_URI_MSG = (
     "Please refer to https://mlflow.org/docs/latest/tracking.html#storage for "

@@ -1,29 +1,28 @@
-import sys
 import os
-import pytest
-import numpy as np
+import sys
 from unittest import mock
 from unittest.mock import Mock
 
+import numpy as np
 import pandas as pd
 import pandas.testing
+import pytest
 import sklearn.datasets as datasets
 from sklearn.linear_model import LogisticRegression
 
-
 import mlflow
+from mlflow import pyfunc
 import mlflow.azureml
 import mlflow.azureml.cli
-import mlflow.sklearn
-from mlflow import pyfunc
 from mlflow.exceptions import MlflowException
 from mlflow.models import Model
 from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE
+import mlflow.sklearn
 from mlflow.store.artifact.s3_artifact_repo import S3ArtifactRepository
 from mlflow.utils.file_utils import TempDir
-
-from tests.helper_functions import set_boto_credentials  # pylint: disable=unused-import
 from tests.helper_functions import mock_s3_bucket  # pylint: disable=unused-import
+from tests.helper_functions import set_boto_credentials  # pylint: disable=unused-import
+
 
 pytestmark = pytest.mark.skipif(
     (sys.version_info < (3, 0)), reason="Tests require Python 3 to run!"

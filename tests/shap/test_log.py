@@ -1,16 +1,16 @@
-import mlflow
-import shap
 import numpy as np
 import pandas as pd
-import sklearn
 import pytest
+import shap
+import sklearn
 
+import mlflow
 import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
-from mlflow.utils import PYTHON_VERSION
 from mlflow.tracking import MlflowClient
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
+from mlflow.utils import PYTHON_VERSION
 from mlflow.utils.model_utils import _get_flavor_configuration
-from tests.helper_functions import pyfunc_serve_and_score_model, _assert_pip_requirements
+from tests.helper_functions import _assert_pip_requirements, pyfunc_serve_and_score_model
 
 
 @pytest.fixture(scope="module")

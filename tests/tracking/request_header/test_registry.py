@@ -1,15 +1,17 @@
-import pytest
-from unittest import mock
 from importlib import reload
+from unittest import mock
 
+import pytest
+
+from mlflow.tracking.request_header.databricks_request_header_provider import (
+    DatabricksRequestHeaderProvider,
+)
 import mlflow.tracking.request_header.registry
 from mlflow.tracking.request_header.registry import (
     RequestHeaderProviderRegistry,
     resolve_request_headers,
 )
-from mlflow.tracking.request_header.databricks_request_header_provider import (
-    DatabricksRequestHeaderProvider,
-)
+
 
 # pylint: disable=unused-argument
 

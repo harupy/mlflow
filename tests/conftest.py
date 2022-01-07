@@ -1,5 +1,5 @@
-import os
 import inspect
+import os
 import shutil
 import subprocess
 from unittest import mock
@@ -8,7 +8,6 @@ import pytest
 
 import mlflow
 from mlflow.utils.file_utils import path_to_local_sqlite_uri
-
 from tests.autologging.fixtures import enable_test_mode
 
 

@@ -4,30 +4,30 @@ import json
 import os
 import posixpath
 import random
+import re
 import tempfile
 import time
-import yaml
-import re
+from unittest import mock
 
 import pytest
-from unittest import mock
+import yaml
 
 import mlflow
 from mlflow import tracking
-from mlflow.entities import RunStatus, LifecycleStage, Metric, Param, RunTag, ViewType
+from mlflow.entities import LifecycleStage, Metric, Param, RunStatus, RunTag, ViewType
 from mlflow.exceptions import MlflowException
-from mlflow.store.tracking.file_store import FileStore
 from mlflow.protos.databricks_pb2 import ErrorCode, INVALID_PARAMETER_VALUE, RESOURCE_DOES_NOT_EXIST
+from mlflow.store.tracking.file_store import FileStore
 from mlflow.tracking.client import MlflowClient
-from mlflow.tracking.fluent import start_run
+from mlflow.tracking.fluent import _RUN_ID_ENV_VAR, start_run
 from mlflow.utils.file_utils import local_file_uri_to_path
 from mlflow.utils.mlflow_tags import (
     MLFLOW_PARENT_RUN_ID,
-    MLFLOW_USER,
     MLFLOW_SOURCE_NAME,
     MLFLOW_SOURCE_TYPE,
+    MLFLOW_USER,
 )
-from mlflow.tracking.fluent import _RUN_ID_ENV_VAR
+
 
 MockExperiment = namedtuple("MockExperiment", ["experiment_id", "lifecycle_stage"])
 
@@ -715,8 +715,8 @@ def test_log_figure_raises_error_for_unsupported_figure_object_type():
 @pytest.mark.large
 @pytest.mark.parametrize("subdir", [None, ".", "dir", "dir1/dir2", "dir/.."])
 def test_log_image_numpy(subdir):
-    import numpy as np
     from PIL import Image
+    import numpy as np
 
     filename = "image.png"
     artifact_file = filename if subdir is None else posixpath.join(subdir, filename)
@@ -739,8 +739,7 @@ def test_log_image_numpy(subdir):
 @pytest.mark.large
 @pytest.mark.parametrize("subdir", [None, ".", "dir", "dir1/dir2", "dir/.."])
 def test_log_image_pillow(subdir):
-    from PIL import Image
-    from PIL import ImageChops
+    from PIL import Image, ImageChops
 
     filename = "image.png"
     artifact_file = filename if subdir is None else posixpath.join(subdir, filename)

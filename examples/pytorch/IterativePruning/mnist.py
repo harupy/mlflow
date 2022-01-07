@@ -8,13 +8,16 @@
 # pylint: disable=arguments-differ
 # pylint: disable=unused-argument
 # pylint: disable=abstract-method
+from argparse import ArgumentParser
+
 import pytorch_lightning as pl
 import torch
-import mlflow.pytorch
-from argparse import ArgumentParser
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
+
+import mlflow.pytorch
+
 
 try:
     from torchmetrics.functional import accuracy

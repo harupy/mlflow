@@ -1,8 +1,8 @@
 import time
 import unittest
 
-from mlflow.entities import Metric, RunData, Param, RunTag
-from tests.helper_functions import random_str, random_int
+from mlflow.entities import Metric, Param, RunData, RunTag
+from tests.helper_functions import random_int, random_str
 
 
 class TestRunData(unittest.TestCase):

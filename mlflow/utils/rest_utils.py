@@ -1,19 +1,21 @@
 import base64
-import json
-import requests
-import urllib3
 from contextlib import contextmanager
+import json
+
 from packaging.version import Version
+import requests
 from requests.adapters import HTTPAdapter
-from urllib3.util import Retry
 from requests.exceptions import HTTPError
+import urllib3
+from urllib3.util import Retry
 
 from mlflow import __version__
+from mlflow.exceptions import MlflowException, RestException
 from mlflow.protos import databricks_pb2
-from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE, ENDPOINT_NOT_FOUND, ErrorCode
+from mlflow.protos.databricks_pb2 import ENDPOINT_NOT_FOUND, ErrorCode, INVALID_PARAMETER_VALUE
 from mlflow.utils.proto_json_utils import parse_dict
 from mlflow.utils.string_utils import strip_suffix
-from mlflow.exceptions import MlflowException, RestException
+
 
 RESOURCE_DOES_NOT_EXIST = "RESOURCE_DOES_NOT_EXIST"
 _REST_API_PATH_PREFIX = "/api/2.0"

@@ -9,13 +9,13 @@ import urllib.request
 import docker
 
 from mlflow import tracking
-from mlflow.projects.utils import get_databricks_env_vars
 from mlflow.exceptions import ExecutionException
-from mlflow.projects.utils import MLFLOW_DOCKER_WORKDIR_PATH
+from mlflow.projects.utils import get_databricks_env_vars, MLFLOW_DOCKER_WORKDIR_PATH
 from mlflow.tracking.context.git_context import _get_git_commit
-from mlflow.utils import process, file_utils
-from mlflow.utils.mlflow_tags import MLFLOW_DOCKER_IMAGE_URI, MLFLOW_DOCKER_IMAGE_ID
+from mlflow.utils import file_utils, process
 from mlflow.utils.file_utils import _handle_readonly_on_windows
+from mlflow.utils.mlflow_tags import MLFLOW_DOCKER_IMAGE_ID, MLFLOW_DOCKER_IMAGE_URI
+
 
 _logger = logging.getLogger(__name__)
 

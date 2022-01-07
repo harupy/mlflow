@@ -1,19 +1,19 @@
 # pylint: disable=unused-argument
 
+from concurrent.futures import ThreadPoolExecutor
+from io import StringIO
 import logging
 import sys
 import time
 import warnings
-from concurrent.futures import ThreadPoolExecutor
-from io import StringIO
+
+import numpy as np
+import pytest
 
 import mlflow
-from mlflow.utils.logging_utils import eprint
 from mlflow.utils.autologging_utils import autologging_integration, safe_patch
-
-import pytest
-import numpy as np
-from tests.autologging.fixtures import test_mode_off, patch_destination
+from mlflow.utils.logging_utils import eprint
+from tests.autologging.fixtures import patch_destination, test_mode_off
 from tests.autologging.fixtures import reset_stderr  # pylint: disable=unused-import
 
 

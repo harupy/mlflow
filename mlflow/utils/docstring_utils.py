@@ -1,5 +1,5 @@
-import textwrap
 import re
+import textwrap
 
 
 def _create_placeholder(key):

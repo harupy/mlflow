@@ -1,15 +1,16 @@
 import json
 import math
+
 import numpy as np
 import pandas as pd
 import pytest
-from scipy.sparse import csr_matrix, csc_matrix
+from scipy.sparse import csc_matrix, csr_matrix
 
 from mlflow.exceptions import MlflowException
 from mlflow.pyfunc import _enforce_tensor_spec
 from mlflow.types import DataType
 from mlflow.types.schema import ColSpec, Schema, TensorSpec
-from mlflow.types.utils import _infer_schema, _get_tensor_shape
+from mlflow.types.utils import _get_tensor_shape, _infer_schema
 
 
 def test_col_spec():
@@ -444,16 +445,17 @@ def test_spark_schema_inference(pandas_df_with_all_types):
 def test_spark_type_mapping(pandas_df_with_all_types):
     import pyspark
     from pyspark.sql.types import (
+        BinaryType,
         BooleanType,
+        DoubleType,
+        FloatType,
         IntegerType,
         LongType,
-        FloatType,
-        DoubleType,
         StringType,
-        BinaryType,
+        StructField,
+        StructType,
         TimestampType,
     )
-    from pyspark.sql.types import StructField, StructType
 
     assert isinstance(DataType.boolean.to_spark(), BooleanType)
     assert isinstance(DataType.integer.to_spark(), IntegerType)

@@ -1,32 +1,32 @@
 # pep8: disable=E501
 
-import os
-import pytest
-import yaml
-import pandas as pd
 from collections import namedtuple
+import os
 
-import numpy as np
-import sklearn.datasets as datasets
 import h2o
 from h2o.estimators.gbm import H2OGradientBoostingEstimator
+import numpy as np
+import pandas as pd
+import pytest
+import sklearn.datasets as datasets
+import yaml
 
-import mlflow.h2o
 import mlflow
-import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
 from mlflow import pyfunc
-from mlflow.models import Model, infer_signature
+import mlflow.h2o
+from mlflow.models import infer_signature, Model
 from mlflow.models.utils import _read_example
+import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils.environment import _mlflow_conda_env
 from mlflow.utils.file_utils import TempDir
 from mlflow.utils.model_utils import _get_flavor_configuration
-
 from tests.helper_functions import (
-    pyfunc_serve_and_score_model,
-    _compare_conda_env_requirements,
     _assert_pip_requirements,
+    _compare_conda_env_requirements,
+    pyfunc_serve_and_score_model,
 )
+
 
 ModelWithData = namedtuple("ModelWithData", ["model", "inference_data"])
 

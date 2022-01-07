@@ -1,15 +1,16 @@
+from functools import partial
 import os
 import sys
-from functools import partial
 
-from mlflow.store.tracking import DEFAULT_LOCAL_FILE_AND_ARTIFACT_PATH
 from mlflow.store.db.db_types import DATABASE_ENGINES
+from mlflow.store.tracking import DEFAULT_LOCAL_FILE_AND_ARTIFACT_PATH
 from mlflow.store.tracking.file_store import FileStore
-from mlflow.store.tracking.rest_store import RestStore, DatabricksRestStore
+from mlflow.store.tracking.rest_store import DatabricksRestStore, RestStore
 from mlflow.tracking._tracking_service.registry import TrackingStoreRegistry
 from mlflow.utils import env, rest_utils
-from mlflow.utils.file_utils import path_to_local_file_uri
 from mlflow.utils.databricks_utils import get_databricks_host_creds
+from mlflow.utils.file_utils import path_to_local_file_uri
+
 
 _TRACKING_URI_ENV_VAR = "MLFLOW_TRACKING_URI"
 
@@ -168,7 +169,7 @@ def _get_git_url_if_present(uri):
         # Already a URI in git repo format
         return uri
     try:
-        from git import Repo, InvalidGitRepositoryError, GitCommandNotFound, NoSuchPathError
+        from git import GitCommandNotFound, InvalidGitRepositoryError, NoSuchPathError, Repo
     except ImportError as e:
         print(
             "Notice: failed to import Git (the git executable is probably not on your PATH),"

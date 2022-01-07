@@ -1,28 +1,28 @@
 """
 The ``mlflow.sagemaker`` module provides an API for deploying MLflow models to Amazon SageMaker.
 """
+import logging
 import os
+import platform
 from subprocess import Popen
-import urllib.parse
 import sys
 import tarfile
-import logging
 import time
-import platform
+import urllib.parse
 
 import mlflow
-import mlflow.version
-from mlflow import pyfunc, mleap
+from mlflow import mleap, pyfunc
 from mlflow.exceptions import MlflowException
 from mlflow.models import Model
+from mlflow.models.container import DEPLOYMENT_CONFIG_KEY_FLAVOR_NAME, SERVING_ENVIRONMENT
+from mlflow.models.container import SUPPORTED_FLAVORS as SUPPORTED_DEPLOYMENT_FLAVORS
 from mlflow.models.model import MLMODEL_FILE_NAME
-from mlflow.protos.databricks_pb2 import RESOURCE_DOES_NOT_EXIST, INVALID_PARAMETER_VALUE
+from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE, RESOURCE_DOES_NOT_EXIST
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils import get_unique_resource_id
 from mlflow.utils.annotations import experimental
 from mlflow.utils.file_utils import TempDir
-from mlflow.models.container import SUPPORTED_FLAVORS as SUPPORTED_DEPLOYMENT_FLAVORS
-from mlflow.models.container import DEPLOYMENT_CONFIG_KEY_FLAVOR_NAME, SERVING_ENVIRONMENT
+import mlflow.version
 
 
 DEFAULT_IMAGE_NAME = "mlflow-pyfunc"

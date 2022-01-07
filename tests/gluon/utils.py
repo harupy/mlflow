@@ -1,7 +1,7 @@
 import mxnet as mx
-from packaging.version import Version
 from mxnet.gluon.contrib.estimator import estimator
 from mxnet.gluon.loss import SoftmaxCrossEntropyLoss
+from packaging.version import Version
 
 
 if Version(mx.__version__) >= Version("2.0.0"):

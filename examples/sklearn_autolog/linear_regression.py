@@ -2,9 +2,9 @@ from pprint import pprint
 
 import numpy as np
 from sklearn.linear_model import LinearRegression
+from utils import fetch_logged_data
 
 import mlflow
-from utils import fetch_logged_data
 
 
 def main():

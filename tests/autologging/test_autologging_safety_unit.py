@@ -1,27 +1,28 @@
 # pylint: disable=unused-argument
 
 import abc
+from collections import namedtuple
 import copy
 import inspect
 import os
-import pytest
-from collections import namedtuple
 from unittest import mock
 
+import pytest
+
 import mlflow
-import mlflow.utils.autologging_utils as autologging_utils
 from mlflow.entities import RunStatus
 from mlflow.tracking.client import MlflowClient
+import mlflow.utils.autologging_utils as autologging_utils
 from mlflow.utils.autologging_utils import (
-    safe_patch,
     autologging_integration,
-    picklable_exception_safe_function,
     AutologgingEventLogger,
-    ExceptionSafeClass,
     ExceptionSafeAbstractClass,
-    PatchFunction,
-    with_managed_run,
+    ExceptionSafeClass,
     is_testing,
+    PatchFunction,
+    picklable_exception_safe_function,
+    safe_patch,
+    with_managed_run,
 )
 from mlflow.utils.autologging_utils.safety import (
     _AutologgingSessionManager,
@@ -29,10 +30,10 @@ from mlflow.utils.autologging_utils.safety import (
     _validate_autologging_run,
 )
 from mlflow.utils.mlflow_tags import MLFLOW_AUTOLOGGING
-
-from tests.autologging.fixtures import test_mode_off, test_mode_on
 from tests.autologging.fixtures import patch_destination  # pylint: disable=unused-import
+from tests.autologging.fixtures import test_mode_off, test_mode_on
 from tests.autologging.test_autologging_utils import get_func_attrs
+
 
 pytestmark = pytest.mark.large
 

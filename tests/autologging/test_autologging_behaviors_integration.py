@@ -1,26 +1,26 @@
 # pylint: disable=unused-argument
 
-import importlib
-import logging
-import pytest
-import sys
-import warnings
 from concurrent.futures import ThreadPoolExecutor
+import importlib
 from io import StringIO
 from itertools import permutations
+import logging
+import sys
 from unittest import mock
+import warnings
+
+import pytest
 
 import mlflow
 from mlflow.tracking import MlflowClient
 from mlflow.utils import gorilla
 from mlflow.utils.autologging_utils import (
-    safe_patch,
-    get_autologging_config,
     autologging_is_disabled,
+    get_autologging_config,
+    safe_patch,
 )
-
-from tests.autologging.fixtures import test_mode_off
 from tests.autologging.fixtures import reset_stderr  # pylint: disable=unused-import
+from tests.autologging.fixtures import test_mode_off
 
 
 pytestmark = pytest.mark.large
@@ -196,7 +196,7 @@ def test_autolog_reverts_patched_code_when_disabled():
 
 def test_autolog_respects_disable_flag_across_import_orders():
     def test():
-        from sklearn import svm, datasets
+        from sklearn import datasets, svm
 
         iris = datasets.load_iris()
         svc = svm.SVC(C=2.0, degree=5, kernel="rbf")
@@ -243,9 +243,9 @@ def test_autolog_respects_silent_mode(tmpdir):
     iris = datasets.load_iris()
 
     def train_model():
-        import sklearn.utils
         from sklearn import svm
         from sklearn.model_selection import GridSearchCV
+        import sklearn.utils
 
         parameters = {"kernel": ("linear", "rbf"), "C": [1, 10]}
         svc = svm.SVC()
@@ -302,9 +302,9 @@ def test_autolog_globally_configured_flag_set_correctly():
     from mlflow.utils.autologging_utils import AUTOLOGGING_INTEGRATIONS
 
     AUTOLOGGING_INTEGRATIONS.clear()
-    import sklearn  # pylint: disable=unused-import,unused-variable
     import pyspark  # pylint: disable=unused-import,unused-variable
     import pyspark.ml  # pylint: disable=unused-import,unused-variable
+    import sklearn  # pylint: disable=unused-import,unused-variable
 
     integrations_to_test = ["sklearn", "spark", "pyspark.ml"]
     mlflow.autolog()

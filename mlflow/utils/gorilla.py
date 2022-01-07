@@ -42,6 +42,7 @@ import pkgutil
 import sys
 import types
 
+
 __version__ = "0.3.0"
 _logger = logging.getLogger(__name__)
 

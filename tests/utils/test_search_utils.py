@@ -1,9 +1,10 @@
 import base64
 import json
-import pytest
 import re
 
-from mlflow.entities import RunInfo, RunData, Run, LifecycleStage, RunStatus, Metric, Param, RunTag
+import pytest
+
+from mlflow.entities import LifecycleStage, Metric, Param, Run, RunData, RunInfo, RunStatus, RunTag
 from mlflow.exceptions import MlflowException
 from mlflow.utils.search_utils import SearchUtils
 

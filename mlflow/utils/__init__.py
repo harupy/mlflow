@@ -1,5 +1,5 @@
-import logging
 from itertools import islice
+import logging
 from sys import version_info
 
 
@@ -27,8 +27,8 @@ def get_unique_resource_id(max_length=None):
     :return: A unique identifier that can be appended to a user-readable resource name to avoid
              naming collisions.
     """
-    import uuid
     import base64
+    import uuid
 
     if max_length is not None and max_length <= 0:
         raise ValueError(

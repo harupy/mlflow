@@ -1,10 +1,11 @@
 import random
-from packaging.version import Version
 
+from packaging.version import Version
 import spacy
-from spacy.util import minibatch, compounding
+from spacy.util import compounding, minibatch
 
 import mlflow.spacy
+
 
 IS_SPACY_VERSION_NEWER_THAN_OR_EQUAL_TO_3_0_0 = Version(spacy.__version__) >= Version("3.0.0")
 

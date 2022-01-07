@@ -3,10 +3,11 @@ This module provides utilities for performing Azure Blob Storage operations with
 the heavyweight azure-storage-blob library dependency
 """
 from copy import deepcopy
-import urllib
 import logging
+import urllib
 
 from mlflow.utils import rest_utils
+
 
 _logger = logging.getLogger(__name__)
 _PUT_BLOCK_HEADERS = {

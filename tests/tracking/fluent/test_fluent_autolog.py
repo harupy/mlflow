@@ -1,31 +1,30 @@
-import pytest
-import sys
 from collections import namedtuple
 from io import StringIO
+import sys
 from unittest import mock
+
+import fastai
+import keras
+import lightgbm
+import mxnet.gluon
 from packaging.version import Version
+import pyspark
+import pyspark.ml
+import pytest
+import pytorch_lightning
+import sklearn
+import statsmodels
+import tensorflow
+import xgboost
 
 import mlflow
 from mlflow.utils.autologging_utils import (
-    get_autologging_config,
     autologging_is_disabled,
     AutologgingEventLogger,
+    get_autologging_config,
 )
-
-import tensorflow
-import keras
-import fastai
-import sklearn
-import xgboost
-import lightgbm
-import statsmodels
-import mxnet.gluon
-import pyspark
-import pyspark.ml
-import pytorch_lightning
-
-from tests.autologging.fixtures import test_mode_off, test_mode_on
 from tests.autologging.fixtures import reset_stderr  # pylint: disable=unused-import
+from tests.autologging.fixtures import test_mode_off, test_mode_on
 
 
 library_to_mlflow_module_without_spark_datasource = {

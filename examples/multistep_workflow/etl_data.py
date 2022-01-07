@@ -1,11 +1,13 @@
 """
 Converts the raw CSV form to a Parquet form with just the columns we want
 """
-import tempfile
 import os
-import pyspark
-import mlflow
+import tempfile
+
 import click
+import pyspark
+
+import mlflow
 
 
 @click.command(

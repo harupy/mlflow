@@ -1,9 +1,12 @@
+from collections import namedtuple
+import json
 import logging
 import os
-
-import json
+import shutil
 from unittest import mock
+
 import numpy as np
+from packaging.version import Version
 import pandas as pd
 import pyspark
 from pyspark.ml.classification import LogisticRegression
@@ -11,35 +14,32 @@ from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.pipeline import Pipeline
 import pytest
 from sklearn import datasets
-import shutil
-from collections import namedtuple
 import yaml
-from packaging.version import Version
 
 import mlflow
-import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
-import mlflow.tracking
 from mlflow import pyfunc
 from mlflow import spark as sparkm
 from mlflow.exceptions import MlflowException
-from mlflow.models import Model, infer_signature
+from mlflow.models import infer_signature, Model
 from mlflow.models.utils import _read_example
+import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
 from mlflow.store.artifact.s3_artifact_repo import S3ArtifactRepository
+import mlflow.tracking
+from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils.environment import _mlflow_conda_env
 from mlflow.utils.file_utils import TempDir
 from mlflow.utils.model_utils import _get_flavor_configuration
-from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
-
 from tests.helper_functions import (
-    score_model_in_sagemaker_docker_container,
+    _assert_pip_requirements,
     _compare_conda_env_requirements,
     _get_pip_deps,
-    _assert_pip_requirements,
+    score_model_in_sagemaker_docker_container,
 )
-from tests.pyfunc.test_spark import score_model_as_udf, get_spark_session
-from tests.helper_functions import set_boto_credentials  # pylint: disable=unused-import
 from tests.helper_functions import mock_s3_bucket  # pylint: disable=unused-import
+from tests.helper_functions import set_boto_credentials  # pylint: disable=unused-import
+from tests.pyfunc.test_spark import get_spark_session, score_model_as_udf
+
 
 _logger = logging.getLogger(__name__)
 

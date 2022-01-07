@@ -2,10 +2,10 @@ import paddle
 
 import mlflow
 from mlflow.utils.autologging_utils import (
-    ExceptionSafeAbstractClass,
     BatchMetricsLogger,
-    MlflowAutologgingQueueingClient,
+    ExceptionSafeAbstractClass,
     get_autologging_config,
+    MlflowAutologgingQueueingClient,
 )
 
 

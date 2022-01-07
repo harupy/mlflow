@@ -1,7 +1,7 @@
 import time
 
 from mlflow.entities import Metric
-from tests.helper_functions import random_str, random_int
+from tests.helper_functions import random_int, random_str
 
 
 def _check(metric, key, value, timestamp, step):

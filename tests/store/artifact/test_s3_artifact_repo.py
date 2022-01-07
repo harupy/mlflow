@@ -1,22 +1,20 @@
+from datetime import datetime
+import json
 import os
 import posixpath
 import tarfile
-import json
-from datetime import datetime
+from unittest import mock
 
 import pytest
 
 from mlflow.store.artifact.artifact_repository_registry import get_artifact_repository
 from mlflow.store.artifact.s3_artifact_repo import (
-    S3ArtifactRepository,
     _cached_get_s3_client,
     _MAX_CACHE_SECONDS,
+    S3ArtifactRepository,
 )
-
-from tests.helper_functions import set_boto_credentials  # pylint: disable=unused-import
 from tests.helper_functions import mock_s3_bucket  # pylint: disable=unused-import
-
-from unittest import mock
+from tests.helper_functions import set_boto_credentials  # pylint: disable=unused-import
 
 
 @pytest.fixture

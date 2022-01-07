@@ -1,16 +1,15 @@
-from click.testing import CliRunner
-from unittest import mock
-import pytest
-
 import os
 import shutil
 import tempfile
 import textwrap
+from unittest import mock
 
-from mlflow import experiments
-from mlflow.runs import list_run
+from click.testing import CliRunner
+import pytest
 
 import mlflow
+from mlflow import experiments
+from mlflow.runs import list_run
 
 
 def test_list_run():

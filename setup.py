@@ -1,8 +1,9 @@
-import os
-import logging
-
 from importlib.machinery import SourceFileLoader
-from setuptools import setup, find_packages
+import logging
+import os
+
+from setuptools import find_packages, setup
+
 
 _MLFLOW_SKINNY_ENV_VAR = "MLFLOW_SKINNY"
 

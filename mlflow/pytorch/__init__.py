@@ -10,41 +10,42 @@ PyTorch (native) format
 import importlib
 import logging
 import os
-import yaml
+import posixpath
+import shutil
 import warnings
 
 import numpy as np
-import pandas as pd
 from packaging.version import Version
-import posixpath
+import pandas as pd
+import yaml
 
 import mlflow
-import shutil
-import mlflow.pyfunc.utils as pyfunc_utils
 from mlflow import pyfunc
 from mlflow.exceptions import MlflowException
 from mlflow.models import Model, ModelSignature
 from mlflow.models.model import MLMODEL_FILE_NAME
-from mlflow.models.utils import ModelInputExample, _save_example
+from mlflow.models.utils import _save_example, ModelInputExample
 from mlflow.protos.databricks_pb2 import RESOURCE_DOES_NOT_EXIST
+import mlflow.pyfunc.utils as pyfunc_utils
 from mlflow.pytorch import pickle_module as mlflow_pytorch_pickle_module
+from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils.annotations import experimental
-from mlflow.utils.environment import (
-    _mlflow_conda_env,
-    _validate_env_arguments,
-    _process_pip_requirements,
-    _process_conda_env,
-    _CONDA_ENV_FILE_NAME,
-    _REQUIREMENTS_FILE_NAME,
-    _CONSTRAINTS_FILE_NAME,
-)
-from mlflow.utils.requirements_utils import _get_pinned_requirement
+from mlflow.utils.autologging_utils import autologging_integration, safe_patch
 from mlflow.utils.docstring_utils import format_docstring, LOG_MODEL_PARAM_DOCS
+from mlflow.utils.environment import (
+    _CONDA_ENV_FILE_NAME,
+    _CONSTRAINTS_FILE_NAME,
+    _mlflow_conda_env,
+    _process_conda_env,
+    _process_pip_requirements,
+    _REQUIREMENTS_FILE_NAME,
+    _validate_env_arguments,
+)
 from mlflow.utils.file_utils import _copy_file_or_tree, TempDir, write_to
 from mlflow.utils.model_utils import _get_flavor_configuration
-from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
-from mlflow.utils.autologging_utils import autologging_integration, safe_patch
+from mlflow.utils.requirements_utils import _get_pinned_requirement
+
 
 FLAVOR_NAME = "pytorch"
 
@@ -1018,6 +1019,7 @@ def autolog(
         PyTorch autologged MLflow entities
     """
     import pytorch_lightning as pl
+
     from mlflow.pytorch._pytorch_autolog import patched_fit
 
     safe_patch(FLAVOR_NAME, pl.Trainer, "fit", patched_fit, manage_run=True)

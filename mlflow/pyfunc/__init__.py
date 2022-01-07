@@ -205,52 +205,53 @@ You may prefer the second, lower-level workflow for the following reasons:
   artifacts.
 """
 
+from copy import deepcopy
 import importlib
+import logging
+import os
+from typing import Any, Dict, List, Union
 
 import numpy as np
-import os
 import pandas
+from scipy.sparse import csc_matrix, csr_matrix
 import yaml
-from copy import deepcopy
-import logging
 
-from typing import Any, Union, List, Dict
 import mlflow
-import mlflow.pyfunc.model
-import mlflow.pyfunc.utils
-from mlflow.models import Model, ModelSignature, ModelInputExample
+from mlflow.exceptions import MlflowException
+from mlflow.models import Model, ModelInputExample, ModelSignature
 from mlflow.models.model import MLMODEL_FILE_NAME
 from mlflow.models.utils import _save_example
-from mlflow.pyfunc.model import (  # pylint: disable=unused-import
-    PythonModel,
-    PythonModelContext,
-    get_default_conda_env,
-)
-from mlflow.pyfunc.model import get_default_pip_requirements
-from mlflow.tracking.artifact_utils import _download_artifact_from_uri
-from mlflow.types import DataType, Schema, TensorSpec
-from mlflow.types.utils import clean_tensor_type
-from mlflow.utils import PYTHON_VERSION, get_major_minor_py_version
-from mlflow.utils.annotations import deprecated
-from mlflow.utils.file_utils import TempDir, _copy_file_or_tree, write_to
-from mlflow.utils.model_utils import _get_flavor_configuration
-from mlflow.utils.environment import (
-    _validate_env_arguments,
-    _process_pip_requirements,
-    _process_conda_env,
-    _CONDA_ENV_FILE_NAME,
-    _REQUIREMENTS_FILE_NAME,
-    _CONSTRAINTS_FILE_NAME,
-)
-from mlflow.utils.docstring_utils import format_docstring, LOG_MODEL_PARAM_DOCS
-from mlflow.exceptions import MlflowException
-from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
 from mlflow.protos.databricks_pb2 import (
     INVALID_PARAMETER_VALUE,
     RESOURCE_ALREADY_EXISTS,
     RESOURCE_DOES_NOT_EXIST,
 )
-from scipy.sparse import csc_matrix, csr_matrix
+import mlflow.pyfunc.model
+from mlflow.pyfunc.model import (  # pylint: disable=unused-import
+    get_default_conda_env,
+    get_default_pip_requirements,
+    PythonModel,
+    PythonModelContext,
+)
+import mlflow.pyfunc.utils
+from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
+from mlflow.tracking.artifact_utils import _download_artifact_from_uri
+from mlflow.types import DataType, Schema, TensorSpec
+from mlflow.types.utils import clean_tensor_type
+from mlflow.utils import get_major_minor_py_version, PYTHON_VERSION
+from mlflow.utils.annotations import deprecated
+from mlflow.utils.docstring_utils import format_docstring, LOG_MODEL_PARAM_DOCS
+from mlflow.utils.environment import (
+    _CONDA_ENV_FILE_NAME,
+    _CONSTRAINTS_FILE_NAME,
+    _process_conda_env,
+    _process_pip_requirements,
+    _REQUIREMENTS_FILE_NAME,
+    _validate_env_arguments,
+)
+from mlflow.utils.file_utils import _copy_file_or_tree, TempDir, write_to
+from mlflow.utils.model_utils import _get_flavor_configuration
+
 
 FLAVOR_NAME = "python_function"
 MAIN = "loader_module"
@@ -794,11 +795,13 @@ def spark_udf(spark, model_uri, result_type="double"):
     # Scope Spark import to this method so users don't need pyspark to use non-Spark-related
     # functionality.
     import functools
-    from mlflow.pyfunc.spark_model_cache import SparkModelCache
+
     from pyspark.sql.functions import pandas_udf
-    from pyspark.sql.types import _parse_datatype_string
-    from pyspark.sql.types import ArrayType, DataType as SparkDataType
-    from pyspark.sql.types import DoubleType, IntegerType, FloatType, LongType, StringType
+    from pyspark.sql.types import DataType as SparkDataType
+    from pyspark.sql.types import DoubleType, FloatType, IntegerType, LongType, StringType
+    from pyspark.sql.types import _parse_datatype_string, ArrayType
+
+    from mlflow.pyfunc.spark_model_cache import SparkModelCache
 
     if not isinstance(result_type, SparkDataType):
         result_type = _parse_datatype_string(result_type)

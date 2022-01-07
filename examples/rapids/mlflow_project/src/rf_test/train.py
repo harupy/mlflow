@@ -3,14 +3,13 @@
 import argparse
 from functools import partial
 
-import mlflow
-import mlflow.sklearn
-
+from cuml.ensemble import RandomForestClassifier
 from cuml.metrics.accuracy import accuracy_score
 from cuml.preprocessing.model_selection import train_test_split
-from cuml.ensemble import RandomForestClassifier
+from hyperopt import fmin, hp, STATUS_OK, tpe, Trials
 
-from hyperopt import fmin, tpe, hp, Trials, STATUS_OK
+import mlflow
+import mlflow.sklearn
 
 
 def load_data(fpath):

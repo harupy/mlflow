@@ -1,16 +1,15 @@
 import json
 import os
 import posixpath
-
+from subprocess import PIPE, Popen, STDOUT
 from unittest import mock
 
 import mlflow
-import mlflow.pyfunc
 from mlflow.entities import FileInfo
+import mlflow.pyfunc
 from mlflow.store.artifact.cli import _file_infos_to_json
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils.file_utils import TempDir
-from subprocess import Popen, STDOUT, PIPE
 
 
 def test_file_info_to_json():

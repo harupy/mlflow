@@ -11,10 +11,10 @@ It also extends the functionality to support custom hooks for import errors
 (as opposed to only successful imports).
 """
 
+import importlib  # pylint: disable=unused-import
 import sys
 import threading
 
-import importlib  # pylint: disable=unused-import
 
 string_types = (str,)
 

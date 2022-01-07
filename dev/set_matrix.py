@@ -33,18 +33,19 @@ pytest dev/set_matrix.py --doctest-modules
 ```
 """
 
-import sys
 import argparse
-from packaging.version import Version
+import functools
 import json
 import operator
 import os
 import re
 import shutil
+import sys
 import urllib.request
-import functools
 
+from packaging.version import Version
 import yaml
+
 
 VERSIONS_YAML_PATH = "mlflow/ml-package-versions.yml"
 DEV_VERSION = "dev"

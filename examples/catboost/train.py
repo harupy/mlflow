@@ -1,8 +1,10 @@
 # Based on the official regression example:
 # https://catboost.ai/docs/concepts/python-usages-examples.html#regression
 
-import mlflow
 from catboost import CatBoostRegressor
+
+import mlflow
+
 
 # Initialize data
 train_data = [[1, 4, 5, 6], [4, 5, 6, 7], [30, 40, 50, 60]]

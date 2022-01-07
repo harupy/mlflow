@@ -1,44 +1,44 @@
-import pytest
+import os
+from unittest import mock
+
 import numpy as np
 import pandas as pd
-from unittest import mock
-import os
+import pytest
 import yaml
 
-import mlflow.statsmodels
-import mlflow.utils
-import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
 from mlflow import pyfunc
+from mlflow.models import infer_signature, Model
 from mlflow.models.utils import _read_example
-from mlflow.models import Model, infer_signature
+import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
+import mlflow.statsmodels
 from mlflow.store.artifact.s3_artifact_repo import S3ArtifactRepository
+from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
+import mlflow.utils
 from mlflow.utils.environment import _mlflow_conda_env
 from mlflow.utils.file_utils import TempDir
 from mlflow.utils.model_utils import _get_flavor_configuration
-from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
-
 from tests.helper_functions import (
-    pyfunc_serve_and_score_model,
-    _compare_conda_env_requirements,
     _assert_pip_requirements,
+    _compare_conda_env_requirements,
     _is_available_on_pypi,
+    pyfunc_serve_and_score_model,
 )
 from tests.helper_functions import mock_s3_bucket  # pylint: disable=unused-import
 from tests.helper_functions import set_boto_credentials  # pylint: disable=unused-import
-
 from tests.statsmodels.model_fixtures import (
-    ols_model,
     arma_model,
-    glsar_model,
     gee_model,
     glm_model,
     gls_model,
+    glsar_model,
+    ols_model,
     recursivels_model,
     rolling_ols_model,
     rolling_wls_model,
     wls_model,
 )
+
 
 EXTRA_PYFUNC_SERVING_TEST_ARGS = [] if _is_available_on_pypi("statsmodels") else ["--no-conda"]
 

@@ -4,29 +4,29 @@ This is a lower level API than the :py:mod:`mlflow.tracking.fluent` module, and 
 exposed in the :py:mod:`mlflow.tracking` module.
 """
 
-import time
+from collections import OrderedDict
 import os
+import time
 
+from mlflow.entities import ExperimentTag, Metric, Param, RunStatus, RunTag, ViewType
+from mlflow.exceptions import MlflowException
+from mlflow.protos.databricks_pb2 import ErrorCode, INVALID_PARAMETER_VALUE
+from mlflow.store.artifact.artifact_repository_registry import get_artifact_repository
 from mlflow.store.tracking import SEARCH_MAX_RESULTS_DEFAULT
 from mlflow.tracking._tracking_service import utils
+from mlflow.utils.mlflow_tags import MLFLOW_USER
+from mlflow.utils.string_utils import is_string_type
+from mlflow.utils.uri import add_databricks_profile_info_to_artifact_uri
 from mlflow.utils.validation import (
-    _validate_param_name,
-    _validate_tag_name,
-    _validate_run_id,
     _validate_experiment_artifact_location,
     _validate_experiment_name,
     _validate_metric,
     _validate_param_keys_unique,
+    _validate_param_name,
+    _validate_run_id,
+    _validate_tag_name,
     PARAM_VALIDATION_MSG,
 )
-from mlflow.entities import Param, Metric, RunStatus, RunTag, ViewType, ExperimentTag
-from mlflow.exceptions import MlflowException
-from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE, ErrorCode
-from mlflow.store.artifact.artifact_repository_registry import get_artifact_repository
-from mlflow.utils.mlflow_tags import MLFLOW_USER
-from mlflow.utils.string_utils import is_string_type
-from mlflow.utils.uri import add_databricks_profile_info_to_artifact_uri
-from collections import OrderedDict
 
 
 class TrackingServiceClient(object):

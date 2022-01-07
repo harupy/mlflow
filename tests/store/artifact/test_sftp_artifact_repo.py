@@ -1,12 +1,14 @@
-from unittest.mock import MagicMock
-import pytest
+import os
+import posixpath
 from tempfile import NamedTemporaryFile
+from unittest.mock import MagicMock
+
 import pysftp
+import pytest
+
 from mlflow.store.artifact.artifact_repository_registry import get_artifact_repository
 from mlflow.store.artifact.sftp_artifact_repo import SFTPArtifactRepository
 from mlflow.utils.file_utils import TempDir
-import os
-import posixpath
 
 
 @pytest.fixture

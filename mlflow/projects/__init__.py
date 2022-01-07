@@ -2,31 +2,33 @@
 The ``mlflow.projects`` module provides an API for running MLflow projects locally or remotely.
 """
 import json
-import yaml
-import os
 import logging
+import os
 
-import mlflow.projects.databricks
-import mlflow.tracking as tracking
+import yaml
+
 from mlflow.entities import RunStatus
 from mlflow.exceptions import ExecutionException, MlflowException
+from mlflow.projects.backend import loader
+import mlflow.projects.databricks
 from mlflow.projects.submitted_run import SubmittedRun
 from mlflow.projects.utils import (
-    PROJECT_SYNCHRONOUS,
-    get_entry_point_command,
-    get_run_env_vars,
     fetch_and_validate_project,
+    get_entry_point_command,
     get_or_create_run,
+    get_run_env_vars,
     load_project,
     MLFLOW_LOCAL_BACKEND_RUN_ID_CONFIG,
-    PROJECT_USE_CONDA,
-    PROJECT_STORAGE_DIR,
     PROJECT_DOCKER_ARGS,
+    PROJECT_STORAGE_DIR,
+    PROJECT_SYNCHRONOUS,
+    PROJECT_USE_CONDA,
 )
-from mlflow.projects.backend import loader
+import mlflow.tracking as tracking
 from mlflow.tracking.fluent import _get_experiment_id
-from mlflow.utils.mlflow_tags import MLFLOW_PROJECT_ENV, MLFLOW_PROJECT_BACKEND
+from mlflow.utils.mlflow_tags import MLFLOW_PROJECT_BACKEND, MLFLOW_PROJECT_ENV
 import mlflow.utils.uri
+
 
 _logger = logging.getLogger(__name__)
 
@@ -128,12 +130,12 @@ def _run(
         )
 
     elif backend_name == "kubernetes":
+        from mlflow.projects import kubernetes as kb
         from mlflow.projects.docker import (
             build_docker_image,
             validate_docker_env,
             validate_docker_installation,
         )
-        from mlflow.projects import kubernetes as kb
 
         tracking.MlflowClient().set_tag(active_run.info.run_id, MLFLOW_PROJECT_ENV, "docker")
         tracking.MlflowClient().set_tag(

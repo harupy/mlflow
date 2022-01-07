@@ -1,11 +1,12 @@
-import os
-from subprocess import Popen, PIPE, STDOUT
 import logging
+import os
+from subprocess import PIPE, Popen, STDOUT
 
 import mlflow
-import mlflow.version
-from mlflow.utils.file_utils import TempDir, _copy_project
+from mlflow.utils.file_utils import _copy_project, TempDir
 from mlflow.utils.logging_utils import eprint
+import mlflow.version
+
 
 _logger = logging.getLogger(__name__)
 

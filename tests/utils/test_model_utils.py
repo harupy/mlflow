@@ -4,12 +4,12 @@ import pytest
 import sklearn.datasets as datasets
 import sklearn.neighbors as knn
 
-import mlflow.sklearn
-import mlflow.utils.model_utils as mlflow_model_utils
 from mlflow.exceptions import MlflowException
+from mlflow.mleap import FLAVOR_NAME as MLEAP_FLAVOR_NAME
 from mlflow.models import Model
 from mlflow.protos.databricks_pb2 import RESOURCE_DOES_NOT_EXIST
-from mlflow.mleap import FLAVOR_NAME as MLEAP_FLAVOR_NAME
+import mlflow.sklearn
+import mlflow.utils.model_utils as mlflow_model_utils
 
 
 @pytest.fixture(scope="session")

@@ -4,12 +4,13 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
+from scipy.sparse import csc_matrix, csr_matrix
 
 from mlflow.exceptions import MlflowException
 from mlflow.models import Model
 from mlflow.types.utils import TensorsNotSupportedException
-from mlflow.utils.proto_json_utils import NumpyEncoder, _dataframe_from_json, parse_tf_serving_input
-from scipy.sparse import csr_matrix, csc_matrix
+from mlflow.utils.proto_json_utils import _dataframe_from_json, NumpyEncoder, parse_tf_serving_input
+
 
 ModelInputExample = Union[pd.DataFrame, np.ndarray, dict, list, csr_matrix, csc_matrix]
 

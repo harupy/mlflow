@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 # NB: Older versions of PyTorch Lightning define native APIs for metric computation,
 # (e.g., pytorch_lightning.metrics.Accuracy), while newer versions rely on the `torchmetrics`
 # package (e.g. `torchmetrics.Accuracy)

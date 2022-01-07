@@ -1,34 +1,33 @@
+from contextlib import contextmanager, ExitStack
+import functools
 import os
 import random
-import functools
-from unittest import mock
-from contextlib import ExitStack, contextmanager
-
-
-import requests
-import time
 import signal
 import socket
 import subprocess
-import uuid
 import sys
-import yaml
+import time
+from unittest import mock
+import uuid
 
 import pandas as pd
 import pytest
+import requests
+import yaml
 
 import mlflow
-import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
 import mlflow.pyfunc
+import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
-from mlflow.utils.file_utils import read_yaml, write_yaml
 from mlflow.utils.environment import (
-    _get_pip_deps,
     _CONDA_ENV_FILE_NAME,
-    _REQUIREMENTS_FILE_NAME,
     _CONSTRAINTS_FILE_NAME,
+    _get_pip_deps,
+    _REQUIREMENTS_FILE_NAME,
 )
+from mlflow.utils.file_utils import read_yaml, write_yaml
 from mlflow.utils.requirements_utils import _get_installed_version
+
 
 LOCALHOST = "127.0.0.1"
 

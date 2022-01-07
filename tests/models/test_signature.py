@@ -1,11 +1,12 @@
 import json
+
 import numpy as np
 import pandas as pd
 import pyspark
 
-from mlflow.models.signature import ModelSignature, infer_signature
+from mlflow.models.signature import infer_signature, ModelSignature
 from mlflow.types import DataType
-from mlflow.types.schema import Schema, ColSpec, TensorSpec
+from mlflow.types.schema import ColSpec, Schema, TensorSpec
 
 
 def test_model_signature_with_colspec():

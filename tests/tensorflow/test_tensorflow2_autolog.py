@@ -1,24 +1,24 @@
 # pep8: disable=E501
 
 import collections
-import pytest
-import sys
+import os
 import pickle
-from packaging.version import Version
+import sys
+from unittest.mock import patch
 
 import numpy as np
+from packaging.version import Version
 import pandas as pd
+import pytest
 import tensorflow as tf
 from tensorflow.keras import layers
 
 import mlflow
-import mlflow.tensorflow
-from mlflow.tensorflow._autolog import _TensorBoard, __MLflowTfKeras2Callback
 import mlflow.keras
-from mlflow.utils.autologging_utils import BatchMetricsLogger, autologging_is_disabled
-from unittest.mock import patch
+import mlflow.tensorflow
+from mlflow.tensorflow._autolog import __MLflowTfKeras2Callback, _TensorBoard
+from mlflow.utils.autologging_utils import autologging_is_disabled, BatchMetricsLogger
 
-import os
 
 np.random.seed(1337)
 
@@ -534,6 +534,7 @@ def test_tf_keras_autolog_logs_to_and_deletes_temporary_directory_when_tensorboa
     tmpdir, random_train_data, random_one_hot_labels
 ):
     from unittest import mock
+
     from mlflow.tensorflow import _TensorBoardLogDir
 
     mlflow.tensorflow.autolog()
@@ -741,6 +742,7 @@ def test_flush_queue_is_thread_safe():
     verifies that `_flush_queue` is thread safe.
     """
     from threading import Thread
+
     from mlflow.entities import Metric
     from mlflow.tensorflow import _flush_queue, _metric_queue_lock
 
@@ -923,8 +925,8 @@ def test_fluent_autolog_with_tf_keras_preserves_v2_model_reference():
     """
     mlflow.autolog()
 
-    import tensorflow.keras
     from keras.api._v2.keras import Model as ModelV2
+    import tensorflow.keras
 
     assert tensorflow.keras.Model is ModelV2
 

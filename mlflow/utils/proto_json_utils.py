@@ -1,15 +1,14 @@
 import base64
+from collections import defaultdict
 import datetime
-
+from functools import partial
 import json
 from json import JSONEncoder
 
-from google.protobuf.json_format import MessageToJson, ParseDict
 from google.protobuf.descriptor import FieldDescriptor
+from google.protobuf.json_format import MessageToJson, ParseDict
 
 from mlflow.exceptions import MlflowException
-from collections import defaultdict
-from functools import partial
 
 
 _PROTOBUF_INT64_FIELDS = [

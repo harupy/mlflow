@@ -1,5 +1,7 @@
-import mlflow
 import sklearn
+
+import mlflow
+
 
 # Use explicit model logging to control the conda environment and pip requirements
 mlflow.sklearn.autolog(log_models=False)

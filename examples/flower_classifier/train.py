@@ -7,19 +7,18 @@ import math
 import os
 
 import click
+from image_pyfunc import decode_and_resize_image, KerasImageClassifierPyfunc, log_model
 import keras
-from keras.utils import np_utils
-from keras.models import Model
-from keras.callbacks import Callback
 from keras.applications import vgg16
-from keras.layers import Input, Dense, Flatten, Lambda
+from keras.callbacks import Callback
+from keras.layers import Dense, Flatten, Input, Lambda
+from keras.models import Model
+from keras.utils import np_utils
 import numpy as np
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
 
 import mlflow
-
-from image_pyfunc import decode_and_resize_image, log_model, KerasImageClassifierPyfunc
 
 
 def download_input():

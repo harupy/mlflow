@@ -1,28 +1,28 @@
 import os
-import unittest
-
 import tempfile
+import unittest
 from unittest import mock
 import uuid
 
 import mlflow
 import mlflow.db
-import mlflow.store.db.base_sql_model
 from mlflow.entities.model_registry import (
-    RegisteredModel,
     ModelVersion,
-    RegisteredModelTag,
     ModelVersionTag,
+    RegisteredModel,
+    RegisteredModelTag,
 )
 from mlflow.exceptions import MlflowException
 from mlflow.protos.databricks_pb2 import (
     ErrorCode,
-    RESOURCE_DOES_NOT_EXIST,
     INVALID_PARAMETER_VALUE,
     RESOURCE_ALREADY_EXISTS,
+    RESOURCE_DOES_NOT_EXIST,
 )
+import mlflow.store.db.base_sql_model
 from mlflow.store.model_registry.sqlalchemy_store import SqlAlchemyStore
 from tests.helper_functions import random_str
+
 
 DB_URI = "sqlite:///"
 

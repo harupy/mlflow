@@ -1,7 +1,7 @@
 import unittest
 
 from mlflow.entities import Experiment, LifecycleStage
-from tests.helper_functions import random_int, random_file
+from tests.helper_functions import random_file, random_int
 
 
 class TestExperiment(unittest.TestCase):

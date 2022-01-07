@@ -8,12 +8,13 @@ $ python dev/update_pypi_package_index.py
 """
 
 import argparse
-import json
-import posixpath
-import requests
-import sys
 from datetime import datetime
 from html.parser import HTMLParser
+import json
+import posixpath
+import sys
+
+import requests
 
 
 def parse_args(args):

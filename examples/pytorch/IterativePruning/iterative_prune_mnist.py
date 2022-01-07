@@ -1,21 +1,18 @@
 import argparse
 import copy
 import os
+from pathlib import Path
 import shutil
 import tempfile
-from pathlib import Path
 
+from ax.service.ax_client import AxClient
+from mnist import LightningMNISTClassifier, MNISTDataModule
+from prettytable import PrettyTable
 import pytorch_lightning as pl
 import torch
-from ax.service.ax_client import AxClient
-from prettytable import PrettyTable
 from torch.nn.utils import prune
 
 import mlflow.pytorch
-from mnist import (
-    MNISTDataModule,
-    LightningMNISTClassifier,
-)
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 
 

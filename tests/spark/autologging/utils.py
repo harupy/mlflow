@@ -1,12 +1,12 @@
 import os
-import pytest
 import shutil
 import tempfile
 
-import mlflow
-from pyspark.sql import SparkSession, Row
-from pyspark.sql.types import StructType, IntegerType, StringType, StructField
+from pyspark.sql import Row, SparkSession
+from pyspark.sql.types import IntegerType, StringType, StructField, StructType
+import pytest
 
+import mlflow
 from mlflow._spark_autologging import _SPARK_TABLE_INFO_TAG_NAME
 
 

@@ -1,6 +1,7 @@
 import logging
-import click
 import os
+
+import click
 
 from mlflow.models import Model
 from mlflow.models.model import MLMODEL_FILE_NAME
@@ -9,6 +10,7 @@ from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils import cli_args
 from mlflow.utils.file_utils import TempDir
 from mlflow.utils.uri import append_to_uri_path
+
 
 _logger = logging.getLogger(__name__)
 

@@ -1,14 +1,14 @@
 import argparse
 
-from sklearn import datasets
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, log_loss
-import xgboost as xgb
 import matplotlib as mpl
-
+from sklearn import datasets
+from sklearn.metrics import accuracy_score, log_loss
+from sklearn.model_selection import train_test_split
+import xgboost as xgb
 
 import mlflow
 import mlflow.xgboost
+
 
 mpl.use("Agg")
 

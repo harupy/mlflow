@@ -1,34 +1,33 @@
+from distutils import dir_util
 import logging
 import os
 import re
 import tempfile
 import urllib.parse
 
-
-from distutils import dir_util
-
-import mlflow.utils
-from mlflow.utils import databricks_utils
-from mlflow.entities import SourceType, Param
+from mlflow import tracking
+from mlflow.entities import Param, SourceType
 from mlflow.exceptions import ExecutionException
 from mlflow.projects import _project_spec
-from mlflow import tracking
-from mlflow.tracking.context.git_context import _get_git_commit
 from mlflow.tracking import fluent
 from mlflow.tracking.context.default_context import _get_user
+from mlflow.tracking.context.git_context import _get_git_commit
+import mlflow.utils
+from mlflow.utils import databricks_utils
 from mlflow.utils.mlflow_tags import (
-    MLFLOW_USER,
-    MLFLOW_SOURCE_NAME,
-    MLFLOW_SOURCE_TYPE,
+    LEGACY_MLFLOW_GIT_BRANCH_NAME,
+    LEGACY_MLFLOW_GIT_REPO_URL,
+    MLFLOW_GIT_BRANCH,
     MLFLOW_GIT_COMMIT,
     MLFLOW_GIT_REPO_URL,
-    MLFLOW_GIT_BRANCH,
-    LEGACY_MLFLOW_GIT_REPO_URL,
-    LEGACY_MLFLOW_GIT_BRANCH_NAME,
-    MLFLOW_PROJECT_ENTRY_POINT,
     MLFLOW_PARENT_RUN_ID,
+    MLFLOW_PROJECT_ENTRY_POINT,
+    MLFLOW_SOURCE_NAME,
+    MLFLOW_SOURCE_TYPE,
+    MLFLOW_USER,
 )
 from mlflow.utils.rest_utils import augmented_raise_for_status
+
 
 # TODO: this should be restricted to just Git repos and not S3 and stuff like that
 _GIT_URI_REGEX = re.compile(r"^[^/]*:")
@@ -205,8 +204,9 @@ def _fetch_git_repo(uri, version, dst_dir):
 
 
 def _fetch_zip_repo(uri):
-    import requests
     from io import BytesIO
+
+    import requests
 
     # TODO (dbczumar): Replace HTTP resolution via ``requests.get`` with an invocation of
     # ```mlflow.data.download_uri()`` when the API supports the same set of available stores as

@@ -5,6 +5,7 @@ from sklearn.datasets import load_iris
 
 import mlflow
 
+
 spark = SparkSession.builder.getOrCreate()
 
 df = load_iris(as_frame=True).frame.rename(columns={"target": "label"})

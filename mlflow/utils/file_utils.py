@@ -4,26 +4,28 @@ import gzip
 import os
 import posixpath
 import shutil
+import stat
 import sys
 import tarfile
 import tempfile
-import stat
-
 import urllib.parse
-import urllib.request
 from urllib.parse import unquote
+import urllib.request
 from urllib.request import pathname2url
 
 import yaml
 
+
 try:
-    from yaml import CSafeLoader as YamlSafeLoader, CSafeDumper as YamlSafeDumper
+    from yaml import CSafeDumper as YamlSafeDumper
+    from yaml import CSafeLoader as YamlSafeLoader
 except ImportError:
     from yaml import SafeLoader as YamlSafeLoader, SafeDumper as YamlSafeDumper
 
 from mlflow.entities import FileInfo
 from mlflow.exceptions import MissingConfigException
-from mlflow.utils.rest_utils import cloud_storage_http_request, augmented_raise_for_status
+from mlflow.utils.rest_utils import augmented_raise_for_status, cloud_storage_http_request
+
 
 ENCODING = "utf-8"
 

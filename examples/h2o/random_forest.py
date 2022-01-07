@@ -4,6 +4,7 @@ from h2o.estimators.random_forest import H2ORandomForestEstimator
 import mlflow
 import mlflow.h2o
 
+
 h2o.init()
 
 wine = h2o.import_file(path="wine-quality.csv")

@@ -1,31 +1,29 @@
 import json
 import os
 from unittest import mock
-from packaging.version import Version
 
+import mleap.version
 import numpy as np
+from packaging.version import Version
 import pandas as pd
 import pyspark
 from pyspark.ml.pipeline import Pipeline
 from pyspark.ml.wrapper import JavaModel
-import mleap.version
 import pytest
 
 import mlflow
 import mlflow.mleap
 from mlflow.models import Model
-from mlflow.utils.file_utils import TempDir
-from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
+from mlflow.tracking.artifact_utils import _download_artifact_from_uri
+from mlflow.utils.file_utils import TempDir
 from tests.helper_functions import score_model_in_sagemaker_docker_container
 from tests.pyfunc.test_spark import get_spark_session
-
-
 from tests.spark.test_spark_model_export import (  # pylint: disable=unused-import
-    model_path,
     iris_df,
-    spark_model_iris,
+    model_path,
     spark_custom_env,
+    spark_model_iris,
 )
 
 

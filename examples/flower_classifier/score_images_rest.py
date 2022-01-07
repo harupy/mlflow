@@ -4,12 +4,12 @@ Example of scoring images with MLflow model deployed to a REST API endpoint.
 The MLflow model to be scored is expected to be an instance of KerasImageClassifierPyfunc
 (e.g. produced by running this project) and deployed with MLflow prior to invoking this script.
 """
-import os
 import base64
-import requests
+import os
 
 import click
 import pandas as pd
+import requests
 
 from mlflow.utils import cli_args
 

@@ -1,39 +1,39 @@
 from contextlib import contextmanager
 import os
 import tempfile
-import yaml
+import types
 import warnings
 
 import numpy as np
+import yaml
 
 import mlflow
-import types
-import mlflow.utils.autologging_utils
 from mlflow import pyfunc
 from mlflow.exceptions import MlflowException
-from mlflow.utils.annotations import experimental
-from mlflow.utils.uri import append_to_uri_path
 from mlflow.models import Model
-
-from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.models.model import MLMODEL_FILE_NAME
 from mlflow.models.signature import ModelSignature
-from mlflow.models.utils import ModelInputExample, _save_example
-from mlflow.utils.environment import (
-    _mlflow_conda_env,
-    _get_pip_deps,
-    _validate_env_arguments,
-    _process_pip_requirements,
-    _process_conda_env,
-    _CONSTRAINTS_FILE_NAME,
-    _CONDA_ENV_FILE_NAME,
-    _REQUIREMENTS_FILE_NAME,
-)
-from mlflow.utils.file_utils import write_to
-from mlflow.utils.docstring_utils import format_docstring, LOG_MODEL_PARAM_DOCS
-from mlflow.utils.model_utils import _get_flavor_configuration
+from mlflow.models.utils import _save_example, ModelInputExample
 from mlflow.protos.databricks_pb2 import RESOURCE_ALREADY_EXISTS
 from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
+from mlflow.tracking.artifact_utils import _download_artifact_from_uri
+from mlflow.utils.annotations import experimental
+import mlflow.utils.autologging_utils
+from mlflow.utils.docstring_utils import format_docstring, LOG_MODEL_PARAM_DOCS
+from mlflow.utils.environment import (
+    _CONDA_ENV_FILE_NAME,
+    _CONSTRAINTS_FILE_NAME,
+    _get_pip_deps,
+    _mlflow_conda_env,
+    _process_conda_env,
+    _process_pip_requirements,
+    _REQUIREMENTS_FILE_NAME,
+    _validate_env_arguments,
+)
+from mlflow.utils.file_utils import write_to
+from mlflow.utils.model_utils import _get_flavor_configuration
+from mlflow.utils.uri import append_to_uri_path
+
 
 FLAVOR_NAME = "shap"
 

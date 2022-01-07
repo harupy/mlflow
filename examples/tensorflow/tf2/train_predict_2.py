@@ -1,13 +1,16 @@
 # in case this is run outside of conda environment with python2
-import mlflow
 import argparse
-import sys
-from mlflow import pyfunc
-import pandas as pd
 import shutil
+import sys
 import tempfile
+
+import pandas as pd
 import tensorflow as tf
+
+import mlflow
+from mlflow import pyfunc
 import mlflow.tensorflow
+
 
 TRAIN_URL = "http://download.tensorflow.org/data/iris_training.csv"
 TEST_URL = "http://download.tensorflow.org/data/iris_test.csv"

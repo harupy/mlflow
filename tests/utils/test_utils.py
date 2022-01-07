@@ -1,11 +1,12 @@
 from unittest import mock
+
 import pytest
 
 from mlflow.utils import (
-    get_unique_resource_id,
     _chunk_dict,
-    _truncate_dict,
     _get_fully_qualified_class_name,
+    _truncate_dict,
+    get_unique_resource_id,
 )
 
 

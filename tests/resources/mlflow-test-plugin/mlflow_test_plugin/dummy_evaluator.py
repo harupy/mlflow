@@ -1,16 +1,18 @@
+import io
+import time
+
+import pandas as pd
+from sklearn import metrics as sk_metrics
+
 import mlflow
+from mlflow.entities import Metric
 from mlflow.models.evaluation import (
-    ModelEvaluator,
-    EvaluationMetrics,
     EvaluationArtifact,
+    EvaluationMetrics,
     EvaluationResult,
+    ModelEvaluator,
 )
 from mlflow.tracking.artifact_utils import get_artifact_uri
-from mlflow.entities import Metric
-from sklearn import metrics as sk_metrics
-import time
-import pandas as pd
-import io
 
 
 class Array2DEvaluationArtifact(EvaluationArtifact):

@@ -1,6 +1,5 @@
 import os
 import pickle
-import yaml
 import re
 
 import numpy as np
@@ -9,17 +8,18 @@ import pytest
 import sklearn.datasets
 import sklearn.linear_model
 import sklearn.neighbors
+import yaml
 
 import mlflow
+from mlflow.exceptions import MlflowException
+from mlflow.models import infer_signature, Model, ModelSignature
+from mlflow.models.utils import _read_example
 import mlflow.pyfunc
 from mlflow.pyfunc import PyFuncModel
 import mlflow.pyfunc.model
 import mlflow.sklearn
-from mlflow.exceptions import MlflowException
-from mlflow.models import Model, infer_signature, ModelSignature
-from mlflow.models.utils import _read_example
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
-from mlflow.types import Schema, ColSpec, TensorSpec
+from mlflow.types import ColSpec, Schema, TensorSpec
 from mlflow.utils.environment import _mlflow_conda_env
 from mlflow.utils.file_utils import TempDir
 from mlflow.utils.model_utils import _get_flavor_configuration

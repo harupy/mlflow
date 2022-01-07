@@ -1,6 +1,8 @@
-import mlflow
 import shap
 import sklearn
+
+import mlflow
+
 
 # prepare training data
 X, y = shap.datasets.boston()

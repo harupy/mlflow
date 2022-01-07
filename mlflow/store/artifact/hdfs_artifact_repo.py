@@ -1,7 +1,7 @@
+from contextlib import contextmanager
 import os
 import posixpath
 import tempfile
-from contextlib import contextmanager
 import urllib.parse
 
 from mlflow.entities import FileInfo

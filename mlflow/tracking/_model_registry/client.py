@@ -3,16 +3,16 @@ Internal package providing a Python CRUD interface to MLflow models and versions
 This is a lower level API than the :py:mod:`mlflow.tracking.fluent` module, and is
 exposed in the :py:mod:`mlflow.tracking` module.
 """
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
+import logging
 from time import sleep
 
-import logging
-
+from mlflow.entities.model_registry import ModelVersionTag, RegisteredModelTag
+from mlflow.entities.model_registry.model_version_status import ModelVersionStatus
 from mlflow.exceptions import MlflowException
 from mlflow.store.model_registry import SEARCH_REGISTERED_MODEL_MAX_RESULTS_DEFAULT
-from mlflow.entities.model_registry import RegisteredModelTag, ModelVersionTag
-from mlflow.entities.model_registry.model_version_status import ModelVersionStatus
-from mlflow.tracking._model_registry import utils, DEFAULT_AWAIT_MAX_SLEEP_SECONDS
+from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS, utils
+
 
 _logger = logging.getLogger(__name__)
 

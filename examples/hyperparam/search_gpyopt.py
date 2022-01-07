@@ -12,18 +12,19 @@ Several runs can be run in parallel.
 
 import os
 
-import click
 import GPyOpt
+import click
 import matplotlib
 from matplotlib import pyplot as plt
 import numpy as np
 
 import mlflow
+import mlflow.projects
 import mlflow.sklearn
 import mlflow.tracking
-import mlflow.projects
 from mlflow.tracking.client import MlflowClient
 from mlflow.utils.file_utils import TempDir
+
 
 _inf = np.finfo(np.float64).max
 

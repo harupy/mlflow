@@ -11,8 +11,8 @@ In particular, a valid deployment plugin module must implement:
 
 import abc
 
-from mlflow.utils.annotations import experimental
 from mlflow.exceptions import MlflowException
+from mlflow.utils.annotations import experimental
 
 
 def run_local(target, name, model_uri, flavor=None, config=None):  # pylint: disable=W0613

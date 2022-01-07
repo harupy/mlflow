@@ -1,27 +1,26 @@
+import ast
 import base64
 import json
+import math
 import operator
 import re
-import ast
 import shlex
 
 import sqlparse
 from sqlparse.sql import (
-    Identifier,
-    Token,
     Comparison,
-    Statement,
-    Parenthesis,
-    TokenList,
+    Identifier,
     IdentifierList,
+    Parenthesis,
+    Statement,
+    Token,
+    TokenList,
 )
 from sqlparse.tokens import Token as TokenType
 
 from mlflow.entities import RunInfo
 from mlflow.exceptions import MlflowException
 from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE
-
-import math
 
 
 class SearchUtils(object):

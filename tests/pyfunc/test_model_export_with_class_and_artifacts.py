@@ -1,9 +1,9 @@
-import cloudpickle
-import os
 import json
-from subprocess import Popen, PIPE
+import os
+from subprocess import PIPE, Popen
 from unittest import mock
 
+import cloudpickle
 import numpy as np
 import pandas as pd
 import pandas.testing
@@ -14,31 +14,28 @@ import sklearn.neighbors
 import yaml
 
 import mlflow
+from mlflow.exceptions import MlflowException
+from mlflow.models import infer_signature, Model
+from mlflow.models.utils import _read_example
 import mlflow.pyfunc
 import mlflow.pyfunc.model
 import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
 import mlflow.sklearn
-from mlflow.exceptions import MlflowException
-from mlflow.models import Model, infer_signature
-from mlflow.models.utils import _read_example
 from mlflow.store.artifact.s3_artifact_repo import S3ArtifactRepository
-from mlflow.tracking.artifact_utils import (
-    get_artifact_uri as utils_get_artifact_uri,
-    _download_artifact_from_uri,
-)
+from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
+from mlflow.tracking.artifact_utils import _download_artifact_from_uri
+from mlflow.tracking.artifact_utils import get_artifact_uri as utils_get_artifact_uri
 from mlflow.utils.environment import _mlflow_conda_env
 from mlflow.utils.file_utils import TempDir
 from mlflow.utils.model_utils import _get_flavor_configuration
-from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
-
 import tests
-from tests.helper_functions import pyfunc_serve_and_score_model
 from tests.helper_functions import (
-    _compare_conda_env_requirements,
     _assert_pip_requirements,
+    _compare_conda_env_requirements,
+    pyfunc_serve_and_score_model,
 )
-from tests.helper_functions import set_boto_credentials  # pylint: disable=unused-import
 from tests.helper_functions import mock_s3_bucket  # pylint: disable=unused-import
+from tests.helper_functions import set_boto_credentials  # pylint: disable=unused-import
 
 
 def get_model_class():

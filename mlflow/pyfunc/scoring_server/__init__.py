@@ -11,15 +11,16 @@ Defines two endpoints:
     /invocations used for scoring
 """
 from collections import OrderedDict
-from typing import Tuple, Dict
-import flask
 import json
 import logging
-import numpy as np
 import os
-import pandas as pd
 import sys
 import traceback
+from typing import Dict, Tuple
+
+import flask
+import numpy as np
+import pandas as pd
 
 # NB: We need to be careful what we import form mlflow here. Scoring server is used from within
 # model's conda environment. The version of mlflow doing the serving (outside) and the version of
@@ -31,18 +32,21 @@ from mlflow.types import Schema
 from mlflow.utils import reraise
 from mlflow.utils.file_utils import path_to_local_file_uri
 from mlflow.utils.proto_json_utils import (
-    NumpyEncoder,
     _dataframe_from_json,
     _get_jsonable_obj,
+    NumpyEncoder,
     parse_tf_serving_input,
 )
+
 
 try:
     from mlflow.pyfunc import load_model, PyFuncModel
 except ImportError:
     from mlflow.pyfunc import load_pyfunc as load_model
+
 from mlflow.protos.databricks_pb2 import BAD_REQUEST
 from mlflow.server.handlers import catch_mlflow_exception
+
 
 try:
     from StringIO import StringIO

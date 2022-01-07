@@ -4,13 +4,14 @@ The :py:mod:`mlflow.models.signature` module provides an API for specification o
 Model signature defines schema of model input and output. See :py:class:`mlflow.types.schema.Schema`
 for more details on Schema and data types.
 """
-from typing import Dict, Any, Union, TYPE_CHECKING
+from typing import Any, Dict, TYPE_CHECKING, Union
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from mlflow.types.schema import Schema
 from mlflow.types.utils import _infer_schema
+
 
 # At runtime, we don't need  `pyspark.sql.dataframe`
 if TYPE_CHECKING:

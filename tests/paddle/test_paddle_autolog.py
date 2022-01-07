@@ -1,7 +1,9 @@
-import pytest
 import paddle
+import pytest
+
 import mlflow
 from mlflow.tracking import MlflowClient
+
 
 pytestmark = pytest.mark.large
 

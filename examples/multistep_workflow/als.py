@@ -4,14 +4,13 @@ The input is a Parquet ratings dataset (see etl_data.py), and we output
 an mlflow artifact called 'als-model'.
 """
 import click
+import pyspark
+from pyspark.ml import Pipeline
+from pyspark.ml.evaluation import RegressionEvaluator
+from pyspark.ml.recommendation import ALS
 
 import mlflow
 import mlflow.spark
-
-import pyspark
-from pyspark.ml import Pipeline
-from pyspark.ml.recommendation import ALS
-from pyspark.ml.evaluation import RegressionEvaluator
 
 
 @click.command()

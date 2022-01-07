@@ -1,39 +1,38 @@
+from collections import namedtuple, OrderedDict
 import json
 import math
-import numpy as np
 import os
-import pandas as pd
-from collections import namedtuple, OrderedDict
-from packaging.version import Version
-
-import pytest
 import random
+
+import keras
+import numpy as np
+from packaging.version import Version
+import pandas as pd
+import pytest
 import sklearn.datasets as datasets
 import sklearn.neighbors as knn
 
 from mlflow.exceptions import MlflowException
-import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
-import mlflow.sklearn
-from mlflow.models import ModelSignature, infer_signature
-from mlflow.protos.databricks_pb2 import ErrorCode, BAD_REQUEST
+from mlflow.models import infer_signature, ModelSignature
+from mlflow.protos.databricks_pb2 import BAD_REQUEST, ErrorCode
 from mlflow.pyfunc import PythonModel
+import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
 from mlflow.pyfunc.scoring_server import get_cmd
-from mlflow.types import Schema, ColSpec, DataType
+import mlflow.sklearn
+from mlflow.types import ColSpec, DataType, Schema
 from mlflow.utils.file_utils import TempDir
 from mlflow.utils.proto_json_utils import NumpyEncoder
-
 from tests.helper_functions import pyfunc_serve_and_score_model, random_int, random_str
 
-import keras
 
 # pylint: disable=no-name-in-module,reimported
 if Version(keras.__version__) >= Version("2.6.0"):
+    from tensorflow.keras.layers import Concatenate, Dense, Input
     from tensorflow.keras.models import Model
-    from tensorflow.keras.layers import Dense, Input, Concatenate
     from tensorflow.keras.optimizers import SGD
 else:
+    from keras.layers import Concatenate, Dense, Input
     from keras.models import Model
-    from keras.layers import Dense, Input, Concatenate
     from keras.optimizers import SGD
 
 

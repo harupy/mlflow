@@ -3,6 +3,7 @@ import os
 import mlflow
 from mlflow.tracking._tracking_service.utils import _TRACKING_URI_ENV_VAR
 
+
 assert _TRACKING_URI_ENV_VAR in os.environ
 
 

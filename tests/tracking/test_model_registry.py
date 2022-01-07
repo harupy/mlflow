@@ -2,20 +2,21 @@
 Integration test which starts a local Tracking Server on an ephemeral port,
 and ensures we can use the tracking API to communicate with it.
 """
-import time
-
-from unittest import mock
 import os
-import sys
-import pytest
 import shutil
+import sys
 import tempfile
+import time
+from unittest import mock
+
+import pytest
 
 from mlflow.entities.model_registry import RegisteredModel
 from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
 from mlflow.utils.file_utils import path_to_local_file_uri
 from tests.tracking.integration_test_utils import _await_server_down_or_die, _init_server
+
 
 # pylint: disable=unused-argument
 

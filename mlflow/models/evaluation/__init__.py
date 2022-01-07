@@ -1,12 +1,13 @@
 from mlflow.models.evaluation.base import (
-    ModelEvaluator,
-    EvaluationDataset,
-    EvaluationResult,
-    EvaluationMetrics,
-    EvaluationArtifact,
     evaluate,
+    EvaluationArtifact,
+    EvaluationDataset,
+    EvaluationMetrics,
+    EvaluationResult,
     list_evaluators,
+    ModelEvaluator,
 )
+
 
 __all__ = [
     "ModelEvaluator",

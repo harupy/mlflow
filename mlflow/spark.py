@@ -18,47 +18,48 @@ Spark MLlib (native) format
     ``mlflow/java`` package. This flavor is produced only if you specify
     MLeap-compatible arguments.
 """
-import os
 import logging
+import os
 import posixpath
 import re
 import shutil
 import uuid
+
 import yaml
 
 import mlflow
-from mlflow import pyfunc, mleap
+from mlflow import mleap, pyfunc
 from mlflow.exceptions import MlflowException
 from mlflow.models import Model
 from mlflow.models.model import MLMODEL_FILE_NAME
 from mlflow.models.signature import ModelSignature
-from mlflow.models.utils import ModelInputExample, _save_example
+from mlflow.models.utils import _save_example, ModelInputExample
 from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE
-from mlflow.tracking.artifact_utils import _download_artifact_from_uri
-from mlflow.utils.environment import (
-    _mlflow_conda_env,
-    _validate_env_arguments,
-    _process_pip_requirements,
-    _process_conda_env,
-    _CONDA_ENV_FILE_NAME,
-    _REQUIREMENTS_FILE_NAME,
-    _CONSTRAINTS_FILE_NAME,
-)
-from mlflow.utils.requirements_utils import _get_pinned_requirement
-from mlflow.utils.docstring_utils import format_docstring, LOG_MODEL_PARAM_DOCS
-from mlflow.store.artifact.runs_artifact_repo import RunsArtifactRepository
 from mlflow.store.artifact.models_artifact_repo import ModelsArtifactRepository
+from mlflow.store.artifact.runs_artifact_repo import RunsArtifactRepository
+from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
+from mlflow.tracking.artifact_utils import _download_artifact_from_uri
+from mlflow.utils import databricks_utils
+from mlflow.utils.autologging_utils import autologging_integration, safe_patch
+from mlflow.utils.docstring_utils import format_docstring, LOG_MODEL_PARAM_DOCS
+from mlflow.utils.environment import (
+    _CONDA_ENV_FILE_NAME,
+    _CONSTRAINTS_FILE_NAME,
+    _mlflow_conda_env,
+    _process_conda_env,
+    _process_pip_requirements,
+    _REQUIREMENTS_FILE_NAME,
+    _validate_env_arguments,
+)
 from mlflow.utils.file_utils import TempDir, write_to
+from mlflow.utils.model_utils import _get_flavor_configuration_from_uri
+from mlflow.utils.requirements_utils import _get_pinned_requirement
 from mlflow.utils.uri import (
-    is_local_uri,
     append_to_uri_path,
     dbfs_hdfs_uri_to_fuse_path,
+    is_local_uri,
     is_valid_dbfs_uri,
 )
-from mlflow.utils import databricks_utils
-from mlflow.utils.model_utils import _get_flavor_configuration_from_uri
-from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
-from mlflow.utils.autologging_utils import autologging_integration, safe_patch
 
 
 FLAVOR_NAME = "spark"
@@ -445,8 +446,8 @@ def _save_model_metadata(
 
 
 def _validate_model(spark_model):
-    from pyspark.ml.util import MLReadable, MLWritable
     from pyspark.ml import Model as PySparkModel
+    from pyspark.ml.util import MLReadable, MLWritable
 
     if (
         not isinstance(spark_model, PySparkModel)
@@ -793,10 +794,11 @@ def autolog(disable=False, silent=False):  # pylint: disable=unused-argument
                    datasource autologging. If ``False``, show all events and warnings during Spark
                    datasource autologging.
     """
-    from mlflow.utils._spark_utils import _get_active_spark_session
-    from mlflow._spark_autologging import _listen_for_spark_activity
-    from pyspark.sql import SparkSession
     from pyspark import SparkContext
+    from pyspark.sql import SparkSession
+
+    from mlflow._spark_autologging import _listen_for_spark_activity
+    from mlflow.utils._spark_utils import _get_active_spark_session
 
     def __init__(original, self, *args, **kwargs):
         original(self, *args, **kwargs)

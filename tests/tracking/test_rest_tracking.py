@@ -4,36 +4,35 @@ and ensures we can use the tracking API to communicate with it.
 """
 import json
 import os
-import sys
 import posixpath
-import pytest
 import shutil
-import time
+import sys
 import tempfile
+import time
 from unittest import mock
 import urllib.parse
 
-import mlflow.experiments
-from mlflow.exceptions import MlflowException
-from mlflow.entities import Metric, Param, RunTag, ViewType
-from mlflow.models import Model
+import pytest
 
+from mlflow.entities import Metric, Param, RunTag, ViewType
+from mlflow.exceptions import MlflowException
+import mlflow.experiments
+from mlflow.models import Model
 import mlflow.pyfunc
 from mlflow.tracking import MlflowClient
-from mlflow.utils.file_utils import TempDir
+from mlflow.utils.file_utils import path_to_local_file_uri, TempDir
 from mlflow.utils.mlflow_tags import (
-    MLFLOW_USER,
-    MLFLOW_RUN_NAME,
-    MLFLOW_PARENT_RUN_ID,
-    MLFLOW_SOURCE_TYPE,
-    MLFLOW_SOURCE_NAME,
-    MLFLOW_PROJECT_ENTRY_POINT,
     MLFLOW_GIT_COMMIT,
+    MLFLOW_PARENT_RUN_ID,
+    MLFLOW_PROJECT_ENTRY_POINT,
+    MLFLOW_RUN_NAME,
+    MLFLOW_SOURCE_NAME,
+    MLFLOW_SOURCE_TYPE,
+    MLFLOW_USER,
 )
-from mlflow.utils.file_utils import path_to_local_file_uri
-
 from tests.integration.utils import invoke_cli_runner
 from tests.tracking.integration_test_utils import _await_server_down_or_die, _init_server
+
 
 # pylint: disable=unused-argument
 

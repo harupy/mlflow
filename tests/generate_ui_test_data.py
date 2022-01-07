@@ -3,12 +3,12 @@ Small script used to generate mock data to test the UI.
 """
 
 import argparse
-import mlflow
 import itertools
 import random
-import string
 from random import random as rand
+import string
 
+import mlflow
 from mlflow.tracking import MlflowClient
 
 

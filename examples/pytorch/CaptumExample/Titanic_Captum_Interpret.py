@@ -1,21 +1,22 @@
 """
 Getting started with Captum - Titanic Data Analysis
 """
+from argparse import ArgumentParser
+import os
+
+from captum.attr import IntegratedGradients, LayerConductance, NeuronConductance
+import matplotlib.pyplot as plt
+
 # Initial imports
 import numpy as np
-import torch
-from captum.attr import IntegratedGradients
-from captum.attr import LayerConductance
-from captum.attr import NeuronConductance
-import matplotlib.pyplot as plt
 import pandas as pd
-from scipy import stats
-import mlflow
 from prettytable import PrettyTable
+from scipy import stats
 from sklearn.model_selection import train_test_split
-import os
-from argparse import ArgumentParser
+import torch
 import torch.nn as nn
+
+import mlflow
 
 
 def get_titanic():

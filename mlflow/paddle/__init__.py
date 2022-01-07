@@ -11,8 +11,9 @@ Paddle (native) format
     since `predict()` is required for pyfunc model inference.
 """
 
-import os
 import logging
+import os
+
 import yaml
 
 import mlflow
@@ -21,24 +22,25 @@ from mlflow.exceptions import MlflowException
 from mlflow.models import Model
 from mlflow.models.model import MLMODEL_FILE_NAME
 from mlflow.models.signature import ModelSignature
-from mlflow.models.utils import ModelInputExample, _save_example
+from mlflow.models.utils import _save_example, ModelInputExample
 from mlflow.protos.databricks_pb2 import RESOURCE_ALREADY_EXISTS
+from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
-from mlflow.utils.environment import (
-    _mlflow_conda_env,
-    _validate_env_arguments,
-    _process_pip_requirements,
-    _process_conda_env,
-    _CONDA_ENV_FILE_NAME,
-    _REQUIREMENTS_FILE_NAME,
-    _CONSTRAINTS_FILE_NAME,
-)
-from mlflow.utils.requirements_utils import _get_pinned_requirement
+from mlflow.utils.autologging_utils import autologging_integration, safe_patch
 from mlflow.utils.docstring_utils import format_docstring, LOG_MODEL_PARAM_DOCS
+from mlflow.utils.environment import (
+    _CONDA_ENV_FILE_NAME,
+    _CONSTRAINTS_FILE_NAME,
+    _mlflow_conda_env,
+    _process_conda_env,
+    _process_pip_requirements,
+    _REQUIREMENTS_FILE_NAME,
+    _validate_env_arguments,
+)
 from mlflow.utils.file_utils import write_to
 from mlflow.utils.model_utils import _get_flavor_configuration
-from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
-from mlflow.utils.autologging_utils import autologging_integration, safe_patch
+from mlflow.utils.requirements_utils import _get_pinned_requirement
+
 
 FLAVOR_NAME = "paddle"
 
@@ -429,8 +431,8 @@ class _PaddleWrapper(object):
         self.pd_model = pd_model
 
     def predict(self, data):
-        import pandas as pd
         import numpy as np
+        import pandas as pd
 
         if isinstance(data, pd.DataFrame):
             inp_data = data.values.astype(np.float32)
@@ -551,6 +553,7 @@ def autolog(
         ]
     """
     import paddle
+
     from mlflow.paddle._paddle_autolog import patched_fit
 
     safe_patch(FLAVOR_NAME, paddle.Model, "fit", patched_fit, manage_run=True)

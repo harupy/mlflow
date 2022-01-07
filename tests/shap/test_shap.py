@@ -1,14 +1,13 @@
 from collections import namedtuple
 import os
 
-
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import pytest
 import shap
 from sklearn.datasets import load_boston, load_iris
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-import pandas as pd
-import pytest
 
 import mlflow
 

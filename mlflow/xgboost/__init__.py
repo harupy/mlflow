@@ -16,52 +16,53 @@ XGBoost (native) format
 .. _scikit-learn API:
     https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn
 """
+from copy import deepcopy
+import json
+import logging
 import os
 import shutil
-import json
-import yaml
 import tempfile
-import logging
-from copy import deepcopy
+
+import yaml
 
 import mlflow
 from mlflow import pyfunc
-from mlflow.models import Model, ModelInputExample, infer_signature
+from mlflow.exceptions import MlflowException
+from mlflow.models import infer_signature, Model, ModelInputExample
 from mlflow.models.model import MLMODEL_FILE_NAME
 from mlflow.models.signature import ModelSignature
 from mlflow.models.utils import _save_example
+from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils import _get_fully_qualified_class_name
-from mlflow.utils.environment import (
-    _mlflow_conda_env,
-    _validate_env_arguments,
-    _process_pip_requirements,
-    _process_conda_env,
-    _CONDA_ENV_FILE_NAME,
-    _REQUIREMENTS_FILE_NAME,
-    _CONSTRAINTS_FILE_NAME,
-)
-from mlflow.utils.class_utils import _get_class_from_string
-from mlflow.utils.requirements_utils import _get_pinned_requirement
-from mlflow.utils.file_utils import write_to
-from mlflow.utils.model_utils import _get_flavor_configuration
-from mlflow.exceptions import MlflowException
-from mlflow.utils.docstring_utils import format_docstring, LOG_MODEL_PARAM_DOCS
 from mlflow.utils.arguments_utils import _get_arg_names
 from mlflow.utils.autologging_utils import (
     autologging_integration,
-    safe_patch,
-    picklable_exception_safe_function,
+    batch_metrics_logger,
+    ENSURE_AUTOLOGGING_ENABLED_TEXT,
     get_mlflow_run_params_for_fn_args,
     INPUT_EXAMPLE_SAMPLE_ROWS,
-    resolve_input_example_and_signature,
     InputExampleInfo,
-    ENSURE_AUTOLOGGING_ENABLED_TEXT,
-    batch_metrics_logger,
     MlflowAutologgingQueueingClient,
+    picklable_exception_safe_function,
+    resolve_input_example_and_signature,
+    safe_patch,
 )
+from mlflow.utils.class_utils import _get_class_from_string
+from mlflow.utils.docstring_utils import format_docstring, LOG_MODEL_PARAM_DOCS
+from mlflow.utils.environment import (
+    _CONDA_ENV_FILE_NAME,
+    _CONSTRAINTS_FILE_NAME,
+    _mlflow_conda_env,
+    _process_conda_env,
+    _process_pip_requirements,
+    _REQUIREMENTS_FILE_NAME,
+    _validate_env_arguments,
+)
+from mlflow.utils.file_utils import write_to
+from mlflow.utils.model_utils import _get_flavor_configuration
+from mlflow.utils.requirements_utils import _get_pinned_requirement
 
-from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
 
 FLAVOR_NAME = "xgboost"
 
@@ -380,8 +381,9 @@ def autolog(
                    autologging.
     """
     import functools
-    import xgboost
+
     import numpy as np
+    import xgboost
 
     if importance_types is None:
         importance_types = ["weight"]
@@ -439,8 +441,8 @@ def autolog(
             """
             Log feature importance plot.
             """
-            import matplotlib.pyplot as plt
             from cycler import cycler
+            import matplotlib.pyplot as plt
 
             features = np.array(features)
 

@@ -1,14 +1,17 @@
 """
 CLI for runs
 """
-import click
 import json
-import mlflow.tracking
-from mlflow.entities import ViewType
-from mlflow.tracking import _get_store
+
+import click
 from tabulate import tabulate
+
+from mlflow.entities import ViewType
+import mlflow.tracking
+from mlflow.tracking import _get_store
 from mlflow.utils.mlflow_tags import MLFLOW_RUN_NAME
 from mlflow.utils.time_utils import conv_longdate_to_str
+
 
 RUN_ID = click.option("--run-id", type=click.STRING, required=True)
 

@@ -1,17 +1,17 @@
 import abc
-import inspect
-import itertools
-import functools
-import os
-import uuid
 from abc import abstractmethod
 from contextlib import contextmanager
+import functools
+import inspect
+import itertools
+import os
+import uuid
 
 import mlflow
-import mlflow.utils.autologging_utils
 from mlflow.entities.run_status import RunStatus
 from mlflow.tracking.client import MlflowClient
 from mlflow.utils import gorilla
+import mlflow.utils.autologging_utils
 from mlflow.utils.autologging_utils import _logger
 from mlflow.utils.autologging_utils.events import AutologgingEventLogger
 from mlflow.utils.autologging_utils.logging_and_warnings import (
@@ -19,6 +19,7 @@ from mlflow.utils.autologging_utils.logging_and_warnings import (
     set_non_mlflow_warnings_behavior_for_current_thread,
 )
 from mlflow.utils.mlflow_tags import MLFLOW_AUTOLOGGING
+
 
 _AUTOLOGGING_TEST_MODE_ENV_VAR = "MLFLOW_AUTOLOGGING_TESTING"
 
@@ -307,7 +308,7 @@ def safe_patch(
                        does not apply the `with_managed_run` wrapper to the specified
                        `patch_function`.
     """
-    from mlflow.utils.autologging_utils import get_autologging_config, autologging_is_disabled
+    from mlflow.utils.autologging_utils import autologging_is_disabled, get_autologging_config
 
     if manage_run:
         patch_function = with_managed_run(

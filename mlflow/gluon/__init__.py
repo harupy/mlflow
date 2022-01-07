@@ -1,7 +1,7 @@
-from packaging.version import Version
 import os
 
 import numpy as np
+from packaging.version import Version
 import pandas as pd
 import yaml
 
@@ -11,25 +11,22 @@ from mlflow.exceptions import MlflowException
 from mlflow.models import Model
 from mlflow.models.model import MLMODEL_FILE_NAME
 from mlflow.models.signature import ModelSignature
-from mlflow.models.utils import ModelInputExample, _save_example
+from mlflow.models.utils import _save_example, ModelInputExample
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
-from mlflow.utils.environment import (
-    _mlflow_conda_env,
-    _validate_env_arguments,
-    _process_pip_requirements,
-    _process_conda_env,
-    _CONDA_ENV_FILE_NAME,
-    _REQUIREMENTS_FILE_NAME,
-    _CONSTRAINTS_FILE_NAME,
-)
-from mlflow.utils.requirements_utils import _get_pinned_requirement
+from mlflow.utils.autologging_utils import autologging_integration, batch_metrics_logger, safe_patch
 from mlflow.utils.docstring_utils import format_docstring, LOG_MODEL_PARAM_DOCS
-from mlflow.utils.file_utils import write_to
-from mlflow.utils.autologging_utils import (
-    autologging_integration,
-    safe_patch,
-    batch_metrics_logger,
+from mlflow.utils.environment import (
+    _CONDA_ENV_FILE_NAME,
+    _CONSTRAINTS_FILE_NAME,
+    _mlflow_conda_env,
+    _process_conda_env,
+    _process_pip_requirements,
+    _REQUIREMENTS_FILE_NAME,
+    _validate_env_arguments,
 )
+from mlflow.utils.file_utils import write_to
+from mlflow.utils.requirements_utils import _get_pinned_requirement
+
 
 FLAVOR_NAME = "gluon"
 _MODEL_SAVE_PATH = "net"
@@ -66,8 +63,7 @@ def load_model(model_uri, ctx, dst_path=None):
         model(nd.array(np.random.rand(1000, 1, 32)))
     """
     import mxnet as mx
-    from mxnet import gluon
-    from mxnet import sym
+    from mxnet import gluon, sym
 
     local_model_path = _download_artifact_from_uri(artifact_uri=model_uri, output_path=dst_path)
 
@@ -374,6 +370,7 @@ def autolog(
     """
 
     from mxnet.gluon.contrib.estimator import Estimator
+
     from mlflow.gluon._autolog import __MLflowGluonCallback
 
     def getGluonCallback(metrics_logger):

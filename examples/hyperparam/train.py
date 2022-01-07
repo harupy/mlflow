@@ -6,21 +6,18 @@ Validation data is used to select the best hyperparameters, test set performance
 at epochs which improved performance on the validation dataset. The model with best validation set
 performance is logged with MLflow.
 """
+import math
 import warnings
 
-import math
-
+import click
 import keras
+from keras.callbacks import Callback
+from keras.layers import Dense, Lambda
+from keras.models import Sequential
+from keras.optimizers import SGD
 import numpy as np
 import pandas as pd
-
-import click
-
-from keras.callbacks import Callback
-from keras.models import Sequential
-from keras.layers import Dense, Lambda
-from keras.optimizers import SGD
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
 import mlflow

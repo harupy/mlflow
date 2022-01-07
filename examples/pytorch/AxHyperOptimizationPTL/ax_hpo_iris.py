@@ -1,9 +1,11 @@
 import argparse
-import mlflow
+
 from ax.service.ax_client import AxClient
 from iris import IrisClassification
 from iris_data_module import IrisDataModule
 import pytorch_lightning as pl
+
+import mlflow
 
 
 def train_evaluate(params, max_epochs=100):

@@ -1,13 +1,9 @@
-import sys
 import getpass
+import sys
 
-from mlflow.tracking.context.abstract_context import RunContextProvider
 from mlflow.entities import SourceType
-from mlflow.utils.mlflow_tags import (
-    MLFLOW_USER,
-    MLFLOW_SOURCE_TYPE,
-    MLFLOW_SOURCE_NAME,
-)
+from mlflow.tracking.context.abstract_context import RunContextProvider
+from mlflow.utils.mlflow_tags import MLFLOW_SOURCE_NAME, MLFLOW_SOURCE_TYPE, MLFLOW_USER
 
 
 _DEFAULT_USER = "unknown"

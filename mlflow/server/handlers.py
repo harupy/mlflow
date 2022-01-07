@@ -1,85 +1,82 @@
 # Define all the service endpoint handlers here.
+from functools import wraps
 import json
+import logging
 import os
+import posixpath
 import re
 import tempfile
-import posixpath
 
-import logging
-from functools import wraps
-
-from flask import Response, request, current_app, send_file
+from flask import current_app, request, Response, send_file
 from google.protobuf import descriptor
 
-from mlflow.entities import Metric, Param, RunTag, ViewType, ExperimentTag, FileInfo
-from mlflow.entities.model_registry import RegisteredModelTag, ModelVersionTag
+from mlflow.entities import ExperimentTag, FileInfo, Metric, Param, RunTag, ViewType
+from mlflow.entities.model_registry import ModelVersionTag, RegisteredModelTag
 from mlflow.exceptions import MlflowException
 from mlflow.models import Model
 from mlflow.models.model import MLMODEL_FILE_NAME
 from mlflow.projects._project_spec import MLPROJECT_FILE_NAME
 from mlflow.protos import databricks_pb2
-from mlflow.protos.service_pb2 import (
-    CreateExperiment,
-    MlflowService,
-    GetExperiment,
-    GetRun,
-    SearchRuns,
-    ListArtifacts,
-    GetMetricHistory,
-    CreateRun,
-    UpdateRun,
-    LogMetric,
-    LogParam,
-    SetTag,
-    ListExperiments,
-    DeleteExperiment,
-    RestoreExperiment,
-    RestoreRun,
-    DeleteRun,
-    UpdateExperiment,
-    LogBatch,
-    DeleteTag,
-    SetExperimentTag,
-    GetExperimentByName,
-    LogModel,
-)
+from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE, RESOURCE_DOES_NOT_EXIST
+from mlflow.protos.mlflow_artifacts_pb2 import DownloadArtifact
+from mlflow.protos.mlflow_artifacts_pb2 import ListArtifacts as ListArtifactsMlflowArtifacts
+from mlflow.protos.mlflow_artifacts_pb2 import MlflowArtifactsService, UploadArtifact
 from mlflow.protos.model_registry_pb2 import (
-    ModelRegistryService,
-    CreateRegisteredModel,
-    UpdateRegisteredModel,
-    DeleteRegisteredModel,
-    ListRegisteredModels,
-    GetRegisteredModel,
-    GetLatestVersions,
     CreateModelVersion,
-    UpdateModelVersion,
+    CreateRegisteredModel,
     DeleteModelVersion,
+    DeleteModelVersionTag,
+    DeleteRegisteredModel,
+    DeleteRegisteredModelTag,
+    GetLatestVersions,
     GetModelVersion,
     GetModelVersionDownloadUri,
-    SearchModelVersions,
+    GetRegisteredModel,
+    ListRegisteredModels,
+    ModelRegistryService,
     RenameRegisteredModel,
-    TransitionModelVersionStage,
+    SearchModelVersions,
     SearchRegisteredModels,
-    SetRegisteredModelTag,
-    DeleteRegisteredModelTag,
     SetModelVersionTag,
-    DeleteModelVersionTag,
+    SetRegisteredModelTag,
+    TransitionModelVersionStage,
+    UpdateModelVersion,
+    UpdateRegisteredModel,
 )
-from mlflow.protos.mlflow_artifacts_pb2 import (
-    MlflowArtifactsService,
-    DownloadArtifact,
-    UploadArtifact,
-    ListArtifacts as ListArtifactsMlflowArtifacts,
+from mlflow.protos.service_pb2 import (
+    CreateExperiment,
+    CreateRun,
+    DeleteExperiment,
+    DeleteRun,
+    DeleteTag,
+    GetExperiment,
+    GetExperimentByName,
+    GetMetricHistory,
+    GetRun,
+    ListArtifacts,
+    ListExperiments,
+    LogBatch,
+    LogMetric,
+    LogModel,
+    LogParam,
+    MlflowService,
+    RestoreExperiment,
+    RestoreRun,
+    SearchRuns,
+    SetExperimentTag,
+    SetTag,
+    UpdateExperiment,
+    UpdateRun,
 )
-from mlflow.protos.databricks_pb2 import RESOURCE_DOES_NOT_EXIST, INVALID_PARAMETER_VALUE
 from mlflow.store.artifact.artifact_repository_registry import get_artifact_repository
 from mlflow.store.db.db_types import DATABASE_ENGINES
 from mlflow.tracking._model_registry.registry import ModelRegistryStoreRegistry
 from mlflow.tracking._tracking_service.registry import TrackingStoreRegistry
-from mlflow.utils.proto_json_utils import message_to_json, parse_dict
-from mlflow.utils.validation import _validate_batch_log_api_req
-from mlflow.utils.string_utils import is_string_type
 from mlflow.tracking.registry import UnsupportedModelRegistryStoreURIException
+from mlflow.utils.proto_json_utils import message_to_json, parse_dict
+from mlflow.utils.string_utils import is_string_type
+from mlflow.utils.validation import _validate_batch_log_api_req
+
 
 _logger = logging.getLogger(__name__)
 _tracking_store = None
@@ -145,7 +142,7 @@ def _get_artifact_repo_mlflow_artifacts():
 
 
 def _get_tracking_store(backend_store_uri=None, default_artifact_root=None):
-    from mlflow.server import BACKEND_STORE_URI_ENV_VAR, ARTIFACT_ROOT_ENV_VAR
+    from mlflow.server import ARTIFACT_ROOT_ENV_VAR, BACKEND_STORE_URI_ENV_VAR
 
     global _tracking_store
     if _tracking_store is None:

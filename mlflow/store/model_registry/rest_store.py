@@ -1,38 +1,39 @@
 import logging
 
-from mlflow.entities.model_registry import RegisteredModel, ModelVersion
+from mlflow.entities.model_registry import ModelVersion, RegisteredModel
 from mlflow.protos.model_registry_pb2 import (
-    ModelRegistryService,
-    CreateRegisteredModel,
-    UpdateRegisteredModel,
-    DeleteRegisteredModel,
-    ListRegisteredModels,
-    GetLatestVersions,
     CreateModelVersion,
-    UpdateModelVersion,
+    CreateRegisteredModel,
     DeleteModelVersion,
-    GetModelVersionDownloadUri,
-    SearchModelVersions,
-    RenameRegisteredModel,
-    GetRegisteredModel,
-    GetModelVersion,
-    TransitionModelVersionStage,
-    SearchRegisteredModels,
-    SetRegisteredModelTag,
-    SetModelVersionTag,
-    DeleteRegisteredModelTag,
     DeleteModelVersionTag,
+    DeleteRegisteredModel,
+    DeleteRegisteredModelTag,
+    GetLatestVersions,
+    GetModelVersion,
+    GetModelVersionDownloadUri,
+    GetRegisteredModel,
+    ListRegisteredModels,
+    ModelRegistryService,
+    RenameRegisteredModel,
+    SearchModelVersions,
+    SearchRegisteredModels,
+    SetModelVersionTag,
+    SetRegisteredModelTag,
+    TransitionModelVersionStage,
+    UpdateModelVersion,
+    UpdateRegisteredModel,
 )
 from mlflow.store.entities.paged_list import PagedList
 from mlflow.store.model_registry.abstract_store import AbstractStore
 from mlflow.utils.proto_json_utils import message_to_json
 from mlflow.utils.rest_utils import (
+    _REST_API_PATH_PREFIX,
     call_endpoint,
     call_endpoints,
-    extract_api_info_for_service,
     extract_all_api_info_for_service,
-    _REST_API_PATH_PREFIX,
+    extract_api_info_for_service,
 )
+
 
 _METHOD_TO_INFO = extract_api_info_for_service(ModelRegistryService, _REST_API_PATH_PREFIX)
 _METHOD_TO_ALL_INFO = extract_all_api_info_for_service(ModelRegistryService, _REST_API_PATH_PREFIX)

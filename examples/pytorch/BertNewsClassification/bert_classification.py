@@ -2,26 +2,24 @@
 # pylint: disable=unused-argument
 # pylint: disable=abstract-method
 
-import os
 from argparse import ArgumentParser
-import mlflow.pytorch
+import os
+
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
-import torch
-import torch.nn.functional as F
-from pytorch_lightning.callbacks import (
-    EarlyStopping,
-    ModelCheckpoint,
-    LearningRateMonitor,
-)
+from pytorch_lightning.callbacks import EarlyStopping, LearningRateMonitor, ModelCheckpoint
+from sklearn.datasets import fetch_20newsgroups
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
-from sklearn.datasets import fetch_20newsgroups
+import torch
 from torch import nn
-from torch.utils.data import Dataset, DataLoader
-from transformers import BertModel, BertTokenizer, AdamW
+import torch.nn.functional as F
+from torch.utils.data import DataLoader, Dataset
 import torchtext.datasets as td
+from transformers import AdamW, BertModel, BertTokenizer
+
+import mlflow.pytorch
 
 
 def get_20newsgroups(num_samples):

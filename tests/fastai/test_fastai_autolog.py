@@ -1,23 +1,24 @@
-import pickle
 from functools import partial
+import pickle
 from unittest.mock import patch
 
-import pytest
-import numpy as np
-import pandas as pd
-import matplotlib as mpl
-import sklearn.datasets as datasets
-from torch import nn, optim
+from fastai.callback.all import EarlyStoppingCallback, SaveModelCallback
 from fastai.learner import Learner
 from fastai.optimizer import OptimWrapper
 from fastai.tabular.all import TabularDataLoaders
-from fastai.callback.all import EarlyStoppingCallback, SaveModelCallback
+import matplotlib as mpl
+import numpy as np
+import pandas as pd
+import pytest
+import sklearn.datasets as datasets
+from torch import nn, optim
 
 import mlflow
 import mlflow.fastai
 from mlflow.fastai.callback import __MlflowFastaiCallback
 from mlflow.utils.autologging_utils import BatchMetricsLogger
 from tests.conftest import tracking_uri_mock  # pylint: disable=unused-import
+
 
 mpl.use("Agg")
 

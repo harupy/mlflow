@@ -1,17 +1,17 @@
 import logging
 import os
-
-import subprocess
 import posixpath
-from mlflow.models import FlavorBackend
-from mlflow.models.docker_utils import _build_image, DISABLE_ENV_CREATION
-from mlflow.models.container import ENABLE_MLSERVER
-from mlflow.pyfunc import ENV, scoring_server, mlserver
+import subprocess
 
-from mlflow.utils.conda import get_or_create_conda_env, get_conda_bin_executable, get_conda_command
+from mlflow.models import FlavorBackend
+from mlflow.models.container import ENABLE_MLSERVER
+from mlflow.models.docker_utils import _build_image, DISABLE_ENV_CREATION
+from mlflow.pyfunc import ENV, mlserver, scoring_server
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
+from mlflow.utils.conda import get_conda_bin_executable, get_conda_command, get_or_create_conda_env
 from mlflow.utils.file_utils import path_to_local_file_uri
 from mlflow.version import VERSION
+
 
 _logger = logging.getLogger(__name__)
 

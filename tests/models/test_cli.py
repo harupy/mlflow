@@ -1,17 +1,17 @@
 import json
 import os
+import re
 import subprocess
 import sys
+from unittest import mock
 
 import numpy as np
 import pandas as pd
 import pytest
-import re
 import sklearn
 import sklearn.datasets
 import sklearn.neighbors
 
-from unittest import mock
 
 try:
     from StringIO import StringIO
@@ -20,26 +20,26 @@ except ImportError:
 
 import mlflow
 from mlflow import pyfunc
+from mlflow.protos.databricks_pb2 import BAD_REQUEST, ErrorCode
+from mlflow.pyfunc.scoring_server import (
+    CONTENT_TYPE_CSV,
+    CONTENT_TYPE_JSON,
+    CONTENT_TYPE_JSON_SPLIT_ORIENTED,
+)
 import mlflow.sklearn
-
-from mlflow.utils.file_utils import TempDir, path_to_local_file_uri
-from mlflow.utils.environment import _mlflow_conda_env
 from mlflow.utils import PYTHON_VERSION
-from tests.models import test_pyfunc
+from mlflow.utils.environment import _mlflow_conda_env
+from mlflow.utils.file_utils import path_to_local_file_uri, TempDir
 from tests.helper_functions import (
+    get_safe_port,
     pyfunc_build_image,
+    pyfunc_serve_and_score_model,
     pyfunc_serve_from_docker_image,
     pyfunc_serve_from_docker_image_with_env_override,
     RestEndpoint,
-    get_safe_port,
-    pyfunc_serve_and_score_model,
 )
-from mlflow.protos.databricks_pb2 import ErrorCode, BAD_REQUEST
-from mlflow.pyfunc.scoring_server import (
-    CONTENT_TYPE_JSON_SPLIT_ORIENTED,
-    CONTENT_TYPE_JSON,
-    CONTENT_TYPE_CSV,
-)
+from tests.models import test_pyfunc
+
 
 # NB: for now, windows tests do not have conda available.
 no_conda = ["--no-conda"] if sys.platform == "win32" else []

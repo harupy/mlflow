@@ -1,10 +1,10 @@
-import json
-import re
-from unittest import mock
-import tempfile
 from contextlib import contextmanager
 import functools
+import json
 from pathlib import Path
+import re
+import tempfile
+from unittest import mock
 
 import pytest
 

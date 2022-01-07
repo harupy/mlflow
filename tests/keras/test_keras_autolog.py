@@ -1,20 +1,20 @@
-import pytest
+from unittest.mock import patch
+
+import keras
 import numpy as np
 from packaging.version import Version
-
+import pytest
 
 import mlflow
 import mlflow.keras
 from mlflow.utils.autologging_utils import BatchMetricsLogger
-from unittest.mock import patch
 
-import keras
 
 keras_version = keras.__version__
 # pylint: disable=no-name-in-module,reimported
 if Version(keras_version) >= Version("2.6.0"):
-    from tensorflow.keras import layers
     from tensorflow import keras
+    from tensorflow.keras import layers
 else:
     from keras import layers
 

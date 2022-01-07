@@ -1,9 +1,9 @@
-import mlflow
-
 from sklearn.datasets import load_iris
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.metrics import mean_squared_error
 from sklearn.utils import shuffle
+
+import mlflow
 
 
 if __name__ == "__main__":

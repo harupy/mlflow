@@ -1,71 +1,71 @@
 import json
+import os
+from unittest import mock
 import uuid
 
 import pytest
-from unittest import mock
 
-import os
 import mlflow
 from mlflow.entities import ViewType
 from mlflow.entities.model_registry import (
-    RegisteredModel,
     ModelVersion,
-    RegisteredModelTag,
     ModelVersionTag,
+    RegisteredModel,
+    RegisteredModelTag,
 )
 from mlflow.exceptions import MlflowException
-from mlflow.protos.databricks_pb2 import INTERNAL_ERROR, INVALID_PARAMETER_VALUE, ErrorCode
-from mlflow.server.handlers import (
-    get_endpoints,
-    _create_experiment,
-    _get_request_message,
-    _search_runs,
-    _log_batch,
-    catch_mlflow_exception,
-    _create_registered_model,
-    _update_registered_model,
-    _delete_registered_model,
-    _get_registered_model,
-    _list_registered_models,
-    _search_registered_models,
-    _get_latest_versions,
-    _create_model_version,
-    _update_model_version,
-    _delete_model_version,
-    _get_model_version_download_uri,
-    _search_model_versions,
-    _get_model_version,
-    _transition_stage,
-    _rename_registered_model,
-    _set_registered_model_tag,
-    _delete_registered_model_tag,
-    _set_model_version_tag,
-    _delete_model_version_tag,
-)
-from mlflow.server import BACKEND_STORE_URI_ENV_VAR, app
-from mlflow.store.entities.paged_list import PagedList
-from mlflow.protos.service_pb2 import CreateExperiment, SearchRuns
+from mlflow.protos.databricks_pb2 import ErrorCode, INTERNAL_ERROR, INVALID_PARAMETER_VALUE
 from mlflow.protos.model_registry_pb2 import (
-    CreateRegisteredModel,
-    UpdateRegisteredModel,
-    DeleteRegisteredModel,
-    ListRegisteredModels,
-    SearchRegisteredModels,
-    GetRegisteredModel,
-    GetLatestVersions,
     CreateModelVersion,
-    UpdateModelVersion,
+    CreateRegisteredModel,
     DeleteModelVersion,
+    DeleteModelVersionTag,
+    DeleteRegisteredModel,
+    DeleteRegisteredModelTag,
+    GetLatestVersions,
     GetModelVersion,
     GetModelVersionDownloadUri,
-    SearchModelVersions,
-    TransitionModelVersionStage,
+    GetRegisteredModel,
+    ListRegisteredModels,
     RenameRegisteredModel,
-    SetRegisteredModelTag,
-    DeleteRegisteredModelTag,
+    SearchModelVersions,
+    SearchRegisteredModels,
     SetModelVersionTag,
-    DeleteModelVersionTag,
+    SetRegisteredModelTag,
+    TransitionModelVersionStage,
+    UpdateModelVersion,
+    UpdateRegisteredModel,
 )
+from mlflow.protos.service_pb2 import CreateExperiment, SearchRuns
+from mlflow.server import app, BACKEND_STORE_URI_ENV_VAR
+from mlflow.server.handlers import (
+    _create_experiment,
+    _create_model_version,
+    _create_registered_model,
+    _delete_model_version,
+    _delete_model_version_tag,
+    _delete_registered_model,
+    _delete_registered_model_tag,
+    _get_latest_versions,
+    _get_model_version,
+    _get_model_version_download_uri,
+    _get_registered_model,
+    _get_request_message,
+    _list_registered_models,
+    _log_batch,
+    _rename_registered_model,
+    _search_model_versions,
+    _search_registered_models,
+    _search_runs,
+    _set_model_version_tag,
+    _set_registered_model_tag,
+    _transition_stage,
+    _update_model_version,
+    _update_registered_model,
+    catch_mlflow_exception,
+    get_endpoints,
+)
+from mlflow.store.entities.paged_list import PagedList
 from mlflow.utils.proto_json_utils import message_to_json
 from mlflow.utils.validation import MAX_BATCH_LOG_REQUEST_SIZE
 

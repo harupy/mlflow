@@ -1,33 +1,34 @@
-import pytest
 import pickle
 from unittest import mock
 
-from mlflow.entities import SourceType, ViewType, RunTag, Run, RunInfo, ExperimentTag
+import pytest
+
+from mlflow.entities import ExperimentTag, Run, RunInfo, RunTag, SourceType, ViewType
 from mlflow.entities.model_registry import ModelVersion, ModelVersionTag
 from mlflow.entities.model_registry.model_version_status import ModelVersionStatus
 from mlflow.exceptions import MlflowException
 from mlflow.protos.databricks_pb2 import ErrorCode, FEATURE_DISABLED
+from mlflow.store.model_registry.sqlalchemy_store import (
+    SqlAlchemyStore as SqlAlchemyModelRegistryStore,
+)
 from mlflow.store.tracking import SEARCH_MAX_RESULTS_DEFAULT
-from mlflow.tracking import set_registry_uri, MlflowClient
+from mlflow.store.tracking.sqlalchemy_store import SqlAlchemyStore as SqlAlchemyTrackingStore
+from mlflow.tracking import MlflowClient, set_registry_uri
 from mlflow.tracking._model_registry.utils import (
     _get_store_registry as _get_model_registry_store_registry,
 )
 from mlflow.tracking._tracking_service.utils import _tracking_store_registry
+from mlflow.utils.databricks_utils import get_databricks_runtime
 from mlflow.utils.file_utils import TempDir
 from mlflow.utils.mlflow_tags import (
-    MLFLOW_USER,
+    MLFLOW_GIT_COMMIT,
+    MLFLOW_PARENT_RUN_ID,
+    MLFLOW_PROJECT_ENTRY_POINT,
     MLFLOW_SOURCE_NAME,
     MLFLOW_SOURCE_TYPE,
-    MLFLOW_PARENT_RUN_ID,
-    MLFLOW_GIT_COMMIT,
-    MLFLOW_PROJECT_ENTRY_POINT,
+    MLFLOW_USER,
 )
 from mlflow.utils.uri import construct_run_url
-from mlflow.utils.databricks_utils import get_databricks_runtime
-from mlflow.store.tracking.sqlalchemy_store import SqlAlchemyStore as SqlAlchemyTrackingStore
-from mlflow.store.model_registry.sqlalchemy_store import (
-    SqlAlchemyStore as SqlAlchemyModelRegistryStore,
-)
 
 
 @pytest.fixture

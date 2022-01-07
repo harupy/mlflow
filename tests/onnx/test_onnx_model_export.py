@@ -1,35 +1,36 @@
-import sys
 import os
-import pytest
+import sys
 from unittest import mock
 
+import numpy as np
 import onnx
+import pandas as pd
+import pytest
+import sklearn.datasets as datasets
 import torch
 import torch.nn as nn
 import torch.onnx
 from torch.utils.data import DataLoader
-import sklearn.datasets as datasets
-import pandas as pd
-import numpy as np
 import yaml
 
-import mlflow.onnx
-import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
 from mlflow import pyfunc
 from mlflow.exceptions import MlflowException
 from mlflow.models import infer_signature, Model
 from mlflow.models.utils import _read_example
-from mlflow.utils.file_utils import TempDir
-from tests.helper_functions import (
-    pyfunc_serve_and_score_model,
-    _compare_conda_env_requirements,
-    _assert_pip_requirements,
-    _is_available_on_pypi,
-)
+import mlflow.onnx
+import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
+from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils.environment import _mlflow_conda_env
+from mlflow.utils.file_utils import TempDir
 from mlflow.utils.model_utils import _get_flavor_configuration
-from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
+from tests.helper_functions import (
+    _assert_pip_requirements,
+    _compare_conda_env_requirements,
+    _is_available_on_pypi,
+    pyfunc_serve_and_score_model,
+)
+
 
 TEST_DIR = "tests"
 TEST_ONNX_RESOURCES_DIR = os.path.join(TEST_DIR, "resources", "onnx")

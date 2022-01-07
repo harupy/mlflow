@@ -1,14 +1,14 @@
 import sys
 from unittest import mock
+
+from databricks_cli.configure.provider import DatabricksConfig
 import pytest
 
-from mlflow.utils import databricks_utils
-from databricks_cli.configure.provider import DatabricksConfig
-
 from mlflow.exceptions import MlflowException
+from mlflow.utils import databricks_utils
 from mlflow.utils.databricks_utils import (
-    get_workspace_info_from_dbutils,
     get_workspace_info_from_databricks_secrets,
+    get_workspace_info_from_dbutils,
     is_databricks_default_tracking_uri,
 )
 from mlflow.utils.uri import construct_db_uri_from_profile

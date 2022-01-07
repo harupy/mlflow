@@ -3,33 +3,33 @@ The ``mlflow.pyfunc.model`` module defines logic for saving and loading custom "
 models with a user-defined ``PythonModel`` subclass.
 """
 
+from abc import ABCMeta, abstractmethod
 import os
 import posixpath
 import shutil
-import yaml
-from abc import ABCMeta, abstractmethod
 
 import cloudpickle
+import yaml
 
-import mlflow.pyfunc
-import mlflow.utils
 from mlflow.exceptions import MlflowException
 from mlflow.models import Model
 from mlflow.models.model import MLMODEL_FILE_NAME
 from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE
+import mlflow.pyfunc
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
+import mlflow.utils
 from mlflow.utils.environment import (
-    _mlflow_conda_env,
-    _process_pip_requirements,
-    _process_conda_env,
     _CONDA_ENV_FILE_NAME,
-    _REQUIREMENTS_FILE_NAME,
     _CONSTRAINTS_FILE_NAME,
+    _mlflow_conda_env,
+    _process_conda_env,
+    _process_pip_requirements,
+    _REQUIREMENTS_FILE_NAME,
 )
-from mlflow.utils.requirements_utils import _get_pinned_requirement
-from mlflow.utils.file_utils import write_to
+from mlflow.utils.file_utils import _copy_file_or_tree, TempDir, write_to
 from mlflow.utils.model_utils import _get_flavor_configuration
-from mlflow.utils.file_utils import TempDir, _copy_file_or_tree
+from mlflow.utils.requirements_utils import _get_pinned_requirement
+
 
 CONFIG_KEY_ARTIFACTS = "artifacts"
 CONFIG_KEY_ARTIFACT_RELATIVE_PATH = "path"

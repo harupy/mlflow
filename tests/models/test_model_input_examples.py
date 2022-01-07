@@ -1,15 +1,16 @@
 import json
 import math
+
 import numpy as np
 import pandas as pd
 import pytest
-from scipy.sparse import csr_matrix, csc_matrix
+from scipy.sparse import csc_matrix, csr_matrix
 
 from mlflow.models.signature import infer_signature
 from mlflow.models.utils import (
     _Example,
-    _read_tensor_input_from_json,
     _read_sparse_matrix_from_json,
+    _read_tensor_input_from_json,
 )
 from mlflow.types.utils import TensorsNotSupportedException
 from mlflow.utils.file_utils import TempDir

@@ -1,9 +1,10 @@
 from importlib import reload
-from unittest import mock
 import io
 import itertools
-import pickle
 import os
+import pickle
+from unittest import mock
+
 import pytest
 
 import mlflow
@@ -12,7 +13,6 @@ from mlflow.store.db.db_types import DATABASE_ENGINES
 from mlflow.store.tracking.file_store import FileStore
 from mlflow.store.tracking.rest_store import RestStore
 from mlflow.store.tracking.sqlalchemy_store import SqlAlchemyStore
-from mlflow.tracking.registry import UnsupportedModelRegistryStoreURIException
 from mlflow.tracking._tracking_service.registry import TrackingStoreRegistry
 from mlflow.tracking._tracking_service.utils import (
     _get_store,
@@ -23,6 +23,8 @@ from mlflow.tracking._tracking_service.utils import (
     _TRACKING_URI_ENV_VAR,
     _TRACKING_USERNAME_ENV_VAR,
 )
+from mlflow.tracking.registry import UnsupportedModelRegistryStoreURIException
+
 
 # pylint: disable=unused-argument
 

@@ -1,23 +1,25 @@
-import os
-import json
 import functools
+import json
+import os
 import pickle
-import pytest
-import yaml
-import numpy as np
-import pandas as pd
-from sklearn import datasets
+from unittest.mock import patch
+
 import lightgbm as lgb
 import matplotlib as mpl
+import numpy as np
 from packaging.version import Version
+import pandas as pd
+import pytest
+from sklearn import datasets
+import yaml
 
 import mlflow
 import mlflow.lightgbm
 from mlflow.lightgbm import _autolog_callback
 from mlflow.models import Model
 from mlflow.models.utils import _read_example
-from mlflow.utils.autologging_utils import picklable_exception_safe_function, BatchMetricsLogger
-from unittest.mock import patch
+from mlflow.utils.autologging_utils import BatchMetricsLogger, picklable_exception_safe_function
+
 
 mpl.use("Agg")
 

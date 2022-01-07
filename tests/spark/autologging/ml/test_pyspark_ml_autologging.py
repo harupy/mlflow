@@ -1,49 +1,46 @@
+from collections import namedtuple
 import importlib
 import json
 import math
-import numpy as np
-import pandas as pd
-import pytest
-from collections import namedtuple
-from packaging.version import Version
 from unittest import mock
 
-import mlflow
-from mlflow.entities import RunStatus
-from mlflow.utils.mlflow_tags import MLFLOW_PARENT_RUN_ID, MLFLOW_AUTOLOGGING
-from mlflow.utils import _truncate_dict
-from mlflow.utils.validation import (
-    MAX_PARAM_VAL_LENGTH,
-    MAX_ENTITY_KEY_LENGTH,
-)
-
+import numpy as np
+from packaging.version import Version
+import pandas as pd
 import pyspark
 from pyspark.ml import Pipeline
-from pyspark.ml.evaluation import (
-    BinaryClassificationEvaluator,
-    MulticlassClassificationEvaluator,
-    RegressionEvaluator,
-)
-from pyspark.ml.linalg import Vectors
-from pyspark.ml.regression import LinearRegression, LinearRegressionModel
 from pyspark.ml.classification import (
     LinearSVC,
     LogisticRegression,
     MultilayerPerceptronClassifier,
     OneVsRest,
 )
+from pyspark.ml.evaluation import (
+    BinaryClassificationEvaluator,
+    MulticlassClassificationEvaluator,
+    RegressionEvaluator,
+)
 from pyspark.ml.feature import HashingTF, Tokenizer, VectorAssembler
+from pyspark.ml.linalg import Vectors
+from pyspark.ml.regression import LinearRegression, LinearRegressionModel
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder, TrainValidationSplit
+from pyspark.sql import SparkSession
+import pytest
+
+import mlflow
+from mlflow.entities import RunStatus
 from mlflow.pyspark.ml import (
-    _should_log_model,
+    _gen_estimator_metadata,
     _get_instance_param_map,
     _get_instance_param_map_recursively,
-    _get_warning_msg_for_skip_log_model,
-    _get_warning_msg_for_fit_call_with_a_list_of_params,
-    _gen_estimator_metadata,
     _get_tuning_param_maps,
+    _get_warning_msg_for_fit_call_with_a_list_of_params,
+    _get_warning_msg_for_skip_log_model,
+    _should_log_model,
 )
-from pyspark.sql import SparkSession
+from mlflow.utils import _truncate_dict
+from mlflow.utils.mlflow_tags import MLFLOW_AUTOLOGGING, MLFLOW_PARENT_RUN_ID
+from mlflow.utils.validation import MAX_ENTITY_KEY_LENGTH, MAX_PARAM_VAL_LENGTH
 
 
 pytestmark = pytest.mark.large

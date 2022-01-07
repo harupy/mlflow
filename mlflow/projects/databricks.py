@@ -1,23 +1,21 @@
 import hashlib
 import json
+import logging
 import os
+import posixpath
+from shlex import quote as shlex_quote
 import shutil
 import tempfile
 import textwrap
 import time
-import logging
-import posixpath
-
-from shlex import quote as shlex_quote
 
 from mlflow import tracking
 from mlflow.entities import RunStatus
-from mlflow.exceptions import MlflowException
+from mlflow.exceptions import ExecutionException, MlflowException
 from mlflow.projects.submitted_run import SubmittedRun
 from mlflow.projects.utils import MLFLOW_LOCAL_BACKEND_RUN_ID_CONFIG
 from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE
-from mlflow.utils import rest_utils, file_utils, databricks_utils
-from mlflow.exceptions import ExecutionException
+from mlflow.utils import databricks_utils, file_utils, rest_utils
 from mlflow.utils.mlflow_tags import (
     MLFLOW_DATABRICKS_RUN_URL,
     MLFLOW_DATABRICKS_SHELL_JOB_ID,
@@ -26,6 +24,7 @@ from mlflow.utils.mlflow_tags import (
 )
 from mlflow.utils.uri import is_databricks_uri, is_http_uri
 from mlflow.version import is_release_version, VERSION
+
 
 # Base directory within driver container for storing files related to MLflow
 DB_CONTAINER_BASE = "/databricks/mlflow"

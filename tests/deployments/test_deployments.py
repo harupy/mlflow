@@ -1,8 +1,11 @@
-import pytest
 import os
+
+import pytest
+
 from mlflow import deployments
 from mlflow.deployments.plugin_manager import DeploymentPlugins
 from mlflow.exceptions import MlflowException
+
 
 f_model_uri = "fake_model_uri"
 f_deployment_id = "fake_deployment_name"
@@ -79,6 +82,7 @@ def test_target_uri_parsing():
 
 def test_explain_with_no_target_implementation():
     from unittest import mock
+
     from mlflow_test_plugin import fake_deployment_plugin
 
     mock_error = MlflowException("MOCK ERROR")

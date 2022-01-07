@@ -1,8 +1,8 @@
 import json
 import os
 import re
-from unittest import mock
 import tempfile
+from unittest import mock
 
 from dev import update_ml_package_versions
 

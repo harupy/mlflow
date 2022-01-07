@@ -1,38 +1,38 @@
 # pylint: disable=unused-argument
 
+from collections import namedtuple
 import inspect
 import time
-import pytest
-from collections import namedtuple
-from unittest.mock import Mock, call
 from unittest import mock
+from unittest.mock import call, Mock
+
+import pytest
 
 import mlflow
-from mlflow.utils import gorilla
 from mlflow.tracking.client import MlflowClient
+from mlflow.utils import gorilla
 from mlflow.utils.autologging_utils import (
-    AUTOLOGGING_INTEGRATIONS,
-    log_fn_args_as_params,
-    resolve_input_example_and_signature,
-    batch_metrics_logger,
-    AutologgingEventLogger,
-    BatchMetricsLogger,
     autologging_integration,
-    get_autologging_config,
+    AUTOLOGGING_INTEGRATIONS,
     autologging_is_disabled,
+    AutologgingEventLogger,
+    batch_metrics_logger,
+    BatchMetricsLogger,
+    get_autologging_config,
     get_instance_method_first_arg_value,
     get_method_call_arg_value,
+    log_fn_args_as_params,
+    resolve_input_example_and_signature,
 )
 from mlflow.utils.autologging_utils.safety import _wrap_patch, AutologgingSession
 from mlflow.utils.autologging_utils.versioning import (
-    FLAVOR_TO_MODULE_NAME_AND_VERSION_INFO_KEY,
     _check_version_in_range,
     _is_pre_or_dev_release,
     _strip_dev_version_suffix,
     _violates_pep_440,
+    FLAVOR_TO_MODULE_NAME_AND_VERSION_INFO_KEY,
     is_flavor_supported_for_associated_package_versions,
 )
-
 from tests.autologging.fixtures import test_mode_off
 
 

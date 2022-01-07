@@ -1,11 +1,12 @@
-import yaml
-import os
 import logging
+import os
 
+from packaging.requirements import InvalidRequirement, Requirement
+import yaml
 
 from mlflow.utils import PYTHON_VERSION
-from mlflow.utils.requirements_utils import _parse_requirements, _infer_requirements
-from packaging.requirements import Requirement, InvalidRequirement
+from mlflow.utils.requirements_utils import _infer_requirements, _parse_requirements
+
 
 _logger = logging.getLogger(__name__)
 

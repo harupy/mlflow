@@ -1,7 +1,6 @@
 import os
-import sys
-
 import posixpath
+import sys
 import urllib.parse
 
 from mlflow.entities import FileInfo
@@ -37,8 +36,8 @@ class SFTPArtifactRepository(ArtifactRepository):
         if client:
             self.sftp = client
         else:
-            import pysftp
             import paramiko
+            import pysftp
 
             if self.config["host"] is None:
                 self.config["host"] = "localhost"

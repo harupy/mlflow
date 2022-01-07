@@ -14,13 +14,14 @@ import sys
 import traceback
 
 import mlflow
+from mlflow.exceptions import MlflowException
 from mlflow.models import Model
 from mlflow.models.model import MLMODEL_FILE_NAME
-from mlflow.exceptions import MlflowException
 from mlflow.models.signature import ModelSignature
-from mlflow.models.utils import ModelInputExample, _save_example
+from mlflow.models.utils import _save_example, ModelInputExample
 from mlflow.utils import reraise
 from mlflow.utils.annotations import keyword_only
+
 
 FLAVOR_NAME = "mleap"
 
@@ -208,14 +209,13 @@ def add_to_model(mlflow_model, path, spark_model, sample_input):
     :param sample_input: Sample PySpark DataFrame input that the model can evaluate. This is
                          required by MLeap for data schema inference.
     """
-    from pyspark.ml.pipeline import PipelineModel
-    from pyspark.sql import DataFrame
-    import mleap.version
-
     # This import statement adds `serializeToBundle` and `deserializeFromBundle` to `Transformer`:
     # https://github.com/combust/mleap/blob/37f6f61634798118e2c2eb820ceeccf9d234b810/python/mleap/pyspark/spark_support.py#L32-L33
     from mleap.pyspark.spark_support import SimpleSparkSerializer  # pylint: disable=unused-import
+    import mleap.version
     from py4j.protocol import Py4JError
+    from pyspark.ml.pipeline import PipelineModel
+    from pyspark.sql import DataFrame
 
     if not isinstance(spark_model, PipelineModel):
         raise Exception("Not a PipelineModel." " MLeap can save only PipelineModels.")

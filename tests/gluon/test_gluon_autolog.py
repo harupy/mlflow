@@ -1,21 +1,21 @@
-from packaging.version import Version
 import pickle
 import random
+from unittest.mock import patch
 import warnings
 
 import mxnet as mx
-import numpy as np
-import pytest
 from mxnet.gluon import Trainer
-from mxnet.gluon.data import Dataset, DataLoader
-from mxnet.gluon.nn import HybridSequential, Dense
+from mxnet.gluon.data import DataLoader, Dataset
+from mxnet.gluon.nn import Dense, HybridSequential
+import numpy as np
+from packaging.version import Version
+import pytest
 
 import mlflow
 import mlflow.gluon
 from mlflow.gluon._autolog import __MLflowGluonCallback
 from mlflow.utils.autologging_utils import BatchMetricsLogger
-from unittest.mock import patch
-from tests.gluon.utils import is_mxnet_older_than_1_6_0, get_estimator
+from tests.gluon.utils import get_estimator, is_mxnet_older_than_1_6_0
 
 
 if Version(mx.__version__) >= Version("2.0.0"):

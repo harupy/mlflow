@@ -1,62 +1,61 @@
-from packaging.version import Version
-import h5py
-import os
-import pytest
-import shutil
 import importlib
-import random
 import json
+import os
+import random
+import shutil
+from unittest import mock
 
+import h5py
+import keras
+import numpy as np
+from packaging.version import Version
+import pandas as pd
+import pytest
+import sklearn.datasets as datasets
 import tensorflow as tf
+from tensorflow.keras.layers import Dense as TfDense
 
 # pylint: disable=no-name-in-module
 from tensorflow.keras.models import Sequential as TfSequential
-from tensorflow.keras.layers import Dense as TfDense
 from tensorflow.keras.optimizers import SGD as TfSGD
-import sklearn.datasets as datasets
-import pandas as pd
-import numpy as np
 import yaml
-from unittest import mock
 
 import mlflow
-import mlflow.keras
-import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
 from mlflow import pyfunc
 from mlflow.exceptions import MlflowException
-from mlflow.models import Model, infer_signature
+import mlflow.keras
+from mlflow.models import infer_signature, Model
 from mlflow.models.utils import _read_example
+import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
 from mlflow.store.artifact.s3_artifact_repo import S3ArtifactRepository
+from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils.environment import _mlflow_conda_env
 from mlflow.utils.file_utils import TempDir
 from mlflow.utils.model_utils import _get_flavor_configuration
-from tests.helper_functions import pyfunc_serve_and_score_model
 from tests.helper_functions import (
-    _compare_conda_env_requirements,
     _assert_pip_requirements,
+    _compare_conda_env_requirements,
     _is_available_on_pypi,
     _is_importable,
+    pyfunc_serve_and_score_model,
 )
-from tests.helper_functions import set_boto_credentials  # pylint: disable=unused-import
 from tests.helper_functions import mock_s3_bucket  # pylint: disable=unused-import
+from tests.helper_functions import set_boto_credentials  # pylint: disable=unused-import
 from tests.pyfunc.test_spark import score_model_as_udf
-from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
 
-
-import keras
 
 # pylint: disable=no-name-in-module,reimported
 if Version(keras.__version__) >= Version("2.6.0"):
     from tensorflow import keras
-    from tensorflow.keras.models import Sequential
-    from tensorflow.keras.layers import Layer, Dense
     from tensorflow.keras import backend as K
+    from tensorflow.keras.layers import Dense, Layer
+    from tensorflow.keras.models import Sequential
     from tensorflow.keras.optimizers import SGD
 else:
-    from keras.models import Sequential
-    from keras.layers import Layer, Dense
     from keras import backend as K
+    from keras.layers import Dense, Layer
+    from keras.models import Sequential
     from keras.optimizers import SGD
 
 

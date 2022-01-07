@@ -4,20 +4,20 @@ import os
 import shutil
 from unittest import mock
 
-from databricks_cli.configure.provider import DatabricksConfig
 import databricks_cli
+from databricks_cli.configure.provider import DatabricksConfig
 import pytest
 
 import mlflow
 from mlflow import cli
-from mlflow.exceptions import MlflowException
-from mlflow.projects.databricks import DatabricksJobRunner, _get_cluster_mlflow_run_cmd
-from mlflow.protos.databricks_pb2 import ErrorCode, INVALID_PARAMETER_VALUE
 from mlflow.entities import RunStatus
+from mlflow.exceptions import MlflowException
 from mlflow.projects import databricks, ExecutionException
+from mlflow.projects.databricks import _get_cluster_mlflow_run_cmd, DatabricksJobRunner
+from mlflow.protos.databricks_pb2 import ErrorCode, INVALID_PARAMETER_VALUE
+from mlflow.store.tracking.file_store import FileStore
 from mlflow.tracking import MlflowClient
 from mlflow.utils import file_utils
-from mlflow.store.tracking.file_store import FileStore
 from mlflow.utils.mlflow_tags import (
     MLFLOW_DATABRICKS_RUN_URL,
     MLFLOW_DATABRICKS_SHELL_JOB_RUN_ID,
@@ -27,8 +27,7 @@ from mlflow.utils.rest_utils import _DEFAULT_HEADERS
 from mlflow.utils.uri import construct_db_uri_from_profile
 from tests import helper_functions
 from tests.integration.utils import invoke_cli_runner
-
-from tests.projects.utils import validate_exit_status, TEST_PROJECT_DIR
+from tests.projects.utils import TEST_PROJECT_DIR, validate_exit_status
 
 
 @pytest.fixture()

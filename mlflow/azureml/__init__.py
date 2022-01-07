@@ -2,16 +2,16 @@
 The ``mlflow.azureml`` module provides an API for deploying MLflow models to Azure
 Machine Learning.
 """
-import sys
-import os
-import subprocess
 import logging
+import os
+from pathlib import Path
+import subprocess
+import sys
 import uuid
 
 from packaging.version import Version
 
-from mlflow import get_tracking_uri, get_registry_uri
-from mlflow import pyfunc
+from mlflow import get_registry_uri, get_tracking_uri, pyfunc
 from mlflow import register_model as mlflow_register_model
 from mlflow.exceptions import MlflowException
 from mlflow.models import Model
@@ -20,9 +20,8 @@ from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils import get_unique_resource_id
 from mlflow.utils.annotations import deprecated
-from mlflow.utils.file_utils import TempDir, _copy_file_or_tree, _copy_project
+from mlflow.utils.file_utils import _copy_file_or_tree, _copy_project, TempDir
 from mlflow.version import VERSION as mlflow_version
-from pathlib import Path
 
 
 _logger = logging.getLogger(__name__)
@@ -333,9 +332,10 @@ def deploy(
     # still be accessible for import from Python 2. Therefore, we will only import from the SDK
     # upon method invocation.
     # pylint: disable=import-error
-    from azureml.core.model import Model as AzureModel, InferenceConfig
     from azureml.core import Environment as AzureEnvironment
     from azureml.core import VERSION as AZUREML_VERSION
+    from azureml.core.model import InferenceConfig
+    from azureml.core.model import Model as AzureModel
     from azureml.core.webservice import AciWebservice
 
     absolute_model_path = _download_artifact_from_uri(model_uri)

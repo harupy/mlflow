@@ -1,11 +1,11 @@
 from pprint import pprint
 
 import pandas as pd
-from sklearn import svm, datasets
+from sklearn import datasets, svm
 from sklearn.model_selection import GridSearchCV
+from utils import fetch_logged_data
 
 import mlflow
-from utils import fetch_logged_data
 
 
 def main():

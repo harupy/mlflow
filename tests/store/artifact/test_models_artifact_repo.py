@@ -1,11 +1,13 @@
-import pytest
 from unittest import mock
 from unittest.mock import Mock
+
+import pytest
 
 from mlflow.entities.model_registry import ModelVersion
 from mlflow.store.artifact.databricks_models_artifact_repo import DatabricksModelsArtifactRepository
 from mlflow.store.artifact.models_artifact_repo import ModelsArtifactRepository
 from mlflow.tracking import MlflowClient
+
 
 MODELS_ARTIFACT_REPOSITORY_PACKAGE = "mlflow.store.artifact.models_artifact_repo"
 MODELS_ARTIFACT_REPOSITORY = MODELS_ARTIFACT_REPOSITORY_PACKAGE + ".ModelsArtifactRepository"

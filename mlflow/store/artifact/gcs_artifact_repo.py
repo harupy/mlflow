@@ -1,12 +1,11 @@
 import os
-
 import posixpath
 import urllib.parse
 
 from mlflow.entities import FileInfo
+from mlflow.exceptions import MlflowException
 from mlflow.store.artifact.artifact_repo import ArtifactRepository
 from mlflow.utils.file_utils import relative_path_to_artifact_path
-from mlflow.exceptions import MlflowException
 
 
 class GCSArtifactRepository(ArtifactRepository):

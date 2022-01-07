@@ -1,34 +1,34 @@
+from collections import namedtuple
 import os
 import random
-from collections import namedtuple
-from packaging.version import Version
 
+from packaging.version import Version
 import pandas as pd
 import pytest
-import spacy
-import yaml
-from spacy.util import compounding, minibatch
-
-import mlflow.spacy
 from sklearn.datasets import fetch_20newsgroups
+import spacy
+from spacy.util import compounding, minibatch
+import yaml
 
 from mlflow import pyfunc
-import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
 from mlflow.exceptions import MlflowException
-from mlflow.models import Model, infer_signature
+from mlflow.models import infer_signature, Model
 from mlflow.models.utils import _read_example
+import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
+import mlflow.spacy
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils.environment import _mlflow_conda_env
 from mlflow.utils.file_utils import TempDir
 from mlflow.utils.model_utils import _get_flavor_configuration
 from tests.conftest import tracking_uri_mock  # pylint: disable=unused-import, E0611
 from tests.helper_functions import (
-    pyfunc_serve_and_score_model,
-    _compare_conda_env_requirements,
     _assert_pip_requirements,
+    _compare_conda_env_requirements,
     _is_available_on_pypi,
     allow_infer_pip_requirements_fallback_if,
+    pyfunc_serve_and_score_model,
 )
+
 
 EXTRA_PYFUNC_SERVING_TEST_ARGS = [] if _is_available_on_pypi("spacy") else ["--no-conda"]
 

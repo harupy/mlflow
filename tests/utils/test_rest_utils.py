@@ -1,22 +1,23 @@
 #!/usr/bin/env python
 
 from unittest import mock
+
 import numpy
 import pytest
 
 from mlflow.exceptions import MlflowException, RestException
+from mlflow.protos.databricks_pb2 import ENDPOINT_NOT_FOUND, ErrorCode
+from mlflow.protos.service_pb2 import GetRun
 from mlflow.pyfunc.scoring_server import NumpyEncoder
 from mlflow.utils.rest_utils import (
-    http_request,
-    http_request_safe,
-    MlflowHostCreds,
+    _can_parse_as_json_object,
     _DEFAULT_HEADERS,
     call_endpoint,
     call_endpoints,
-    _can_parse_as_json_object,
+    http_request,
+    http_request_safe,
+    MlflowHostCreds,
 )
-from mlflow.protos.service_pb2 import GetRun
-from mlflow.protos.databricks_pb2 import ENDPOINT_NOT_FOUND, ErrorCode
 from tests import helper_functions
 
 

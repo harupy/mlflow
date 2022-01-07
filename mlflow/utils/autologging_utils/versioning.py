@@ -1,9 +1,9 @@
 import importlib
 import re
-import yaml
 
-from packaging.version import Version, InvalidVersion
+from packaging.version import InvalidVersion, Version
 from pkg_resources import resource_filename
+import yaml
 
 import mlflow
 from mlflow.utils.databricks_utils import is_in_databricks_runtime

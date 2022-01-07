@@ -10,6 +10,7 @@ from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE
 from mlflow.store.db.db_types import DATABASE_ENGINES
 from mlflow.utils.string_utils import is_string_type
 
+
 _VALID_PARAM_AND_METRIC_NAMES = re.compile(r"^[/\w.\- ]*$")
 
 # Regex for valid run IDs: must be an alphanumeric string of length 1 to 256.

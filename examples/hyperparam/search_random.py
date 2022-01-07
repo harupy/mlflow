@@ -12,14 +12,14 @@ Several runs can be run in parallel.
 from concurrent.futures import ThreadPoolExecutor
 
 import click
-
 import numpy as np
 
 import mlflow
+import mlflow.projects
 import mlflow.sklearn
 import mlflow.tracking
-import mlflow.projects
 from mlflow.tracking.client import MlflowClient
+
 
 _inf = np.finfo(np.float64).max
 

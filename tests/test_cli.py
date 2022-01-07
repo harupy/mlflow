@@ -1,30 +1,29 @@
-from click.testing import CliRunner
-from unittest import mock
 import json
 import os
-import pytest
 import shutil
+import subprocess
 import tempfile
 import time
-import subprocess
-import requests
-
+from unittest import mock
+from urllib.parse import unquote, urlparse
 from urllib.request import url2pathname
-from urllib.parse import urlparse, unquote
+
+from click.testing import CliRunner
 import numpy as np
 import pandas as pd
+import pytest
+import requests
 
 import mlflow
-from mlflow.cli import server, ui
 from mlflow import pyfunc
-from mlflow.server import handlers
-from mlflow.store.tracking.sqlalchemy_store import SqlAlchemyStore
-from mlflow.store.tracking.file_store import FileStore
-from mlflow.exceptions import MlflowException
+from mlflow.cli import server, ui
 from mlflow.entities import ViewType
+from mlflow.exceptions import MlflowException
+from mlflow.server import handlers
+from mlflow.store.tracking.file_store import FileStore
+from mlflow.store.tracking.sqlalchemy_store import SqlAlchemyStore
 from mlflow.utils.rest_utils import augmented_raise_for_status
-
-from tests.helper_functions import pyfunc_serve_and_score_model, get_safe_port
+from tests.helper_functions import get_safe_port, pyfunc_serve_and_score_model
 from tests.tracking.integration_test_utils import _await_server_up_or_die
 
 

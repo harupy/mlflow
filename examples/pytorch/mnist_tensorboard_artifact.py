@@ -10,16 +10,19 @@
 #
 import argparse
 import os
-import mlflow
-import mlflow.pytorch
 import pickle
 import tempfile
+
+from tensorboardX import SummaryWriter
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
-from tensorboardX import SummaryWriter
+
+import mlflow
+import mlflow.pytorch
+
 
 # Command-line arguments
 parser = argparse.ArgumentParser(description="PyTorch MNIST Example")

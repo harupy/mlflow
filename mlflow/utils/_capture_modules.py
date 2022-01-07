@@ -10,10 +10,10 @@ import os
 import sys
 
 import mlflow
-from mlflow.utils.file_utils import write_to
-from mlflow.pyfunc import MAIN
 from mlflow.models.model import MLMODEL_FILE_NAME, Model
+from mlflow.pyfunc import MAIN
 from mlflow.utils.databricks_utils import is_in_databricks_runtime
+from mlflow.utils.file_utils import write_to
 
 
 def _get_top_level_module(full_module_name):

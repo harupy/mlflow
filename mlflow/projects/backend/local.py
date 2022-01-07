@@ -6,32 +6,31 @@ import subprocess
 import sys
 
 import mlflow
+from mlflow import tracking
 from mlflow.exceptions import MlflowException
-
-from mlflow.projects.submitted_run import LocalSubmittedRun
 from mlflow.projects.backend.abstract_backend import AbstractBackend
+from mlflow.projects.submitted_run import LocalSubmittedRun
 from mlflow.projects.utils import (
     fetch_and_validate_project,
-    get_or_create_run,
-    load_project,
-    get_run_env_vars,
     get_databricks_env_vars,
     get_entry_point_command,
-    MLFLOW_LOCAL_BACKEND_RUN_ID_CONFIG,
+    get_or_create_run,
+    get_run_env_vars,
+    load_project,
     MLFLOW_DOCKER_WORKDIR_PATH,
-    PROJECT_USE_CONDA,
-    PROJECT_SYNCHRONOUS,
+    MLFLOW_LOCAL_BACKEND_RUN_ID_CONFIG,
     PROJECT_DOCKER_ARGS,
     PROJECT_STORAGE_DIR,
+    PROJECT_SYNCHRONOUS,
+    PROJECT_USE_CONDA,
 )
-from mlflow.utils.conda import get_conda_command, get_or_create_conda_env
 from mlflow.store.artifact.artifact_repository_registry import get_artifact_repository
 from mlflow.store.artifact.azure_blob_artifact_repo import AzureBlobArtifactRepository
 from mlflow.store.artifact.gcs_artifact_repo import GCSArtifactRepository
 from mlflow.store.artifact.hdfs_artifact_repo import HdfsArtifactRepository
 from mlflow.store.artifact.local_artifact_repo import LocalArtifactRepository
 from mlflow.store.artifact.s3_artifact_repo import S3ArtifactRepository
-from mlflow import tracking
+from mlflow.utils.conda import get_conda_command, get_or_create_conda_env
 from mlflow.utils.mlflow_tags import MLFLOW_PROJECT_ENV
 
 
@@ -61,9 +60,9 @@ class LocalBackend(AbstractBackend):
         # environments, so the project will be executed inside a docker container.
         if project.docker_env:
             from mlflow.projects.docker import (
+                build_docker_image,
                 validate_docker_env,
                 validate_docker_installation,
-                build_docker_image,
             )
 
             tracking.MlflowClient().set_tag(active_run.info.run_id, MLFLOW_PROJECT_ENV, "docker")

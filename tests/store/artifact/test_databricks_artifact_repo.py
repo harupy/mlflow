@@ -1,27 +1,28 @@
 import os
-import time
-import shutil
-
-import pytest
 import posixpath
-from requests.models import Response
+import shutil
+import time
 from unittest import mock
 from unittest.mock import ANY
+
+import pytest
+from requests.models import Response
 
 from mlflow.entities.file_info import FileInfo as FileInfoEntity
 from mlflow.exceptions import MlflowException
 from mlflow.protos.databricks_artifacts_pb2 import (
-    GetCredentialsForWrite,
-    GetCredentialsForRead,
-    ArtifactCredentialType,
     ArtifactCredentialInfo,
+    ArtifactCredentialType,
+    GetCredentialsForRead,
+    GetCredentialsForWrite,
 )
-from mlflow.protos.service_pb2 import ListArtifacts, FileInfo
+from mlflow.protos.service_pb2 import FileInfo, ListArtifacts
 from mlflow.store.artifact.artifact_repository_registry import get_artifact_repository
 from mlflow.store.artifact.databricks_artifact_repo import (
-    DatabricksArtifactRepository,
     _MAX_CREDENTIALS_REQUEST_SIZE,
+    DatabricksArtifactRepository,
 )
+
 
 DATABRICKS_ARTIFACT_REPOSITORY_PACKAGE = "mlflow.store.artifact.databricks_artifact_repo"
 DATABRICKS_ARTIFACT_REPOSITORY = (

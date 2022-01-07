@@ -6,8 +6,9 @@ from unittest import mock
 
 import pytest
 
-from mlflow.data import is_uri, download_uri, DownloadException
+from mlflow.data import download_uri, DownloadException, is_uri
 from mlflow.projects import _project_spec
+
 
 TEST_DIR = "tests"
 TEST_PROJECT_DIR = os.path.join(TEST_DIR, "resources", "example_project")

@@ -3,6 +3,7 @@ Definitions of click options shared by several CLI commands.
 """
 import click
 
+
 MODEL_PATH = click.option(
     "--model-path",
     "-m",

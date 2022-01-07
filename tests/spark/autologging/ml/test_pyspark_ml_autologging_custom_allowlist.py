@@ -1,8 +1,10 @@
 import os
-import pytest
-import mlflow
 
 from pyspark.sql import SparkSession
+import pytest
+
+import mlflow
+
 
 pytestmark = pytest.mark.large
 

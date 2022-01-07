@@ -1,31 +1,34 @@
 import time
-from sqlalchemy.orm import relationship, backref
+
 import sqlalchemy as sa
 from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
     Column,
-    String,
     ForeignKey,
     Integer,
-    CheckConstraint,
-    BigInteger,
     PrimaryKeyConstraint,
-    Boolean,
+    String,
 )
+from sqlalchemy.orm import backref, relationship
+
 from mlflow.entities import (
     Experiment,
-    RunTag,
+    ExperimentTag,
     Metric,
     Param,
+    Run,
     RunData,
     RunInfo,
-    SourceType,
     RunStatus,
-    Run,
+    RunTag,
+    SourceType,
     ViewType,
-    ExperimentTag,
 )
 from mlflow.entities.lifecycle_stage import LifecycleStage
 from mlflow.store.db.base_sql_model import Base
+
 
 SourceTypes = [
     SourceType.to_string(SourceType.NOTEBOOK),

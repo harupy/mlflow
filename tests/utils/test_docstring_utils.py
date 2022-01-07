@@ -1,4 +1,4 @@
-from mlflow.utils.docstring_utils import ParamDocs, _get_minimum_indentation, format_docstring
+from mlflow.utils.docstring_utils import _get_minimum_indentation, format_docstring, ParamDocs
 
 
 def test_param_docs_format():

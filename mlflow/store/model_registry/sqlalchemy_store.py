@@ -1,44 +1,45 @@
+import logging
 import time
 
-import logging
 import sqlalchemy
 
 from mlflow.entities.model_registry.model_version_stages import (
-    get_canonical_stage,
     DEFAULT_STAGES_FOR_GET_LATEST_VERSIONS,
-    STAGE_DELETED_INTERNAL,
+    get_canonical_stage,
     STAGE_ARCHIVED,
+    STAGE_DELETED_INTERNAL,
 )
 from mlflow.exceptions import MlflowException
 from mlflow.protos.databricks_pb2 import (
     INVALID_PARAMETER_VALUE,
-    RESOURCE_ALREADY_EXISTS,
     INVALID_STATE,
+    RESOURCE_ALREADY_EXISTS,
     RESOURCE_DOES_NOT_EXIST,
 )
+from mlflow.store.db.base_sql_model import Base
 import mlflow.store.db.utils
+from mlflow.store.entities.paged_list import PagedList
 from mlflow.store.model_registry import (
     SEARCH_REGISTERED_MODEL_MAX_RESULTS_DEFAULT,
     SEARCH_REGISTERED_MODEL_MAX_RESULTS_THRESHOLD,
 )
-from mlflow.store.db.base_sql_model import Base
-from mlflow.store.entities.paged_list import PagedList
 from mlflow.store.model_registry.abstract_store import AbstractStore
 from mlflow.store.model_registry.dbmodels.models import (
-    SqlRegisteredModel,
     SqlModelVersion,
-    SqlRegisteredModelTag,
     SqlModelVersionTag,
+    SqlRegisteredModel,
+    SqlRegisteredModelTag,
 )
 from mlflow.utils.search_utils import SearchUtils
 from mlflow.utils.uri import extract_db_type_from_uri
 from mlflow.utils.validation import (
-    _validate_registered_model_tag,
-    _validate_model_version_tag,
     _validate_model_name,
     _validate_model_version,
+    _validate_model_version_tag,
+    _validate_registered_model_tag,
     _validate_tag_name,
 )
+
 
 _logger = logging.getLogger(__name__)
 

@@ -3,16 +3,17 @@ import shlex
 import sys
 import textwrap
 
-from flask import Flask, send_from_directory, Response
+from flask import Flask, Response, send_from_directory
 
 from mlflow.server import handlers
 from mlflow.server.handlers import (
-    get_artifact_handler,
-    STATIC_PREFIX_ENV_VAR,
     _add_static_prefix,
+    get_artifact_handler,
     get_model_version_artifact_handler,
+    STATIC_PREFIX_ENV_VAR,
 )
 from mlflow.utils.process import exec_cmd
+
 
 # NB: These are intenrnal environment variables used for communication between
 # the cli and the forked gunicorn processes.

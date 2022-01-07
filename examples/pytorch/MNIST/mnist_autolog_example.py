@@ -8,17 +8,19 @@
 # pylint: disable=arguments-differ
 # pylint: disable=unused-argument
 # pylint: disable=abstract-method
-import pytorch_lightning as pl
-import mlflow.pytorch
-import os
-import torch
 from argparse import ArgumentParser
+import os
+
+import pytorch_lightning as pl
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.callbacks import LearningRateMonitor
+import torch
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
+
+import mlflow.pytorch
+
 
 try:
     from torchmetrics.functional import accuracy

@@ -2,6 +2,7 @@ import pytest
 
 from tests.helper_functions import _is_importable
 
+
 pytestmark = pytest.mark.skipif(
     not _is_importable("pylint"), reason="pylint is required to run tests in this module"
 )
@@ -11,6 +12,7 @@ pytestmark = pytest.mark.skipif(
 def test_case():
     # Ref: https://pylint.pycqa.org/en/latest/how_tos/custom_checkers.html#testing-a-checker
     import pylint.testutils
+
     from pylint_plugins import PytestRaisesWithoutMatch
 
     class TestPytestRaisesWithoutMatch(pylint.testutils.CheckerTestCase):

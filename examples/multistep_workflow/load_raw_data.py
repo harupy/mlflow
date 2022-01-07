@@ -1,13 +1,15 @@
 """
 Downloads the MovieLens dataset and saves it as an artifact
 """
-import requests
-import tempfile
 import os
+import tempfile
 import zipfile
-import pyspark
-import mlflow
+
 import click
+import pyspark
+import requests
+
+import mlflow
 
 
 @click.command(

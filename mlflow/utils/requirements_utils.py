@@ -3,24 +3,26 @@ This module provides a set of utilities for interpreting and creating requiremen
 (e.g. pip's `requirements.txt`), which is useful for managing ML software environments.
 """
 
-import json
-import sys
-import subprocess
-import tempfile
-import os
-import pkg_resources
-import importlib_metadata
-from itertools import filterfalse, chain
 from collections import namedtuple
+from itertools import chain, filterfalse
+import json
 import logging
+import os
 import re
+import subprocess
+import sys
+import tempfile
+
+import importlib_metadata
+from packaging.version import InvalidVersion, Version
+import pkg_resources
 
 import mlflow
 from mlflow.exceptions import MlflowException
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils.autologging_utils.versioning import _strip_dev_version_suffix
 from mlflow.utils.databricks_utils import is_in_databricks_runtime
-from packaging.version import Version, InvalidVersion
+
 
 _logger = logging.getLogger(__name__)
 

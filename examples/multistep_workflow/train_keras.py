@@ -3,24 +3,23 @@ Trains a Keras model for user/movie ratings. The input is a Parquet
 ratings dataset (see etl_data.py) and an ALS model (see als.py), which we
 will use to supplement our input and train using.
 """
+from itertools import chain
+
 import click
+import numpy as np
+import pandas as pd
+import pyspark
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
+import tensorflow as tf
+import tensorflow.keras as keras
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.models import Sequential
 
 import mlflow
 import mlflow.keras
 import mlflow.spark
-
-from itertools import chain
-import pyspark
-from pyspark.sql.functions import *
-from pyspark.sql.types import *
-
-import tensorflow as tf
-import tensorflow.keras as keras
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
-import numpy as np
-import pandas as pd
 
 
 @click.command()

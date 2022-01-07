@@ -4,8 +4,8 @@
 
 
 import pytorch_lightning as pl
-import torch
 from sklearn.datasets import load_iris
+import torch
 from torch.utils.data import DataLoader, random_split, TensorDataset
 
 

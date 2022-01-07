@@ -1,10 +1,11 @@
+from collections import namedtuple
+
 import numpy as np
 import pandas as pd
-import statsmodels.api as sm
-from collections import namedtuple
-from statsmodels.tsa.arima_process import arma_generate_sample
-from statsmodels.tsa.arima.model import ARIMA
 from scipy.linalg import toeplitz
+import statsmodels.api as sm
+from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.tsa.arima_process import arma_generate_sample
 
 
 ModelWithResults = namedtuple("ModelWithResults", ["model", "alg", "inference_dataframe"])

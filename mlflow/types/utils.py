@@ -1,13 +1,12 @@
-from typing import Any
+from typing import Any, Optional
 import warnings
 
 import numpy as np
 import pandas as pd
-from typing import Optional
 
 from mlflow.exceptions import MlflowException
 from mlflow.types import DataType
-from mlflow.types.schema import Schema, ColSpec, TensorSpec
+from mlflow.types.schema import ColSpec, Schema, TensorSpec
 
 
 class TensorsNotSupportedException(MlflowException):
@@ -30,7 +29,7 @@ def _get_tensor_shape(data, variable_dimension: Optional[int] = 0) -> tuple:
     :param variable_dimension: An optional integer representing a variable dimension.
     :return: tuple : Shape of the inputted data (including a variable dimension)
     """
-    from scipy.sparse import csr_matrix, csc_matrix
+    from scipy.sparse import csc_matrix, csr_matrix
 
     if not isinstance(data, (np.ndarray, csr_matrix, csc_matrix)):
         raise TypeError("Expected numpy.ndarray or csc/csr matrix, got '{}'.".format(type(data)))
@@ -101,7 +100,7 @@ def _infer_schema(data: Any) -> Schema:
 
     :return: Schema
     """
-    from scipy.sparse import csr_matrix, csc_matrix
+    from scipy.sparse import csc_matrix, csr_matrix
 
     if isinstance(data, dict):
         res = []

@@ -2,10 +2,10 @@
 import os
 import shutil
 import sys
+import tempfile
 
 import sqlalchemy
 from sqlalchemy.schema import CreateTable, MetaData
-import tempfile
 
 from mlflow.store.tracking.sqlalchemy_store import SqlAlchemyStore
 

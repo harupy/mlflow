@@ -1,12 +1,12 @@
-import mlflow.paddle
+import numpy as np
 import paddle
 from paddle.nn import Linear
 import paddle.nn.functional as F
-import numpy as np
-
+from sklearn import preprocessing
 from sklearn.datasets import load_boston
 from sklearn.model_selection import train_test_split
-from sklearn import preprocessing
+
+import mlflow.paddle
 
 
 def load_data():

@@ -1,35 +1,35 @@
-from packaging.version import Version
 import os
 import warnings
-import yaml
 
 import mxnet as mx
-import numpy as np
-import pandas as pd
-import pytest
 from mxnet import context as ctx
 from mxnet.gluon import Trainer
 from mxnet.gluon.data import DataLoader
-from mxnet.gluon.nn import HybridSequential, Dense
+from mxnet.gluon.nn import Dense, HybridSequential
+import numpy as np
+from packaging.version import Version
+import pandas as pd
+import pytest
+import yaml
 
 import mlflow
-import mlflow.gluon
-import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
 from mlflow import pyfunc
+import mlflow.gluon
 from mlflow.models import infer_signature, Model
 from mlflow.models.utils import _read_example
+import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils.environment import _mlflow_conda_env
 from mlflow.utils.file_utils import TempDir
 from mlflow.utils.model_utils import _get_flavor_configuration
-
 from tests.gluon.utils import get_estimator
 from tests.helper_functions import (
-    pyfunc_serve_and_score_model,
-    _compare_conda_env_requirements,
     _assert_pip_requirements,
+    _compare_conda_env_requirements,
     _is_available_on_pypi,
+    pyfunc_serve_and_score_model,
 )
+
 
 if Version(mx.__version__) >= Version("2.0.0"):
     array_module = mx.np

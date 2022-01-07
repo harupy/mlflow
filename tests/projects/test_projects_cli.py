@@ -1,8 +1,8 @@
-import json
 import hashlib
+import json
+import logging
 import os
 import shutil
-import logging
 from unittest import mock
 
 from click.testing import CliRunner
@@ -12,14 +12,15 @@ from mlflow import cli
 from mlflow.tracking.client import MlflowClient
 from mlflow.utils import process
 from tests.integration.utils import invoke_cli_runner
-from tests.projects.utils import docker_example_base_image  # pylint: disable=unused-import
 from tests.projects.utils import (
-    TEST_PROJECT_DIR,
     GIT_PROJECT_URI,
     SSH_PROJECT_URI,
-    TEST_NO_SPEC_PROJECT_DIR,
     TEST_DOCKER_PROJECT_DIR,
+    TEST_NO_SPEC_PROJECT_DIR,
+    TEST_PROJECT_DIR,
 )
+from tests.projects.utils import docker_example_base_image  # pylint: disable=unused-import
+
 
 _logger = logging.getLogger(__name__)
 

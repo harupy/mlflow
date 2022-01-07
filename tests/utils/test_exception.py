@@ -1,6 +1,7 @@
 import json
+
 from mlflow.exceptions import ExecutionException, RestException
-from mlflow.protos.databricks_pb2 import RESOURCE_DOES_NOT_EXIST, ErrorCode
+from mlflow.protos.databricks_pb2 import ErrorCode, RESOURCE_DOES_NOT_EXIST
 
 
 def test_execution_exception_string_repr():

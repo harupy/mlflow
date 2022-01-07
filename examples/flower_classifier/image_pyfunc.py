@@ -4,21 +4,22 @@ in the model.
 """
 import base64
 from io import BytesIO
-import keras
-import numpy as np
 import os
-import pandas as pd
+
 import PIL
 from PIL import Image
+import keras
+import numpy as np
+import pandas as pd
 import pip
-import yaml
 import tensorflow as tf
+import yaml
 
 import mlflow
 import mlflow.keras
 from mlflow.utils import PYTHON_VERSION
-from mlflow.utils.file_utils import TempDir
 from mlflow.utils.environment import _mlflow_conda_env
+from mlflow.utils.file_utils import TempDir
 
 
 def decode_and_resize_image(raw_bytes, size):

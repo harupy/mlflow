@@ -1,27 +1,16 @@
-import mlflow
-
-from mlflow.models.evaluation import (
-    evaluate,
-    EvaluationDataset,
-    EvaluationResult,
-    ModelEvaluator,
-    EvaluationArtifact,
-    EvaluationMetrics,
-)
 import hashlib
-from mlflow.models.evaluation.base import _start_run_or_reuse_active_run
-import sklearn
+import json
 import os
-import sklearn.datasets
-import sklearn.linear_model
-import pytest
+from unittest import mock
+
+from mlflow_test_plugin.dummy_evaluator import Array2DEvaluationArtifact
 import numpy as np
 import pandas as pd
-from unittest import mock
-from mlflow.utils.file_utils import TempDir
-from mlflow_test_plugin.dummy_evaluator import Array2DEvaluationArtifact
-from mlflow.models.evaluation.evaluator_registry import _model_evaluation_registry
-
+from pyspark.sql import SparkSession
+import pytest
+import sklearn
+import sklearn.datasets
+import sklearn.linear_model
 from sklearn.metrics import (
     accuracy_score,
     confusion_matrix,
@@ -29,10 +18,19 @@ from sklearn.metrics import (
     mean_squared_error,
 )
 
-from pyspark.sql import SparkSession
-
+import mlflow
+from mlflow.models.evaluation import (
+    evaluate,
+    EvaluationArtifact,
+    EvaluationDataset,
+    EvaluationMetrics,
+    EvaluationResult,
+    ModelEvaluator,
+)
+from mlflow.models.evaluation.base import _start_run_or_reuse_active_run
+from mlflow.models.evaluation.evaluator_registry import _model_evaluation_registry
 from mlflow.tracking.artifact_utils import get_artifact_uri
-import json
+from mlflow.utils.file_utils import TempDir
 
 
 def get_iris():

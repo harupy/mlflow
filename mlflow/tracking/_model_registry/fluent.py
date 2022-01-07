@@ -1,10 +1,10 @@
-from mlflow.exceptions import MlflowException
 from mlflow.entities.model_registry import ModelVersion
-from mlflow.protos.databricks_pb2 import RESOURCE_ALREADY_EXISTS, ErrorCode
+from mlflow.exceptions import MlflowException
+from mlflow.protos.databricks_pb2 import ErrorCode, RESOURCE_ALREADY_EXISTS
 from mlflow.store.artifact.runs_artifact_repo import RunsArtifactRepository
 from mlflow.tracking import MlflowClient
-from mlflow.utils.logging_utils import eprint
 from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
+from mlflow.utils.logging_utils import eprint
 
 
 def register_model(

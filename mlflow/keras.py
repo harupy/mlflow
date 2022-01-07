@@ -10,43 +10,43 @@ Keras (native) format
 import importlib
 import os
 import re
-import yaml
-import tempfile
 import shutil
+import tempfile
 import warnings
 
-import pandas as pd
-
 from packaging.version import Version
+import pandas as pd
+import yaml
+
 from mlflow import pyfunc
+from mlflow.exceptions import MlflowException
 from mlflow.models import Model
 from mlflow.models.model import MLMODEL_FILE_NAME
-import mlflow.tracking
-from mlflow.exceptions import MlflowException
 from mlflow.models.signature import ModelSignature
-from mlflow.models.utils import ModelInputExample, _save_example
+from mlflow.models.utils import _save_example, ModelInputExample
+import mlflow.tracking
+from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
-from mlflow.utils.environment import (
-    _mlflow_conda_env,
-    _validate_env_arguments,
-    _process_pip_requirements,
-    _process_conda_env,
-    _CONDA_ENV_FILE_NAME,
-    _REQUIREMENTS_FILE_NAME,
-    _CONSTRAINTS_FILE_NAME,
-)
-from mlflow.utils.requirements_utils import _get_pinned_requirement
-from mlflow.utils.file_utils import write_to
-from mlflow.utils.docstring_utils import format_docstring, LOG_MODEL_PARAM_DOCS
-from mlflow.utils.model_utils import _get_flavor_configuration
 from mlflow.utils.autologging_utils import (
     autologging_integration,
-    safe_patch,
+    batch_metrics_logger,
     ExceptionSafeClass,
     log_fn_args_as_params,
-    batch_metrics_logger,
+    safe_patch,
 )
-from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
+from mlflow.utils.docstring_utils import format_docstring, LOG_MODEL_PARAM_DOCS
+from mlflow.utils.environment import (
+    _CONDA_ENV_FILE_NAME,
+    _CONSTRAINTS_FILE_NAME,
+    _mlflow_conda_env,
+    _process_conda_env,
+    _process_pip_requirements,
+    _REQUIREMENTS_FILE_NAME,
+    _validate_env_arguments,
+)
+from mlflow.utils.file_utils import write_to
+from mlflow.utils.model_utils import _get_flavor_configuration
+from mlflow.utils.requirements_utils import _get_pinned_requirement
 
 
 FLAVOR_NAME = "keras"

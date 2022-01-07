@@ -1,6 +1,6 @@
 import os
+from typing import Dict, Tuple
 
-from typing import Tuple, Dict
 
 MLServerMLflowRuntime = "mlserver_mlflow.MLflowRuntime"
 MLServerDefaultModelName = "mlflow-model"

@@ -1,12 +1,12 @@
 import os
-
-import pytest
 from shlex import quote
 from unittest import mock
 
+import pytest
+
 from mlflow.exceptions import ExecutionException
 from mlflow.projects._project_spec import EntryPoint
-from mlflow.utils.file_utils import TempDir, path_to_local_file_uri
+from mlflow.utils.file_utils import path_to_local_file_uri, TempDir
 from tests.projects.utils import load_project, TEST_PROJECT_DIR
 
 

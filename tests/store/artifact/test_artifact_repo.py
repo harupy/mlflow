@@ -1,5 +1,6 @@
 import posixpath
 from unittest import mock
+
 import pytest
 
 from mlflow.entities import FileInfo

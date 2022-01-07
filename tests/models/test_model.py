@@ -1,21 +1,20 @@
-import os
-import pytest
 from datetime import date
+import os
+from unittest import mock
+
+import numpy as np
+import pandas as pd
+import pytest
+from scipy.sparse import csc_matrix
 
 import mlflow
-import pandas as pd
-import numpy as np
-
-from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.models import Model
 from mlflow.models.signature import ModelSignature
 from mlflow.models.utils import _save_example
-from mlflow.types.schema import Schema, ColSpec, TensorSpec
+from mlflow.tracking.artifact_utils import _download_artifact_from_uri
+from mlflow.types.schema import ColSpec, Schema, TensorSpec
 from mlflow.utils.file_utils import TempDir
 from mlflow.utils.proto_json_utils import _dataframe_from_json
-
-from unittest import mock
-from scipy.sparse import csc_matrix
 
 
 def test_model_save_load():

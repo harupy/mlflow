@@ -1,8 +1,9 @@
+from concurrent.futures import ThreadPoolExecutor
 import os
 import subprocess
-import requests
-from concurrent.futures import ThreadPoolExecutor
 import traceback
+
+import requests
 
 
 def get_distributions():

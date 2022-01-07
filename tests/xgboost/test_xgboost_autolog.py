@@ -1,22 +1,24 @@
-from packaging.version import Version
-import os
-import json
 import functools
+import json
+import os
 import pickle
-import pytest
+
+import matplotlib as mpl
 import numpy as np
+from packaging.version import Version
 import pandas as pd
+import pytest
 from sklearn import datasets
 import xgboost as xgb
-import matplotlib as mpl
 import yaml
 
 import mlflow
-import mlflow.xgboost
-from mlflow.xgboost._autolog import IS_TRAINING_CALLBACK_SUPPORTED, autolog_callback
 from mlflow.models import Model
 from mlflow.models.utils import _read_example
 from mlflow.utils.autologging_utils import BatchMetricsLogger, picklable_exception_safe_function
+import mlflow.xgboost
+from mlflow.xgboost._autolog import autolog_callback, IS_TRAINING_CALLBACK_SUPPORTED
+
 
 mpl.use("Agg")
 

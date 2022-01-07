@@ -1,41 +1,41 @@
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
 import importlib
-import os
 import json
 import logging
+import os
 import pickle
 import re
 from unittest import mock
 
-import pytest
 import numpy as np
 import pandas as pd
+import pytest
 import sklearn.datasets as datasets
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
 import yaml
 
-import mlflow.pyfunc as pyfunc
-import mlflow.pytorch
-import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
-from mlflow.pytorch import get_default_conda_env
 from mlflow.exceptions import MlflowException
-from mlflow.models import Model, infer_signature
+from mlflow.models import infer_signature, Model
 from mlflow.models.utils import _read_example
+import mlflow.pyfunc as pyfunc
+import mlflow.pyfunc.scoring_server as pyfunc_scoring_server
+import mlflow.pytorch
+from mlflow.pytorch import get_default_conda_env
 from mlflow.pytorch import pickle_module as mlflow_pytorch_pickle_module
 from mlflow.store.artifact.s3_artifact_repo import S3ArtifactRepository
+from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
-from mlflow.utils.environment import _mlflow_conda_env, _mlflow_additional_pip_env
+from mlflow.utils.environment import _mlflow_additional_pip_env, _mlflow_conda_env
 from mlflow.utils.file_utils import TempDir
 from mlflow.utils.model_utils import _get_flavor_configuration
-from mlflow.tracking._model_registry import DEFAULT_AWAIT_MAX_SLEEP_SECONDS
-
 from tests.helper_functions import (
-    _compare_conda_env_requirements,
     _assert_pip_requirements,
+    _compare_conda_env_requirements,
     _is_available_on_pypi,
     _is_importable,
 )
+
 
 _logger = logging.getLogger(__name__)
 
@@ -43,9 +43,9 @@ _logger = logging.getLogger(__name__)
 # processes and docker containers. In these environments, the `tests` module is not available.
 # Therefore, we attempt to import from `tests` and gracefully emit a warning if it's unavailable.
 try:
+    from tests.helper_functions import mock_s3_bucket  # pylint: disable=unused-import
     from tests.helper_functions import pyfunc_serve_and_score_model
     from tests.helper_functions import set_boto_credentials  # pylint: disable=unused-import
-    from tests.helper_functions import mock_s3_bucket  # pylint: disable=unused-import
 except ImportError:
     _logger.warning(
         "Failed to import test helper functions. Tests depending on these functions may fail!"
@@ -276,8 +276,9 @@ def test_raise_exception(sequential_model):
         with pytest.raises(RuntimeError, match=f"Path '{os.path.abspath(path)}' already exists"):
             mlflow.pytorch.save_model(sequential_model, path)
 
-        from mlflow import sklearn
         import sklearn.neighbors as knn
+
+        from mlflow import sklearn
 
         path = tmp.path("knn.pkl")
         knn = knn.KNeighborsClassifier()
@@ -887,7 +888,7 @@ def test_pyfunc_serve_and_score(data):
 @pytest.mark.large
 @pytest.mark.skipif(not _is_importable("transformers"), reason="This test requires transformers")
 def test_pyfunc_serve_and_score_transformers():
-    from transformers import BertModel, BertConfig  # pylint: disable=import-error
+    from transformers import BertConfig, BertModel  # pylint: disable=import-error
 
     class MyBertModel(BertModel):
         def forward(self, *args, **kwargs):  # pylint: disable=arguments-differ
