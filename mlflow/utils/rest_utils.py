@@ -9,17 +9,17 @@ from requests.exceptions import HTTPError
 import urllib3
 from urllib3.util import Retry
 
-from mlflow import __version__
 from mlflow.exceptions import MlflowException, RestException
 from mlflow.protos import databricks_pb2
 from mlflow.protos.databricks_pb2 import ENDPOINT_NOT_FOUND, ErrorCode, INVALID_PARAMETER_VALUE
 from mlflow.utils.proto_json_utils import parse_dict
 from mlflow.utils.string_utils import strip_suffix
+from mlflow.version import VERSION
 
 
 RESOURCE_DOES_NOT_EXIST = "RESOURCE_DOES_NOT_EXIST"
 _REST_API_PATH_PREFIX = "/api/2.0"
-_DEFAULT_HEADERS = {"User-Agent": "mlflow-python-client/%s" % __version__}
+_DEFAULT_HEADERS = {"User-Agent": "mlflow-python-client/%s" % VERSION}
 # Response codes that generally indicate transient network failures and merit client retries,
 # based on guidance from cloud service providers
 # (https://docs.microsoft.com/en-us/azure/architecture/best-practices/retry-service-specific#general-rest-and-retry-guidelines)
