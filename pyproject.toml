@@ -13,7 +13,8 @@ profile = 'black'
 skip_glob = [
   'docs/source/conf.py',
   'mlflow/store/db_migrations/versions/*.py',
-  'mlflow/protos/*.py'
+  'mlflow/protos/*.py',
+  'tests/protos/*.py',
 ]
 line_length = 100
 lines_after_imports = 2
