@@ -44,6 +44,7 @@ export class MetricsPlotView extends React.Component {
     metricKeys: PropTypes.arrayOf(PropTypes.string).isRequired,
     // Whether or not to show point markers on the line chart
     showPoint: PropTypes.bool.isRequired,
+    showNaN: PropTypes.bool.isRequired,
     chartType: PropTypes.string.isRequired,
     isComparing: PropTypes.bool.isRequired,
     lineSmoothness: PropTypes.number,
@@ -72,7 +73,15 @@ export class MetricsPlotView extends React.Component {
   };
 
   getPlotPropsForLineChart = () => {
-    const { metrics, xAxis, showPoint, lineSmoothness, isComparing, deselectedCurves } = this.props;
+    const {
+      metrics,
+      xAxis,
+      showPoint,
+      lineSmoothness,
+      isComparing,
+      deselectedCurves,
+      showNaN,
+    } = this.props;
     const deselectedCurvesSet = new Set(deselectedCurves);
     const data = metrics.map((metric) => {
       const { metricKey, runDisplayName, history, runUuid } = metric;
@@ -106,9 +115,35 @@ export class MetricsPlotView extends React.Component {
         visible: visible,
         runId: runUuid,
         metricName: metricKey,
+        connectgaps: true,
       };
     });
-    const props = { data };
+
+    const nanData = data.map((d) => {
+      const { x, y } = d;
+
+      const nanX = [];
+      const nanY = [];
+      y.forEach((val, idx) => {
+        if (isNaN(val)) {
+          nanX.push(x[idx]);
+          nanY.push(0);
+        }
+      });
+
+      return {
+        ...d,
+        name: 'NaN',
+        mode: 'markers',
+        hoverinfo: 'text',
+        text: 'NaN',
+        type: 'scatter',
+        x: nanX,
+        y: nanY,
+        marker: { symbol: 'star', size: 10 },
+      };
+    });
+    const props = { data: [...data, ...(showNaN ? nanData : [])] };
     props.layout = {
       ...props.layout,
       ...this.props.extraLayout,

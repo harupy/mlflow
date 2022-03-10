@@ -23,6 +23,7 @@ export class MetricsPlotControlsImpl extends React.Component {
     selectedXAxis: PropTypes.string.isRequired,
     handleXAxisChange: PropTypes.func.isRequired,
     handleShowPointChange: PropTypes.func.isRequired,
+    handleShowNaNChange: PropTypes.func.isRequired,
     handleMetricsSelectChange: PropTypes.func.isRequired,
     handleYAxisLogScaleChange: PropTypes.func.isRequired,
     handleLineSmoothChange: PropTypes.func.isRequired,
@@ -113,6 +114,28 @@ export class MetricsPlotControlsImpl extends React.Component {
                 })}
                 defaultChecked={showPoint}
                 onChange={this.props.handleShowPointChange}
+              />
+            </div>
+            <div className='inline-control'>
+              <div className='control-label'>
+                <FormattedMessage
+                  defaultMessage='Show NaN:'
+                  // eslint-disable-next-line max-len
+                  description='Label for the toggle button to toggle to show points or not for the metric experiment run'
+                />
+              </div>
+              <Switch
+                className='show-point-toggle'
+                checkedChildren={this.props.intl.formatMessage({
+                  defaultMessage: 'On',
+                  description: 'Toggle on option to toggle show points for metric experiment run',
+                })}
+                unCheckedChildren={this.props.intl.formatMessage({
+                  defaultMessage: 'Off',
+                  description: 'Toggle off option to toggle show points for metric experiment run',
+                })}
+                defaultChecked={false}
+                onChange={this.props.handleShowNaNChange}
               />
             </div>
             <div className='block-control'>

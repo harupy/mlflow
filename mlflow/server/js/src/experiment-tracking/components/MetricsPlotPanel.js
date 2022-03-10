@@ -79,6 +79,7 @@ export class MetricsPlotPanel extends React.Component {
       popoverY: 0,
       popoverRunItems: [],
       focused: true,
+      showNaN: true,
     };
     this.displayPopover = false;
     this.intervalId = null;
@@ -510,6 +511,7 @@ export class MetricsPlotPanel extends React.Component {
   };
 
   handleShowPointChange = (showPoint) => this.updateUrlState({ showPoint });
+  handleShowNaNChange = (showNaN) => this.setState({ showNaN });
 
   handleLineSmoothChange = (lineSmoothness) => this.updateUrlState({ lineSmoothness });
 
@@ -553,7 +555,7 @@ export class MetricsPlotPanel extends React.Component {
 
   render() {
     const { experimentId, runUuids, runDisplayNames, distinctMetricKeys, location } = this.props;
-    const { popoverVisible, popoverX, popoverY, popoverRunItems } = this.state;
+    const { popoverVisible, popoverX, popoverY, popoverRunItems, showNaN } = this.state;
     const state = this.getUrlState();
     const { showPoint, selectedXAxis, selectedMetricKeys, lineSmoothness } = state;
     const yAxisLogScale = this.getAxisType() === 'log';
@@ -571,6 +573,7 @@ export class MetricsPlotPanel extends React.Component {
           handleXAxisChange={this.handleXAxisChange}
           handleMetricsSelectChange={this.handleMetricsSelectChange}
           handleShowPointChange={this.handleShowPointChange}
+          handleShowNaNChange={this.handleShowNaNChange}
           handleYAxisLogScaleChange={this.handleYAxisLogScaleChange}
           handleLineSmoothChange={this.handleLineSmoothChange}
           chartType={chartType}
@@ -602,6 +605,7 @@ export class MetricsPlotPanel extends React.Component {
             metrics={this.getMetrics()}
             metricKeys={selectedMetricKeys}
             showPoint={showPoint}
+            showNaN={showNaN}
             chartType={chartType}
             isComparing={MetricsPlotPanel.isComparing(location.search)}
             lineSmoothness={lineSmoothness}
