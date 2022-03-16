@@ -1,7 +1,7 @@
 import subprocess
 
-p = subprocess.Popen(["cmd", "/c", "pip list"], shell=True)
+p = subprocess.Popen(["pip", "install", '"requirements\\lint-requirements.txt"'], shell=True)
 p.wait()
 
-p = subprocess.Popen(["cmd", "/c", "pip list"])
+p = subprocess.Popen(["pip", "install", '"requirements\\lint-requirements.txt"'], shell=False)
 p.wait()
