@@ -26,340 +26,340 @@ env:
   MLFLOW_CONDA_HOME: /usr/share/miniconda
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: ./.github/actions/setup-python
-      with:
-        python-version: "3.7"
-    - uses: ./.github/actions/cache-pip
-    - name: Install dependencies
-      env:
-        INSTALL_LARGE_PYTHON_DEPS: true
-        INSTALL_SMALL_PYTHON_DEPS: true
-      run: |
-        source ./dev/install-common-deps.sh
-        pip install -r requirements/lint-requirements.txt
-    - name: Test custom pylint-plugins
-      run : |
-        pytest tests/pylint_plugins
-    - name: Run lint checks
-      run: |
-        ./dev/lint.sh
-  r:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mlflow/R/mlflow
-    steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-java@v2
-      with:
-        java-version: 11
-        distribution: 'adopt'
-    - uses: r-lib/actions/setup-r@v1
-    # This step dumps the current set of R dependencies and R version into files to be used
-    # as a cache key when caching/restoring R dependencies.
-    - name: Dump dependencies
-      run: |
-        Rscript -e 'source(".dump-r-dependencies.R", echo = TRUE)'
-    - name: Get OS name
-      id: os-name
-      run: |
-        # `os_name` will be like "Ubuntu-20.04.1-LTS"
-        os_name=$(lsb_release -ds | sed 's/\s/-/g')
-        echo "::set-output name=os-name::$os_name"
-    - name: Cache R packages
-      uses: actions/cache@v2
-      with:
-        path: ${{ env.R_LIBS_USER }}
-        # We cache R dependencies based on a tuple of the current OS, the R version, and the list of
-        # R dependencies
-        key: ${{ steps.os-name.outputs.os-name }}-${{ hashFiles('mlflow/R/mlflow/R-version') }}-0-${{ hashFiles('mlflow/R/mlflow/depends.Rds') }}
-    - name: Install dependencies
-      run: |
-        Rscript -e 'source(".install-deps.R", echo=TRUE)'
-        # TODO: Remove this line once h2o 3.36.0.2 is uploaded to https://packagemanager.rstudio.com
-        Rscript -e 'install.packages("h2o", repos="http://cran.r-project.org")'
-    - name: Build package
-      run: |
-        ./build-package.sh
-    - name: Create test environment
-      run: |
-        Rscript -e 'source(".create-test-env.R", echo=TRUE)'
-    - name: Run tests
-      env:
-        LINTR_COMMENT_BOT: false
-      run: |
-        cd tests
-        Rscript -e 'source("../.run-tests.R", echo=TRUE)'
+  # lint:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - uses: ./.github/actions/setup-python
+  #     with:
+  #       python-version: "3.7"
+  #   - uses: ./.github/actions/cache-pip
+  #   - name: Install dependencies
+  #     env:
+  #       INSTALL_LARGE_PYTHON_DEPS: true
+  #       INSTALL_SMALL_PYTHON_DEPS: true
+  #     run: |
+  #       source ./dev/install-common-deps.sh
+  #       pip install -r requirements/lint-requirements.txt
+  #   - name: Test custom pylint-plugins
+  #     run : |
+  #       pytest tests/pylint_plugins
+  #   - name: Run lint checks
+  #     run: |
+  #       ./dev/lint.sh
+  # r:
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: mlflow/R/mlflow
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - uses: actions/setup-java@v2
+  #     with:
+  #       java-version: 11
+  #       distribution: 'adopt'
+  #   - uses: r-lib/actions/setup-r@v1
+  #   # This step dumps the current set of R dependencies and R version into files to be used
+  #   # as a cache key when caching/restoring R dependencies.
+  #   - name: Dump dependencies
+  #     run: |
+  #       Rscript -e 'source(".dump-r-dependencies.R", echo = TRUE)'
+  #   - name: Get OS name
+  #     id: os-name
+  #     run: |
+  #       # `os_name` will be like "Ubuntu-20.04.1-LTS"
+  #       os_name=$(lsb_release -ds | sed 's/\s/-/g')
+  #       echo "::set-output name=os-name::$os_name"
+  #   - name: Cache R packages
+  #     uses: actions/cache@v2
+  #     with:
+  #       path: ${{ env.R_LIBS_USER }}
+  #       # We cache R dependencies based on a tuple of the current OS, the R version, and the list of
+  #       # R dependencies
+  #       key: ${{ steps.os-name.outputs.os-name }}-${{ hashFiles('mlflow/R/mlflow/R-version') }}-0-${{ hashFiles('mlflow/R/mlflow/depends.Rds') }}
+  #   - name: Install dependencies
+  #     run: |
+  #       Rscript -e 'source(".install-deps.R", echo=TRUE)'
+  #       # TODO: Remove this line once h2o 3.36.0.2 is uploaded to https://packagemanager.rstudio.com
+  #       Rscript -e 'install.packages("h2o", repos="http://cran.r-project.org")'
+  #   - name: Build package
+  #     run: |
+  #       ./build-package.sh
+  #   - name: Create test environment
+  #     run: |
+  #       Rscript -e 'source(".create-test-env.R", echo=TRUE)'
+  #   - name: Run tests
+  #     env:
+  #       LINTR_COMMENT_BOT: false
+  #     run: |
+  #       cd tests
+  #       Rscript -e 'source("../.run-tests.R", echo=TRUE)'
 
-  # python-skinny tests cover a subset of mlflow functionality
-  # that is meant to be supported with a smaller dependency footprint.
-  # The python skinny tests cover the subset of mlflow functionality
-  # while also verifying certain dependencies are omitted.
-  python-skinny:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: ./.github/actions/setup-python
-      with:
-        python-version: "3.7"
-    - name: Install dependencies
-      env:
-        INSTALL_SKINNY_PYTHON_DEPS: true
-        MLFLOW_SKINNY: true
-      run: |
-        source ./dev/install-common-deps.sh
-    - name: Run tests
-      run: |
-        ./dev/run-python-skinny-tests.sh
+  # # python-skinny tests cover a subset of mlflow functionality
+  # # that is meant to be supported with a smaller dependency footprint.
+  # # The python skinny tests cover the subset of mlflow functionality
+  # # while also verifying certain dependencies are omitted.
+  # python-skinny:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - uses: ./.github/actions/setup-python
+  #     with:
+  #       python-version: "3.7"
+  #   - name: Install dependencies
+  #     env:
+  #       INSTALL_SKINNY_PYTHON_DEPS: true
+  #       MLFLOW_SKINNY: true
+  #     run: |
+  #       source ./dev/install-common-deps.sh
+  #   - name: Run tests
+  #     run: |
+  #       ./dev/run-python-skinny-tests.sh
 
-  python-small:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: ./.github/actions/setup-python
-      with:
-        python-version: "3.7"
-    - name: Install dependencies
-      env:
-        INSTALL_SMALL_PYTHON_DEPS: true
-      run: |
-        source ./dev/install-common-deps.sh
-    - name: Run tests
-      run: |
-        ./dev/run-small-python-tests.sh
+  # python-small:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - uses: ./.github/actions/setup-python
+  #     with:
+  #       python-version: "3.7"
+  #   - name: Install dependencies
+  #     env:
+  #       INSTALL_SMALL_PYTHON_DEPS: true
+  #     run: |
+  #       source ./dev/install-common-deps.sh
+  #   - name: Run tests
+  #     run: |
+  #       ./dev/run-small-python-tests.sh
 
-  python-large:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Increase available disk space
-      run: |
-        # Increase available disk space by removing unnecessary tool chains:
-        # https://github.com/actions/virtual-environments/issues/709#issuecomment-612569242
-        rm -rf "$AGENT_TOOLSDIRECTORY"
-    - uses: ./.github/actions/setup-python
-      with:
-        python-version: "3.7"
-    - uses: ./.github/actions/setup-pyenv
-    - uses: actions/setup-java@v2
-      with:
-        java-version: 11
-        distribution: 'adopt'
-    - uses: ./.github/actions/cache-pip
-    - name: Install dependencies
-      env:
-        INSTALL_LARGE_PYTHON_DEPS: true
-        INSTALL_SMALL_PYTHON_DEPS: true
-      run: |
-        source ./dev/install-common-deps.sh
-    - name: Run tests
-      env:
-        # Fix for https://github.com/mlflow/mlflow/issues/4229
-        SPARK_LOCAL_IP: 127.0.0.1
-      run: |
-        ./dev/run-large-python-tests.sh
-    # Separate build and run to make it easier to explore logs
-    - name: Run database initialization tests - build
-      working-directory: tests/db
-      run: |
-        ./build_wheel.sh
-        docker-compose pull
-        docker image ls | grep -E '(REPOSITORY|postgres|mysql|mssql)'
-        docker-compose build
-    - name: Run database initialization tests - run
-      working-directory: tests/db
-      run: |
-        docker-compose run mlflow-sqlite
-        docker-compose run mlflow-postgres
-        docker-compose run mlflow-mysql
-        docker-compose run mlflow-mssql
+  # python-large:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Increase available disk space
+  #     run: |
+  #       # Increase available disk space by removing unnecessary tool chains:
+  #       # https://github.com/actions/virtual-environments/issues/709#issuecomment-612569242
+  #       rm -rf "$AGENT_TOOLSDIRECTORY"
+  #   - uses: ./.github/actions/setup-python
+  #     with:
+  #       python-version: "3.7"
+  #   - uses: ./.github/actions/setup-pyenv
+  #   - uses: actions/setup-java@v2
+  #     with:
+  #       java-version: 11
+  #       distribution: 'adopt'
+  #   - uses: ./.github/actions/cache-pip
+  #   - name: Install dependencies
+  #     env:
+  #       INSTALL_LARGE_PYTHON_DEPS: true
+  #       INSTALL_SMALL_PYTHON_DEPS: true
+  #     run: |
+  #       source ./dev/install-common-deps.sh
+  #   - name: Run tests
+  #     env:
+  #       # Fix for https://github.com/mlflow/mlflow/issues/4229
+  #       SPARK_LOCAL_IP: 127.0.0.1
+  #     run: |
+  #       ./dev/run-large-python-tests.sh
+  #   # Separate build and run to make it easier to explore logs
+  #   - name: Run database initialization tests - build
+  #     working-directory: tests/db
+  #     run: |
+  #       ./build_wheel.sh
+  #       docker-compose pull
+  #       docker image ls | grep -E '(REPOSITORY|postgres|mysql|mssql)'
+  #       docker-compose build
+  #   - name: Run database initialization tests - run
+  #     working-directory: tests/db
+  #     run: |
+  #       docker-compose run mlflow-sqlite
+  #       docker-compose run mlflow-postgres
+  #       docker-compose run mlflow-mysql
+  #       docker-compose run mlflow-mssql
 
-        diff=$(git diff --color)
-        if [ ! -z "$diff"]
-        then
-          echo "$diff"
-          echo 'Table schemas changed (see diff above).'
-          echo 'Please run `cd tests/db && ./update_schemas.sh` and ensure new schemas are correct.'
-          exit 1
-        fi
+  #       diff=$(git diff --color)
+  #       if [ ! -z "$diff"]
+  #       then
+  #         echo "$diff"
+  #         echo 'Table schemas changed (see diff above).'
+  #         echo 'Please run `cd tests/db && ./update_schemas.sh` and ensure new schemas are correct.'
+  #         exit 1
+  #       fi
 
-        docker-compose down --volumes --remove-orphans --rmi all
-    - name: Run anaconda compatibility tests
-      run: |
-        ./dev/test-anaconda-compatibility.sh "anaconda3:2020.11"
-        ./dev/test-anaconda-compatibility.sh "anaconda3:2019.03"
+  #       docker-compose down --volumes --remove-orphans --rmi all
+  #   - name: Run anaconda compatibility tests
+  #     run: |
+  #       ./dev/test-anaconda-compatibility.sh "anaconda3:2020.11"
+  #       ./dev/test-anaconda-compatibility.sh "anaconda3:2019.03"
 
-  java:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: ./.github/actions/setup-python
-      with:
-        python-version: "3.7"
-    - name: Set up Java
-      uses: actions/setup-java@v2
-      with:
-        java-version: 11
-        distribution: 'adopt'
-    - name: Install dependencies
-      run: |
-        source ./dev/install-common-deps.sh
-    - name: Run tests
-      env:
-        SPARK_LOCAL_IP: 127.0.0.1
-      run: |
-        cd mlflow/java
-        mvn clean package -q
+  # java:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - uses: ./.github/actions/setup-python
+  #     with:
+  #       python-version: "3.7"
+  #   - name: Set up Java
+  #     uses: actions/setup-java@v2
+  #     with:
+  #       java-version: 11
+  #       distribution: 'adopt'
+  #   - name: Install dependencies
+  #     run: |
+  #       source ./dev/install-common-deps.sh
+  #   - name: Run tests
+  #     env:
+  #       SPARK_LOCAL_IP: 127.0.0.1
+  #     run: |
+  #       cd mlflow/java
+  #       mvn clean package -q
 
-  js:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mlflow/server/js
-    steps:
-    - uses: actions/checkout@v2
-    - name: Set up Node
-      uses: actions/setup-node@v1
-      with:
-        node-version: "16"
-    - name: Install dependencies
-      run: |
-        yarn install
-        git diff --exit-code
-    - name: Run lint
-      run: |
-        yarn run lint
-    - name: Run extract-i18n lint
-      run: |
-        yarn run extract-i18n:base --lint
-    - name: Run tests
-      run: |
-        yarn run test
+  # js:
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: mlflow/server/js
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Set up Node
+  #     uses: actions/setup-node@v1
+  #     with:
+  #       node-version: "16"
+  #   - name: Install dependencies
+  #     run: |
+  #       yarn install
+  #       git diff --exit-code
+  #   - name: Run lint
+  #     run: |
+  #       yarn run lint
+  #   - name: Run extract-i18n lint
+  #     run: |
+  #       yarn run extract-i18n:base --lint
+  #   - name: Run tests
+  #     run: |
+  #       yarn run test
 
-  protos:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Test building Docker image
-      working-directory: dev
-      env:
-        DOCKER_BUILDKIT: 1
-      run: |
-        docker build -t gen-protos -f Dockerfile.protos .
-        docker run --rm gen-protos protoc --version
-    - name: Install dependencies
-      run: |
-        wget https://github.com/protocolbuffers/protobuf/releases/download/v3.6.0/protoc-3.6.0-linux-x86_64.zip -O $HOME/protoc.zip
-        sudo unzip $HOME/protoc.zip -d /usr
-    - name: Run tests
-      run: |
-        ./dev/test-generate-protos.sh
+  # protos:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Test building Docker image
+  #     working-directory: dev
+  #     env:
+  #       DOCKER_BUILDKIT: 1
+  #     run: |
+  #       docker build -t gen-protos -f Dockerfile.protos .
+  #       docker run --rm gen-protos protoc --version
+  #   - name: Install dependencies
+  #     run: |
+  #       wget https://github.com/protocolbuffers/protobuf/releases/download/v3.6.0/protoc-3.6.0-linux-x86_64.zip -O $HOME/protoc.zip
+  #       sudo unzip $HOME/protoc.zip -d /usr
+  #   - name: Run tests
+  #     run: |
+  #       ./dev/test-generate-protos.sh
 
-  flavors:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Increase available disk space
-        run: |
-          # Increase available disk space by removing unnecessary tool chains:
-          # https://github.com/actions/virtual-environments/issues/709#issuecomment-612569242
-          rm -rf "$AGENT_TOOLSDIRECTORY"
-      - uses: ./.github/actions/setup-python
-        with:
-          python-version: "3.7"
-      - uses: actions/setup-java@v2
-        with:
-          java-version: 11
-          distribution: 'adopt'
-      - uses: ./.github/actions/cache-pip
-      - name: Install dependencies
-        env:
-          INSTALL_LARGE_PYTHON_DEPS: true
-          INSTALL_SMALL_PYTHON_DEPS: true
-        run: |
-          source ./dev/install-common-deps.sh
-      - name: Run tests
-        env:
-          SPARK_LOCAL_IP: 127.0.0.1
-        run: |
-          # Install libopenblas-dev for mxnet 1.8.0.post0
-          sudo apt-get update -y
-          sudo apt-get install libopenblas-dev -y
-          ./dev/run-python-flavor-tests.sh;
+  # flavors:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - name: Increase available disk space
+  #       run: |
+  #         # Increase available disk space by removing unnecessary tool chains:
+  #         # https://github.com/actions/virtual-environments/issues/709#issuecomment-612569242
+  #         rm -rf "$AGENT_TOOLSDIRECTORY"
+  #     - uses: ./.github/actions/setup-python
+  #       with:
+  #         python-version: "3.7"
+  #     - uses: actions/setup-java@v2
+  #       with:
+  #         java-version: 11
+  #         distribution: 'adopt'
+  #     - uses: ./.github/actions/cache-pip
+  #     - name: Install dependencies
+  #       env:
+  #         INSTALL_LARGE_PYTHON_DEPS: true
+  #         INSTALL_SMALL_PYTHON_DEPS: true
+  #       run: |
+  #         source ./dev/install-common-deps.sh
+  #     - name: Run tests
+  #       env:
+  #         SPARK_LOCAL_IP: 127.0.0.1
+  #       run: |
+  #         # Install libopenblas-dev for mxnet 1.8.0.post0
+  #         sudo apt-get update -y
+  #         sudo apt-get install libopenblas-dev -y
+  #         ./dev/run-python-flavor-tests.sh;
 
-  # It takes 9 ~ 10 minutes to run tests in `tests/models`. To make CI finish faster,
-  # run these tests in a separate job.
-  models:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: ./.github/actions/setup-python
-        with:
-          python-version: "3.7"
-      - uses: actions/setup-java@v2
-        with:
-          java-version: 11
-          distribution: 'adopt'
-      - name: Install dependencies
-        env:
-          INSTALL_SMALL_PYTHON_DEPS: true
-          INSTALL_LARGE_PYTHON_DEPS: false
-        run: |
-          source ./dev/install-common-deps.sh
-          pip install pyspark
-      - name: Run tests
-        env:
-          SPARK_LOCAL_IP: 127.0.0.1
-        run: |
-          export MLFLOW_HOME=$(pwd)
-          pytest tests/models --large
+  # # It takes 9 ~ 10 minutes to run tests in `tests/models`. To make CI finish faster,
+  # # run these tests in a separate job.
+  # models:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: ./.github/actions/setup-python
+  #       with:
+  #         python-version: "3.7"
+  #     - uses: actions/setup-java@v2
+  #       with:
+  #         java-version: 11
+  #         distribution: 'adopt'
+  #     - name: Install dependencies
+  #       env:
+  #         INSTALL_SMALL_PYTHON_DEPS: true
+  #         INSTALL_LARGE_PYTHON_DEPS: false
+  #       run: |
+  #         source ./dev/install-common-deps.sh
+  #         pip install pyspark
+  #     - name: Run tests
+  #       env:
+  #         SPARK_LOCAL_IP: 127.0.0.1
+  #       run: |
+  #         export MLFLOW_HOME=$(pwd)
+  #         pytest tests/models --large
 
-  import:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: "3.7"
-      - name: Install mlflow
-        run: |
-          pip install -e .
-      - name: Verify mlflow can be imported without errors
-        run: |
-          python -c "import mlflow"
+  # import:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: actions/setup-python@v2
+  #       with:
+  #         python-version: "3.7"
+  #     - name: Install mlflow
+  #       run: |
+  #         pip install -e .
+  #     - name: Verify mlflow can be imported without errors
+  #       run: |
+  #         python -c "import mlflow"
 
-          # Just importing mlflow should not create `mlruns` directory
-          # See: https://github.com/mlflow/mlflow/issues/3400
-          if [ -d "./mlruns" ]; then
-            exit 1
-          fi
+  #         # Just importing mlflow should not create `mlruns` directory
+  #         # See: https://github.com/mlflow/mlflow/issues/3400
+  #         if [ -d "./mlruns" ]; then
+  #           exit 1
+  #         fi
 
-  sagemaker:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: ./.github/actions/setup-python
-        with:
-          python-version: "3.7"
-      - uses: actions/setup-java@v2
-        with:
-          java-version: 11
-          distribution: 'adopt'
-      - name: Install dependencies
-        env:
-          INSTALL_LARGE_PYTHON_DEPS: true
-          INSTALL_SMALL_PYTHON_DEPS: true
-        run: |
-          source ./dev/install-common-deps.sh
-      - name: Run tests
-        env:
-          SPARK_LOCAL_IP: 127.0.0.1
-        run: |
-          ./dev/run-python-sagemaker-tests.sh;
+  # sagemaker:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: ./.github/actions/setup-python
+  #       with:
+  #         python-version: "3.7"
+  #     - uses: actions/setup-java@v2
+  #       with:
+  #         java-version: 11
+  #         distribution: 'adopt'
+  #     - name: Install dependencies
+  #       env:
+  #         INSTALL_LARGE_PYTHON_DEPS: true
+  #         INSTALL_SMALL_PYTHON_DEPS: true
+  #       run: |
+  #         source ./dev/install-common-deps.sh
+  #     - name: Run tests
+  #       env:
+  #         SPARK_LOCAL_IP: 127.0.0.1
+  #       run: |
+  #         ./dev/run-python-sagemaker-tests.sh;
 
   windows:
     runs-on: windows-latest
