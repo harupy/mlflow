@@ -41,6 +41,7 @@ def _get_kubernetes_job_definition(
     if os.environ.get("KUBE_MLFLOW_TRACKING_URI") is not None:
         env_vars["MLFLOW_TRACKING_URI"] = os.environ["KUBE_MLFLOW_TRACKING_URI"]
     environment_variables = [{"name": k, "value": v} for k, v in env_vars.items()]
+    print("job_template", job_template)
     job_template["metadata"]["name"] = job_name
     job_template["spec"]["template"]["spec"]["containers"][0]["name"] = project_name
     job_template["spec"]["template"]["spec"]["containers"][0]["image"] = container_image
