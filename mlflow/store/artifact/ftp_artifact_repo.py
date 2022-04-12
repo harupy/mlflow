@@ -2,6 +2,7 @@ import os
 import ftplib
 from ftplib import FTP
 from contextlib import contextmanager
+from concurrent.futures import ThreadPoolExecutor
 
 import posixpath
 import urllib.parse
@@ -30,6 +31,8 @@ class FTPArtifactRepository(ArtifactRepository):
             self.config["host"] = "localhost"
 
         super().__init__(artifact_uri)
+        # Fix for https://github.com/mlflow/mlflow/issues/5656
+        self.thread_pool = ThreadPoolExecutor(max_workers=1)
 
     @contextmanager
     def get_ftp_client(self):
