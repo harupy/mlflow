@@ -1,0 +1,22 @@
+FROM python:3.8
+
+WORKDIR /app
+COPY . /app
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update -y
+RUN apt install curl -y
+RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
+RUN apt install nodejs
+RUN npm install --global yarn
+RUN cd mlflow/server/js && yarn install && yarn build
+
+RUN pip install --no-cache-dir -e .
+
+ARG DATA_DIR="/app/data"
+ENV MLFLOW_TRACKING_URI="sqlite:///${DATA_DIR}/mlruns.sqlite"
+ENV DEFAULT_ATIFACT_ROOT="${DATA_DIR}/artifacts"
+
+RUN mkdir -p ${DATA_DIR}
+RUN python generate_data.py
+CMD mlflow server --port=5000 --host=0.0.0.0 --backend-store-uri="$MLFLOW_TRACKING_URI" --default-artifact-root "$DEFAULT_ATIFACT_ROOT"

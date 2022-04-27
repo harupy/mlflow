@@ -1,0 +1,4 @@
+services:
+  - type: web
+    name: mlflow
+    env: docker
