@@ -1,7 +1,6 @@
 FROM python:3.8
 
 WORKDIR /app
-COPY . /app
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update -y
@@ -9,9 +8,13 @@ RUN apt install curl -y
 RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
 RUN apt install nodejs
 RUN npm install --global yarn
-RUN cd mlflow/server/js && yarn install && yarn build
+COPY . /app
 
+# Build MLflow UI
+RUN cd mlflow/server/js && yarn install && yarn build
+# Install mlflow
 RUN pip install --no-cache-dir -e .
+# Requiremets to run generate_data.py
 RUN pip install Pillow matplotlib
 
 ARG DATA_DIR="/app/data"
