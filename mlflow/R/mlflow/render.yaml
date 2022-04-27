@@ -1,4 +1,14 @@
+# https://render.com/docs/blueprint-spec
 services:
   - type: web
+    plan: free
     name: mlflow
     env: docker
+    region: oregon
+    dockerfilePath: ./Dockerfile.render
+    dockerContext: .
+    repo: https://github.com/harupy/mlflow.git
+    branch: render
+    envVars:
+      - key: PORT
+        value: 4242
