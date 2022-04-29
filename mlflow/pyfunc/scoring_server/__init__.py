@@ -359,8 +359,9 @@ def get_cmd(
     local_uri = path_to_local_file_uri(model_uri)
     # NB: Absolute windows paths do not work with mlflow apis, use file uri to ensure
     # platform compatibility.
+    timeout = timeout or 60
     if os.name != "nt":
-        args = [f"--timeout={timeout}"]
+        args = [f"--timeout {timeout}"]
         if port and host:
             args.append(f"-b {host}:{port}")
         elif host:
