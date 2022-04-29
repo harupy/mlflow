@@ -20,26 +20,20 @@ body:
         - No. I cannot contribute a bug fix at this time.
     validations:
       required: true
-  - type: input
-    id: contact
-    attributes:
-      label: Contact Details
-      description: How can we get in touch with you if we need more info?
-      placeholder: ex. email@example.com
-    validations:
-      required: false
   - type: textarea
     attributes:
       label: System information
       description: |
         Please fill in this bug report template to ensure a timely and thorough response.
-      value: | 
-        - **Have I written custom code (as opposed to using a stock example script provided in MLflow)**:
-        - **OS Platform and Distribution (e.g., Linux Ubuntu 16.04)**:
-        - **MLflow installed from (source or binary)**:
-        - **MLflow version (run ``mlflow --version``)**:
-        - **Python version**:
-        - **npm version, if running the dev UI**:
+      value: |
+        ```
+        Have I written custom code (as opposed to using a stock example script provided in MLflow):
+        OS Platform and Distribution (e.g., Linux Ubuntu 16.04):
+        MLflow installed from (source or binary):
+        MLflow version (run ``mlflow --version``):
+        Python version:
+        npm version, if running the dev UI:
+        ```
     validations:
       required: true
   - type: textarea
