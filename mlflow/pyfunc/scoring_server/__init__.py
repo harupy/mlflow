@@ -361,7 +361,7 @@ def get_cmd(
     # platform compatibility.
     timeout = timeout or 60
     if os.name != "nt":
-        args = [f"--timeout {timeout}"]
+        args = [f"--timeout={timeout}"]
         if port and host:
             args.append(f"-b {host}:{port}")
         elif host:
