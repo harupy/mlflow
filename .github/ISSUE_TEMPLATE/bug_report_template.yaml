@@ -147,9 +147,9 @@ body:
       description: Please choose one or more cloud integrations below.
       label: What integration(s) does this bug affect?
       options:
-        - label: `integrations/azure`: Azure and Azure ML integrations
+        - label: "`integrations/azure`: Azure and Azure ML integrations"
           required: false
-        - label: `integrations/sagemaker`: SageMaker integrations
+        - label: "`integrations/sagemaker`: SageMaker integrations"
           required: false
-        - label: `integrations/databricks`: Databricks integrations
+        - label: "`integrations/databricks`: Databricks integrations"
           required: false
