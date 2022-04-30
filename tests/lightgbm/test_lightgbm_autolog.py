@@ -387,7 +387,7 @@ def test_lgb_autolog_batch_metrics_logger_logs_expected_metrics(bst_params, trai
     assert "train-multi_logloss" in patched_metrics_data
 
 
-def ranking_dataset(num_rows=100, num_queries=10):
+def get_ranking_dataset(num_rows=100, num_queries=10):
     # https://stackoverflow.com/a/67621253
     num_rows_per_query = num_rows // num_queries
     df = pd.DataFrame(
@@ -416,7 +416,7 @@ def ranking_dataset(num_rows=100, num_queries=10):
 
 @pytest.mark.large
 def test_lgb_autolog_atsign_metrics(train_set):
-    train_set, valid_set = ranking_dataset()
+    train_set, valid_set = get_ranking_dataset()
     mlflow.lightgbm.autolog()
     params = {"objective": "regression", "metric": ["map"], "eval_at": [1]}
     lgb.train(
