@@ -113,13 +113,8 @@ export class ExperimentListView extends Component {
       return activeExperimentIds;
     }
     const filteredExperimentIds = experiments
-      .filter((exp) =>
-        exp
-          .getName()
-          .toLowerCase()
-          .includes(searchInput.toLowerCase()),
-      )
-      .map((exp) => exp.experiment_id);
+      .filter(({ name }) => name.toLowerCase().includes(searchInput.toLowerCase()))
+      .map(({ experiment_id }) => experiment_id);
 
     return activeExperimentIds.filter((exp_id) => filteredExperimentIds.includes(exp_id));
   };
@@ -138,12 +133,6 @@ export class ExperimentListView extends Component {
       return Routes.getExperimentPageRoute(this.state.selectedExperimentId);
     }
     return Routes.getCompareExperimentsPageRoute(activeIds);
-  };
-
-  handleMultiSelect = (ev) => {
-    const activeIds = this.getFilteredActiveExperimentIds();
-    const data = ev.currentTarget.dataset;
-    return activeIds.length === 1 && activeIds[0] === data.experimentid ? ev.preventDefault() : ev;
   };
 
   onSelect = (_selectedKeys, event) => {
