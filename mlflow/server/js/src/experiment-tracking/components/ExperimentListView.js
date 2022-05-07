@@ -90,7 +90,7 @@ export class ExperimentListView extends Component {
     if (activeIds.length === 1) {
       return Routes.getExperimentPageRoute(activeIds[0]);
     }
-    return Routes.getCompareExperimentsPageRoute(activeIds);
+    return Routes.getCompareExperimentsPageRoute(activeIds.sort());
   };
 
   onSelect = (experimentId) => () => {
@@ -134,13 +134,13 @@ export class ExperimentListView extends Component {
           icon={<EditOutlined />}
           onClick={this.handleRenameExperiment(key, title)}
           disabled={disabled}
-          style={{ marginRight: 10 }}
+          style={{ marginRight: 5 }}
         />
         <IconButton
           icon={<i className='far fa-trash-alt' />}
           onClick={this.handleDeleteExperiment(key, title)}
           disabled={disabled}
-          style={{ marginRight: 10 }}
+          style={{ marginRight: 5 }}
         />
       </div>
     );
