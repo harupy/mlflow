@@ -207,6 +207,7 @@ export class ExperimentListView extends Component {
               dangerouslySetAntdProps={{
                 checkable: true,
                 selectable: true,
+                multiple: true,
                 onCheck: this.onCheck,
                 checkedKeys: activeExperimentIds,
                 selectedKeys: activeExperimentIds,
