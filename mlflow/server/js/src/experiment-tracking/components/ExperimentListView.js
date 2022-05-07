@@ -149,11 +149,9 @@ export class ExperimentListView extends Component {
   render() {
     const { searchInput } = this.state;
     const { experiments, activeExperimentIds } = this.props;
-    const filteredExperiments = experiments.filter((exp) =>
-      exp
-        .getName()
-        .toLowerCase()
-        .includes(searchInput.toLowerCase()),
+    const lowerCasedSearchInput = searchInput.toLowerCase();
+    const filteredExperiments = experiments.filter(({ name }) =>
+      name.toLowerCase().includes(lowerCasedSearchInput),
     );
     const treeData = filteredExperiments.map(({ name, experiment_id }) => ({
       title: name,
