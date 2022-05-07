@@ -12,7 +12,7 @@ export class DeleteExperimentModalImpl extends Component {
   static propTypes = {
     isOpen: PropTypes.bool.isRequired,
     onClose: PropTypes.func.isRequired,
-    activeExperimentIds: PropTypes.arrayOf(PropTypes.string),
+    activeExperimentId: PropTypes.string,
     experimentId: PropTypes.string.isRequired,
     experimentName: PropTypes.string.isRequired,
     deleteExperimentApi: PropTypes.func.isRequired,
@@ -21,14 +21,14 @@ export class DeleteExperimentModalImpl extends Component {
   };
 
   handleSubmit = () => {
-    const { experimentId, activeExperimentIds } = this.props;
+    const { experimentId, activeExperimentId } = this.props;
     const deleteExperimentRequestId = getUUID();
 
     const deletePromise = this.props
       .deleteExperimentApi(experimentId, deleteExperimentRequestId)
       .then(() => {
         // check whether the deleted experiment is currently selected
-        if (activeExperimentIds !== undefined && activeExperimentIds.indexOf(experimentId) > -1) {
+        if (experimentId === activeExperimentId) {
           // navigate to root URL and let route pick the next active experiment to show
           this.props.history.push(Routes.rootRoute);
         }
