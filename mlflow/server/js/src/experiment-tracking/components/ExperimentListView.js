@@ -118,7 +118,7 @@ export class ExperimentListView extends Component {
   renderListItem = ({ title, key }) => {
     const disabled = this.props.activeExperimentIds.length > 1;
     return (
-      <div style={{ display: 'flex', width: 'auto' }}>
+      <div style={{ display: 'flex' }}>
         <div
           style={{
             width: '140px',
