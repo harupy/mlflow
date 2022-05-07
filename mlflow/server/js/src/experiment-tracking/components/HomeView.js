@@ -49,7 +49,7 @@ class HomeView extends Component {
   }
 
   render() {
-    const { experimentIds, compareExperiments } = this.props;
+    const { experimentIds, experiments, compareExperiments } = this.props;
     const headerHeight = process.env.HIDE_HEADER === 'true' ? 0 : 60;
     const containerHeight = 'calc(100% - ' + headerHeight + 'px)';
     if (process.env.HIDE_EXPERIMENT_LIST === 'true') {
@@ -74,7 +74,8 @@ class HomeView extends Component {
           <Spacer />
           {this.state.listExperimentsExpanded ? (
             <ExperimentListView
-              activeExperimentIds={this.props.experimentIds}
+              activeExperimentIds={this.props.experimentIds || []}
+              experiments={experiments}
               onClickListExperiments={this.onClickListExperiments}
             />
           ) : (

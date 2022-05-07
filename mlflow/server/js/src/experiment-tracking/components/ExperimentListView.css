@@ -8,43 +8,15 @@
   overflow-y: scroll;
   overflow-x: hidden;
   width: 100%;
+  margin-top: 8px;
 }
 
-.active-experiment-list-item {
-  background: rgba(67, 199, 234, 0.1);
-  font-weight: bold;
-}
-
-.experiment-list-item {
-  overflow:hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 14px;
-  height: 32px;
-  line-height: 32px;
-  padding-left: 12px;
-}
-
-.experiment-list-search-input {
-  flex: 1;
-  overflow-y: scroll;
-  overflow-x: hidden;
-  width: 100%;
-  padding-bottom: 6px;
-  margin-bottom: 8px;
-}
-
-input.experiment-list-search-input[type="text"]:focus{
-  border-color: #258BD2;
-  outline: none;
-}
 
 .experiments-header {
   font-weight: normal;
   display: inline-block;
   margin-bottom: 8px;
 }
-
 
 .collapser-container {
   display: inline-block;
@@ -85,15 +57,10 @@ input.experiment-list-search-input[type="text"]:focus{
   cursor: pointer;
 }
 
-
-.ant-tree .ant-tree-switcher {
+.du-bois-light-tree-switcher {
   display: none;
 }
 
-.ant-tree .ant-tree-treenode {
-  align-items: center;
-}
-
-.ant-tree .ant-tree-checkbox {
-  margin: 0 8px 0 0;
+.du-bois-light-tree-checkbox {
+  margin-left: 8px;
 }
