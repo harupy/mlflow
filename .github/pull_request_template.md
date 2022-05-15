@@ -1,7 +1,7 @@
 ## Related Issues/PRs
 
 <!--
-Please reference any related feature requests, issues, or PRs here. For example: `#123`. To automatically close the referenced items when this PR is merged, please use a closing keyword (close, fix, or resolve). For example: `Close #123`. For more information, see https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue
+Please reference any related feature requests, issues, or PRs here. For example, `#123`. To automatically close the referenced items when this PR is merged, please use a closing keyword (close, fix, or resolve). For example, `Close #123`. For more information, see https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue.
 -->
 #xxx
 
