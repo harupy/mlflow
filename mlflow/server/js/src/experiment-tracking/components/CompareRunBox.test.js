@@ -9,7 +9,6 @@ import { LazyPlot } from './LazyPlot';
 
 describe('CompareRunBox', () => {
   let wrapper;
-  let instance;
 
   const runUuids = ['1', '2', '3'];
   const commonProps = {
