@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
-import { connect } from 'react-redux';
 import { FormattedMessage } from 'react-intl';
 import PropTypes from 'prop-types';
 import { Row, Col, Select } from 'antd';
 import { Typography } from '@databricks/design-system';
 import { RunInfo } from '../sdk/MlflowMessages';
-import { getParams, getRunInfo } from '../reducers/Reducers';
-import { getLatestMetrics } from '../reducers/MetricReducer';
 import { LazyPlot } from './LazyPlot';
 
 const { Option, OptGroup } = Select;
