@@ -338,7 +338,7 @@ export class CompareRunView extends Component {
 
   render() {
     const { experimentIds } = this.props;
-    const { runInfos, runNames } = this.props;
+    const { runInfos, runNames, paramLists, metricLists, runUuids } = this.props;
 
     const colWidth = this.getTableColumnWidth();
     const colWidthStyle = this.genWidthStyle(colWidth);
@@ -391,7 +391,12 @@ export class CompareRunView extends Component {
               }
               key='3'
             >
-              <CompareRunBox runUuids={this.props.runUuids} />
+              <CompareRunBox
+                runUuids={runUuids}
+                runInfos={runInfos}
+                paramLists={paramLists}
+                metricLists={metricLists}
+              />
             </TabPane>
             <TabPane
               tab={

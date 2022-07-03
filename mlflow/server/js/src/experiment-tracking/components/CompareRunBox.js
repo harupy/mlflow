@@ -11,7 +11,7 @@ import { LazyPlot } from './LazyPlot';
 
 const { Option, OptGroup } = Select;
 
-export const CompareRunBoxImpl = ({ runUuids, runInfos, metricLists, paramLists }) => {
+export const CompareRunBox = ({ runUuids, runInfos, metricLists, paramLists }) => {
   const [xAxis, setXAxis] = useState({ key: undefined, isParam: undefined });
   const [yAxis, setYAxis] = useState({ key: undefined, isParam: undefined });
 
@@ -168,24 +168,9 @@ export const CompareRunBoxImpl = ({ runUuids, runInfos, metricLists, paramLists 
   );
 };
 
-CompareRunBoxImpl.propTypes = {
+CompareRunBox.propTypes = {
   runUuids: PropTypes.arrayOf(PropTypes.string).isRequired,
   runInfos: PropTypes.arrayOf(PropTypes.instanceOf(RunInfo)).isRequired,
   metricLists: PropTypes.arrayOf(PropTypes.arrayOf(PropTypes.object)).isRequired,
   paramLists: PropTypes.arrayOf(PropTypes.arrayOf(PropTypes.object)).isRequired,
 };
-
-const mapStateToProps = (state, ownProps) => {
-  const runInfos = [];
-  const metricLists = [];
-  const paramLists = [];
-  const { runUuids } = ownProps;
-  runUuids.forEach((runUuid) => {
-    runInfos.push(getRunInfo(runUuid, state));
-    metricLists.push(Object.values(getLatestMetrics(runUuid, state)));
-    paramLists.push(Object.values(getParams(runUuid, state)));
-  });
-  return { runInfos, metricLists, paramLists };
-};
-
-export const CompareRunBox = connect(mapStateToProps)(CompareRunBoxImpl);

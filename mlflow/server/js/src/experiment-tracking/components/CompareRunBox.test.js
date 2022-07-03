@@ -1,8 +1,6 @@
 import React from 'react';
-import { mount } from 'enzyme';
 import { Select } from 'antd';
-import { act } from 'react-dom/test-utils';
-import { CompareRunBoxImpl } from './CompareRunBox';
+import { CompareRunBox } from './CompareRunBox';
 import { RunInfo } from '../sdk/MlflowMessages';
 import { mountWithIntl } from '../../common/utils/TestUtils';
 import { LazyPlot } from './LazyPlot';
@@ -36,7 +34,7 @@ describe('CompareRunBox', () => {
         [{ key: 'metric', value: 6 }],
       ],
     };
-    wrapper = mountWithIntl(<CompareRunBoxImpl {...props} />);
+    wrapper = mountWithIntl(<CompareRunBox {...props} />);
     expect(wrapper.find(LazyPlot).isEmpty()).toBe(true);
     expect(wrapper.text()).toContain('Select parameters/metrics to plot.');
     const selectors = wrapper.find(Select);
