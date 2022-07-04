@@ -297,6 +297,7 @@ export class MetricsPlotPanel extends React.Component {
         type: 'linear',
         range: state.lastLinearYAxisRange,
       };
+
       this.updateUrlState({ layout: newLayout, lastLinearYAxisRange: [] });
       return;
     }
@@ -353,6 +354,7 @@ export class MetricsPlotPanel extends React.Component {
         range: [Math.pow(10, oldYRange[0]), Math.pow(10, oldYRange[1])],
       };
     }
+
     this.updateUrlState({ layout: newLayout, lastLinearYAxisRange });
   };
 

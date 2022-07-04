@@ -4,9 +4,12 @@ import _ from 'lodash';
 import PropTypes from 'prop-types';
 import { saveAs } from 'file-saver';
 import { Icons } from 'plotly.js';
+import { Modal } from 'antd';
+
 import { X_AXIS_STEP, X_AXIS_RELATIVE, MAX_LINE_SMOOTHNESS } from './MetricsPlotControls';
 import { CHART_TYPE_BAR, convertMetricsToCsv } from './MetricsPlotPanel';
 import { LazyPlot } from './LazyPlot';
+import { ColorPaletteSelector } from './ColorPaletteSelector';
 
 const MAX_RUN_NAME_DISPLAY_LENGTH = 24;
 
@@ -38,6 +41,10 @@ const EMA = (mArray, smoothingWeight) => {
 };
 
 export class MetricsPlotView extends React.Component {
+  state = {
+    colorway: undefined,
+    colorPaletteVisible: false,
+  };
   static propTypes = {
     runUuids: PropTypes.arrayOf(PropTypes.string).isRequired,
     runDisplayNames: PropTypes.arrayOf(PropTypes.string).isRequired,
@@ -168,8 +175,18 @@ export class MetricsPlotView extends React.Component {
       this.props.chartType === CHART_TYPE_BAR
         ? this.getPlotPropsForBarChart()
         : this.getPlotPropsForLineChart();
+    console.log(this.state.colorway);
     return (
       <div className='metrics-plot-view-container'>
+        <Modal
+          title='Color Palette (click to select)'
+          visible={this.state.colorPaletteVisible}
+          onCancel={() => this.setState({ colorPaletteVisible: false })}
+          mask={false}
+          footer={null}
+        >
+          <ColorPaletteSelector onChange={(colorway) => this.setState({ colorway })} />
+        </Modal>
         <LazyPlot
           {...plotProps}
           useResizeHandler
@@ -178,7 +195,10 @@ export class MetricsPlotView extends React.Component {
           onLegendClick={onLegendClick}
           onLegendDoubleClick={onLegendDoubleClick}
           style={{ width: '100%', height: '100%' }}
-          layout={_.cloneDeep(plotProps.layout)}
+          layout={{
+            ..._.cloneDeep(plotProps.layout),
+            colorway: this.state.colorway,
+          }}
           config={{
             displaylogo: false,
             scrollZoom: true,
@@ -191,6 +211,13 @@ export class MetricsPlotView extends React.Component {
                   const csv = convertMetricsToCsv(this.props.metrics);
                   const blob = new Blob([csv], { type: 'application/csv;charset=utf-8' });
                   saveAs(blob, 'metrics.csv');
+                },
+              },
+              {
+                name: 'Show color palette',
+                icon: Icons.pencil,
+                click: () => {
+                  this.setState({ colorPaletteVisible: true });
                 },
               },
             ],
