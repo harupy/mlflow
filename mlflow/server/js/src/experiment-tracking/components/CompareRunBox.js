@@ -74,6 +74,9 @@ export const CompareRunBox = ({ runUuids, runInfos, metricLists, paramLists }) =
       y: values,
       type: 'box',
       name: key,
+      jitter: 0.3,
+      pointpos: -1.5,
+      boxpoints: 'all',
     }));
   };
 
