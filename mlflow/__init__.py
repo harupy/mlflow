@@ -194,6 +194,7 @@ __all__ = [
     "get_experiment",
     "get_experiment_by_name",
     "list_experiments",
+    "search_experiments",
     "create_experiment",
     "set_experiment",
     "delete_experiment",
