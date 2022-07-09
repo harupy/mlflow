@@ -111,7 +111,6 @@ class S3ArtifactRepository(ArtifactRepository):
             print("=" * 30)
             print("ACCESS_KEY:", credentials.access_key)
             print("SECRET_KEY:", credentials.secret_key)
-            print("TOKEN:", credentials.token)
             print("=" * 30)
         except Exception as e:
             print("Unexpected error:", repr(e))
