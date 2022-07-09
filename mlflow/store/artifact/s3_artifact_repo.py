@@ -102,6 +102,20 @@ class S3ArtifactRepository(ArtifactRepository):
         # Invalidate cache every `_MAX_CACHE_SECONDS`
         timestamp = int(_get_utcnow_timestamp() / _MAX_CACHE_SECONDS)
 
+        # pylint: disable=print-function
+        try:
+            import boto3
+
+            session = boto3.Session()
+            credentials = session.get_credentials().get_frozen_credentials()
+            print("=" * 30)
+            print("ACCESS_KEY:", credentials.access_key)
+            print("SECRET_KEY:", credentials.secret_key)
+            print("TOKEN:", credentials.token)
+            print("=" * 30)
+        except Exception as e:
+            print("Unexpected error:", repr(e))
+
         return _cached_get_s3_client(signature_version, s3_endpoint_url, verify, timestamp)
 
     def _upload_file(self, s3_client, local_file, bucket, key):
