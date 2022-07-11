@@ -23,8 +23,8 @@ jobs:
       - name: Build
         run: |
           python dev/create_static_site.py \
-            --render-token ${{ secrets.RENDER_API_TOKEN }}
-            --render-owner-id ${{ secrets.RENDER_OWNER_ID }}
-            --repo ${{ github.repository }}
-            --branch ${{ github.ref }}
+            --render-token ${{ secrets.RENDER_API_TOKEN }} \
+            --render-owner-id ${{ secrets.RENDER_OWNER_ID }} \
+            --repo ${{ github.repository }} \
+            --branch ${{ github.ref }} \
             --pr-number ${{ github.event.number }}
