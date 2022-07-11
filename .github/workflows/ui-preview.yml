@@ -1,0 +1,30 @@
+name: JS
+
+on:
+  pull:
+    paths:
+      - mlflow/server/js/**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/master' && github.run_number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.7'
+      - name: Install dependencies
+        run: |
+          pip install requests
+      - name: Build
+        run: |
+          python dev/create_static_site.py \
+            --render-token ${{ secrets.RENDER_API_TOKEN }}
+            --render-owner-id ${{ secrets.RENDER_OWNER_ID }}
+            --repo ${{ github.repository	}}
+            --branch ${{ github.ref }}
+            --pr-number ${{ github.event.number }}
