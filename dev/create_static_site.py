@@ -88,8 +88,10 @@ def main():
 
     # Wait for the service to be ready
     start_time = time.time()
-    max_wait_time_in_sec = 30 * 60  # 30 minutes
+    one_minute = 60
+    max_wait_time_in_sec = 30 * one_minute
     while time.time() - start_time < max_wait_time_in_sec:
+        time.sleep(one_minute)
         response = sess.get(f"{url}/{service_id}/deploys")
         response.raise_for_status()
         deploys = response.json()
