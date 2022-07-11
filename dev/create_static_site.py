@@ -21,7 +21,11 @@ def main():
             "publishPath": "mlflow/server/js/build",
             "pullRequestPreviewsEnabled": "no",
             "routes": [
-                {"type": "redirect", "source": "/static-files/*", "destination": "/*"},
+                {
+                    "type": "redirect",
+                    "source": "/static-files/*",
+                    "destination": "/*",
+                },
                 {
                     "type": "rewrite",
                     "source": "/ajax-api/*",
@@ -35,7 +39,7 @@ def main():
             ],
             "buildCommand": "cd mlflow/server/js && yarn install && yarn build",
         },
-        "ownerId": args.owner_id,
+        "ownerId": args.render_owner_id,
         "type": "static_site",
         "name": f"mlflow-pr-{args.pr_number}",
         "repo": f"https://github.com/{args.repo}",
@@ -44,7 +48,7 @@ def main():
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {args.token}",
+        "Authorization": f"Bearer {args.render_token}",
     }
 
     response = requests.post(url, json=payload, headers=headers)
