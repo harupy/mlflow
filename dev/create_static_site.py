@@ -115,7 +115,7 @@ def main():
             "Authorization": f"token {github_token}",
         }
     )
-    payload = {"body": f"UI preview is available at {service_url} (commit: {args.commit_sha})"}
+    payload = {"body": f"UI preview for {args.commit_sha} is available at {service_url}"}
     response = sess.post(
         f"https://api.github.com/repos/{args.repo}/issues/{args.pr_number}/comments", json=payload
     )
