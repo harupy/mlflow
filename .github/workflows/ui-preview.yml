@@ -29,5 +29,5 @@ jobs:
             --render-owner-id ${{ secrets.RENDER_OWNER_ID }} \
             --repo ${{ github.repository }} \
             --branch ${{ github.head_ref }} \
-            --pr-number ${{ github.event.number }}
+            --pr-number ${{ github.event.number }} \
             --commit-sha ${{ github.sha }}
