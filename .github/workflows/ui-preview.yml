@@ -30,3 +30,4 @@ jobs:
             --repo ${{ github.repository }} \
             --branch ${{ github.head_ref }} \
             --pr-number ${{ github.event.number }}
+            --commit-sha ${{ github.sha }}

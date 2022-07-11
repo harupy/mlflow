@@ -12,6 +12,7 @@ def parse_args():
     parser.add_argument("--repo", required=True)
     parser.add_argument("--branch", required=True)
     parser.add_argument("--pr-number", required=True)
+    parser.add_argument("--commit-sha", required=True)
     return parser.parse_args()
 
 
@@ -114,7 +115,7 @@ def main():
             "Authorization": f"token {github_token}",
         }
     )
-    payload = {"body": f"UI preview is available at {service_url} (commid )"}
+    payload = {"body": f"UI preview is available at {service_url} (commit: {args.commit_sha})"}
     response = sess.post(
         f"https://api.github.com/repos/{args.repo}/issues/{args.pr_number}/comments", json=payload
     )
