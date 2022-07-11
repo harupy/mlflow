@@ -78,7 +78,7 @@ def main():
         service = services[0]
         service_id = service["service"]["id"]
         payload = {"branch": args.branch}
-        response = sess.post(f"{url}/{service_id}", json=payload)
+        response = sess.patch(f"{url}/{service_id}", json=payload)
         response.raise_for_status()
         pprint(response.json())
 
