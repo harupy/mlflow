@@ -15,7 +15,7 @@ COPY . /app
 # Install mlflow
 # RUN pip install --no-cache-dir -e .
 # Requiremets to run generate_data.py
-RUN pip install--no-cache-dir -e .
+RUN pip install --no-cache-dir -e .
 RUN pip install Pillow matplotlib
 
 ARG DATA_DIR="/app/data"
