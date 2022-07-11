@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v3
@@ -25,6 +25,6 @@ jobs:
           python dev/create_static_site.py \
             --render-token ${{ secrets.RENDER_API_TOKEN }}
             --render-owner-id ${{ secrets.RENDER_OWNER_ID }}
-            --repo ${{ github.repository	}}
+            --repo ${{ github.repository }}
             --branch ${{ github.ref }}
             --pr-number ${{ github.event.number }}
