@@ -11,11 +11,11 @@ RUN npm install --global yarn
 
 COPY . /app
 # Build MLflow UI
-RUN cd mlflow/server/js && yarn install && yarn build
+# RUN cd mlflow/server/js && yarn install && yarn build
 # Install mlflow
-RUN pip install --no-cache-dir -e .
+# RUN pip install --no-cache-dir -e .
 # Requiremets to run generate_data.py
-RUN pip install Pillow matplotlib
+RUN pip install mlflow Pillow matplotlib
 
 ARG DATA_DIR="/app/data"
 ENV MLFLOW_TRACKING_URI="sqlite:///${DATA_DIR}/mlruns.sqlite"
