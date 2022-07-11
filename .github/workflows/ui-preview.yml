@@ -1,7 +1,7 @@
 name: UI Preview
 
 on:
-  pull:
+  pull_request:
     paths:
       - mlflow/server/js/**
 
