@@ -90,7 +90,7 @@ def main():
     start_time = time.time()
     max_wait_time_in_sec = 30 * 60  # 30 minutes
     while time.time() - start_time < max_wait_time_in_sec:
-        response = sess.patch(f"{url}/{service_id}/deploys")
+        response = sess.get(f"{url}/{service_id}/deploys")
         response.raise_for_status()
         deploys = response.json()
         if len(deploys) == 0:
