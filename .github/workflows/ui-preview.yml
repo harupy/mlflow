@@ -1,4 +1,4 @@
-name: JS
+name: UI Previewer
 
 on:
   pull:
