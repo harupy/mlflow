@@ -2,6 +2,7 @@ from pprint import pprint
 import argparse
 import requests
 import os
+import time
 
 
 def parse_args():
@@ -85,6 +86,22 @@ def main():
         resp_data = response.json()
         pprint(resp_data)
 
+    # Wait for the service to be ready
+    start_time = time.time()
+    max_wait_time_in_sec = 30 * 60  # 30 minutes
+    while time.time() - start_time < max_wait_time_in_sec:
+        response = sess.patch(f"{url}/{service_id}/deploys")
+        response.raise_for_status()
+        deploys = response.json()
+        if len(deploys) == 0:
+            continue
+        latest_deploy = deploys[0]["deploy"]
+        print(
+            "Deploy {id} is {status}".format(id=latest_deploy["id"], status=latest_deploy["status"])
+        )
+        if latest_deploy["status"] == "live":
+            break
+
     # Post the service URL as a comment on the PR
     service_url = resp_data["serviceDetails"]["url"]
     github_token = os.environ["GITHUB_TOKEN"]
@@ -95,10 +112,13 @@ def main():
             "Authorization": f"token {github_token}",
         }
     )
-    payload = {"body": f"UI preview is available at {service_url}"}
-    sess.post(
+    payload = {"body": f"UI preview is available at {service_url} (commid )"}
+    response = sess.post(
         f"https://api.github.com/repos/{args.repo}/issues/{args.pr_number}/comments", json=payload
     )
+    response.raise_for_status()
+    resp_data = response.json()
+    pprint(resp_data)
 
 
 if __name__ == "__main__":
