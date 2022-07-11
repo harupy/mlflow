@@ -50,3 +50,7 @@ def main():
     response = requests.post(url, json=payload, headers=headers)
     response.raise_for_status()
     print(response.text)
+
+
+if __name__ == "__main__":
+    main()
