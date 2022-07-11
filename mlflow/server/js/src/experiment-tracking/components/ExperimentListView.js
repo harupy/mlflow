@@ -181,7 +181,7 @@ export class ExperimentListView extends Component {
             }}
           >
             <Typography.Title level={2} style={{ margin: 0 }}>
-              Experiments
+              Hackathon
             </Typography.Title>
             <PlusSquareFilled
               onClick={this.handleCreateExperiment}
