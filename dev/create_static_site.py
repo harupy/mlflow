@@ -75,7 +75,7 @@ def main():
         pprint(response.json())
     else:
         # Update the service
-        service = next(services)
+        service = services[0]
         service_id = service["service"]["id"]
         payload = {"branch": args.branch}
         response = sess.post(f"{url}/{service_id}", json=payload)
