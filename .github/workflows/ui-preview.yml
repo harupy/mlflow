@@ -26,5 +26,5 @@ jobs:
             --render-token ${{ secrets.RENDER_API_TOKEN }} \
             --render-owner-id ${{ secrets.RENDER_OWNER_ID }} \
             --repo ${{ github.repository }} \
-            --branch ${{ github.ref }} \
+            --branch ${{ github.base_ref }} \
             --pr-number ${{ github.event.number }}
