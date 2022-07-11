@@ -8,7 +8,7 @@ def parse_args():
     parser.add_argument("--render-owner-id", required=True)
     parser.add_argument("--repo", required=True)
     parser.add_argument("--branch", required=True)
-    parser.add_argument("--pull-number", required=True)
+    parser.add_argument("--pr-number", required=True)
     return parser.parse_args()
 
 
@@ -37,9 +37,9 @@ def main():
         },
         "ownerId": args.owner_id,
         "type": "static_site",
-        "name": f"mlflow-pr-{args.pull_number}",
+        "name": f"mlflow-pr-{args.pr_number}",
         "repo": f"https://github.com/{args.repo}",
-        "branch": args.pull_number,
+        "branch": args.branch,
     }
     headers = {
         "Accept": "application/json",
