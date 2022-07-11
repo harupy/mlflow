@@ -2,14 +2,14 @@ FROM python:3.8
 
 WORKDIR /app
 
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update -y
-RUN apt install curl -y
-RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
-RUN apt install nodejs
-RUN npm install --global yarn
+# ENV DEBIAN_FRONTEND=noninteractive
+# RUN apt update -y
+# RUN apt install curl -y
+# RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
+# RUN apt install nodejs
+# RUN npm install --global yarn
 
-# COPY . /app
+COPY ./generate_data.py /app
 # Build MLflow UI
 # RUN cd mlflow/server/js && yarn install && yarn build
 # Install mlflow
