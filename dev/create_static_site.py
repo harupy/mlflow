@@ -1,6 +1,7 @@
 from pprint import pprint
 import argparse
 import requests
+import os
 
 
 def parse_args():
@@ -72,7 +73,8 @@ def main():
         }
         response = sess.post(url, json=payload)
         response.raise_for_status()
-        pprint(response.json())
+        resp_data = response.json()
+        pprint(resp_data)
     else:
         # Update the service
         service = services[0]
@@ -80,7 +82,23 @@ def main():
         payload = {"branch": args.branch}
         response = sess.patch(f"{url}/{service_id}", json=payload)
         response.raise_for_status()
-        pprint(response.json())
+        resp_data = response.json()
+        pprint(resp_data)
+
+    # Post the service URL as a comment on the PR
+    service_url = resp_data["serviceDetails"]["url"]
+    github_token = os.environ["GITHUB_TOKEN"]
+    sess = requests.Session()
+    sess.headers.update(
+        {
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"token {github_token}",
+        }
+    )
+    payload = {"body": f"UI preview is available at {service_url}"}
+    sess.post(
+        f"https://api.github.com/repos/{args.repo}/issues/{args.pr_number}/comments", json=payload
+    )
 
 
 if __name__ == "__main__":
