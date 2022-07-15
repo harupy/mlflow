@@ -16,12 +16,12 @@ COPY . /app
 # RUN pip install --no-cache-dir -e .
 # Requiremets to run generate_data.py
 RUN pip install --no-cache-dir -e .
-RUN pip install Pillow matplotlib
+RUN pip install Pillow matplotlib scikit-learn
 
 ARG DATA_DIR="/app/data"
 ENV MLFLOW_TRACKING_URI="sqlite:///${DATA_DIR}/mlruns.sqlite"
 ENV DEFAULT_ATIFACT_ROOT="${DATA_DIR}/artifacts"
 
 RUN mkdir -p ${DATA_DIR}
-RUN python generate_data.py
+RUN python examples/xgboost/xgboost_native/train.py
 CMD mlflow server --port 5000 --host 0.0.0.0 --backend-store-uri "$MLFLOW_TRACKING_URI" --default-artifact-root "$DEFAULT_ATIFACT_ROOT" --gunicorn-opts "--timeout 120"
