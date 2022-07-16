@@ -16,7 +16,7 @@ COPY . /app
 # RUN pip install --no-cache-dir -e .
 # Requiremets to run generate_data.py
 RUN pip install --no-cache-dir -e .
-RUN pip install Pillow matplotlib scikit-learn
+RUN pip install Pillow matplotlib scikit-learn xgboost
 
 ARG DATA_DIR="/app/data"
 ENV MLFLOW_TRACKING_URI="sqlite:///${DATA_DIR}/mlruns.sqlite"
