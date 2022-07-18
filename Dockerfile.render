@@ -24,4 +24,7 @@ ENV DEFAULT_ATIFACT_ROOT="${DATA_DIR}/artifacts"
 
 RUN mkdir -p ${DATA_DIR}
 RUN python examples/xgboost/xgboost_native/train.py
+RUN python examples/xgboost/xgboost_native/train.py
+RUN python examples/xgboost/xgboost_native/train.py
+RUN python generate_data.py
 CMD mlflow server --port 5000 --host 0.0.0.0 --backend-store-uri "$MLFLOW_TRACKING_URI" --default-artifact-root "$DEFAULT_ATIFACT_ROOT" --gunicorn-opts "--timeout 120"
