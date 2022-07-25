@@ -65,6 +65,8 @@ jobs:
         with:
           path: mlflow
       - uses: ./mlflow/.github/actions/setup-python
+        with:
+          python-version: 3.7
       - name: Install dependencies
         run: |
           pip install -e ./mlflow[pipelines]
