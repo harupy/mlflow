@@ -51,8 +51,9 @@ jobs:
       run: |
         pip install -r ${{ github.event.inputs.repository }}/.github/workflows/scripts/lint-requirements.txt
     - name: Run lint checks
+      working-directory: ${{ github.event.inputs.repository }}
       run: |
-        cd ${{ github.event.inputs.repository }} && .github/workflows/scripts/lint.sh
+        .github/workflows/scripts/lint.sh
   pipeline:
     runs-on: ubuntu-latest
     steps:
@@ -69,8 +70,9 @@ jobs:
           pip install -r ${{ github.event.inputs.repository }}/requirements.txt
           pip install -r ${{ github.event.inputs.repository }}/.github/workflows/scripts/test-requirements.txt
       - name: Run tests
+        working-directory: ${{ github.event.inputs.repository }}
         run: |
-          cd ${{ github.event.inputs.repository }} && pytest tests
+          pytest tests
   pipeline-windows:
     runs-on: windows-latest
     steps:
@@ -80,12 +82,13 @@ jobs:
           path: ${{ github.event.inputs.repository }}
           repository: ${{ github.event.inputs.repository }}
           ref: ${{ github.event.inputs.ref }}
-      - uses: actions/setup-python
+      - uses: ./.github/actions/setup-python
       - name: Install dependencies
         run: |
           pip install -e .[pipelines]
           pip install -r ${{ github.event.inputs.repository }}/requirements.txt
           pip install -r ${{ github.event.inputs.repository }}/.github/workflows/scripts/test-requirements.txt
       - name: Run tests
+        working-directory: ${{ github.event.inputs.repository }}
         run: |
-          cd ${{ github.event.inputs.repository }} &&  pytest tests
+          pytest tests
