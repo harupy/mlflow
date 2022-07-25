@@ -71,7 +71,7 @@ jobs:
           pip install -r ${{ github.event.inputs.repository }}/.github/workflows/scripts/test-requirements.txt
       - name: Run tests
         run: |
-          cd ${{ github.event.inputs.repository }} && pytest tests
+          cd ${{ github.event.inputs.repository }} && pytest tests --rootdir .
   pipeline-windows:
     runs-on: windows-latest
     steps:
@@ -89,4 +89,4 @@ jobs:
           pip install -r ${{ github.event.inputs.repository }}/.github/workflows/scripts/test-requirements.txt
       - name: Run tests
         run: |
-          cd ${{ github.event.inputs.repository }} && pytest tests
+          cd ${{ github.event.inputs.repository }} && pytest tests --rootdir .
