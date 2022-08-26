@@ -1134,6 +1134,7 @@ def spark_udf(spark, model_uri, result_type="double", env_manager="local"):
                     )
             pdf = pandas.DataFrame(data={names[i]: x for i, x in enumerate(args)}, columns=names)
 
+        raise Exception(args, pdf, input_schema)
         result = predict_fn(pdf)
 
         if not isinstance(result, pandas.DataFrame):
