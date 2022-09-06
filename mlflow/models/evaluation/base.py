@@ -476,7 +476,6 @@ class ModelEvaluator(metaclass=ABCMeta):
         run_id,
         evaluator_config,
         custom_metrics=None,
-        pos_label=None,
         **kwargs,
     ):
         """
@@ -491,7 +490,6 @@ class ModelEvaluator(metaclass=ABCMeta):
         :param evaluator_config: A dictionary of additional configurations for
                                  the evaluator.
         :param custom_metrics: A list of callable custom metric functions.
-        :param pos_label: The positive label for binary classification models.
         :param kwargs: For forwards compatibility, a placeholder for additional arguments that
                        may be added to the evaluation interface in the future.
         :return: An :py:class:`mlflow.models.EvaluationResult` instance containing
@@ -617,7 +615,6 @@ def _evaluate(
     evaluator_name_list,
     evaluator_name_to_conf_map,
     custom_metrics,
-    pos_label,
 ):
     """
     The public API "evaluate" will verify argument first, and then pass normalized arguments
@@ -652,7 +649,6 @@ def _evaluate(
                 run_id=run_id,
                 evaluator_config=config,
                 custom_metrics=custom_metrics,
-                pos_label=pos_label,
             )
             eval_results.append(result)
 
@@ -684,7 +680,6 @@ def evaluate(
     evaluators=None,
     evaluator_config=None,
     custom_metrics=None,
-    pos_label=None,
 ):
     """
     Evaluate an MLflow model on the specified dataset using one or more specified ``evaluators``,
@@ -748,6 +743,8 @@ def evaluate(
           For multiclass classification tasks, the maximum number of classes for which to log
           the per-class ROC curve and Precision-Recall curve. If the number of classes is
           larger than the configured maximum, these curves are not logged.
+        - pos_label: The positive label used to compute binary classification metrics such as
+          precision, recall, f1, etc. This parameter is only used for binary classification model.
 
      - Limitations of evaluation dataset:
         - For classification tasks, dataset labels are used to infer the total number of classes.
@@ -908,14 +905,6 @@ def evaluate(
                                        custom_metrics=[squared_diff_plus_one, scatter_plot],
                                    )
 
-    :param pos_label: The positive label used to compute binary classification metrics such as
-        precision, recall, f1, etc. This parameter is only used for binary classification model
-        - If specified for multi-label model, the evaluation will fail;
-        - If specified for regression model, the parameter will be ignored.
-        For multi-label classification, keep `pos_label` unset (or set to `None`), and the
-        function will calculate metrics for each label and find their average weighted by support
-        (number of true instances for each label).
-
     :return: An :py:class:`mlflow.models.EvaluationResult` instance containing
              evaluation results.
     """
@@ -946,5 +935,4 @@ def evaluate(
             evaluator_name_list=evaluator_name_list,
             evaluator_name_to_conf_map=evaluator_name_to_conf_map,
             custom_metrics=custom_metrics,
-            pos_label=pos_label,
         )

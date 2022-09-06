@@ -1192,7 +1192,7 @@ def test_evaluation_pos_label(pos_label):
             targets="target",
             dataset_name="iris",
             evaluators="default",
-            pos_label=pos_label,
+            evaluator_config={"pos_label": pos_label},
         )
         y_pred = model.predict(X)
         precision = precision_score(y, y_pred, pos_label=pos_label)

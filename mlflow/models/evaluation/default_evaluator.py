@@ -151,7 +151,7 @@ def _get_binary_sum_up_label_pred_prob(positive_class_index, positive_class, y, 
     return y_bin, y_pred_bin, y_prob_bin
 
 
-def _get_classifier_per_class_metrics(y, y_pred, *, pos_label=None):
+def _get_classifier_per_class_metrics(y, y_pred, *, pos_label=1):
     """
     get classifier metrics which computing over a specific class.
     For binary classifier, y/y_pred is for the positive class.
@@ -188,7 +188,7 @@ def _get_classifier_global_metrics(is_binomial, y, y_pred, y_probs, labels):
     return metrics
 
 
-def _get_classifier_per_class_metrics_collection_df(y, y_pred, *, labels, pos_label):
+def _get_classifier_per_class_metrics_collection_df(y, y_pred, *, labels):
     per_class_metrics_list = []
     for positive_class_index, positive_class in enumerate(labels):
         (y_bin, y_pred_bin, _,) = _get_binary_sum_up_label_pred_prob(
@@ -196,9 +196,7 @@ def _get_classifier_per_class_metrics_collection_df(y, y_pred, *, labels, pos_la
         )
 
         per_class_metrics = {"positive_class": positive_class}
-        per_class_metrics.update(
-            _get_classifier_per_class_metrics(y_bin, y_pred_bin, pos_label=pos_label)
-        )
+        per_class_metrics.update(_get_classifier_per_class_metrics(y_bin, y_pred_bin))
         per_class_metrics_list.append(per_class_metrics)
 
     return pd.DataFrame(per_class_metrics_list)
@@ -692,7 +690,9 @@ class DefaultEvaluator(ModelEvaluator):
 
     def _log_binary_classifier(self):
         self.metrics.update(
-            _get_classifier_per_class_metrics(self.y, self.y_pred, pos_label=self.pos_label)
+            _get_classifier_per_class_metrics(
+                self.y, self.y_pred, pos_label=self.evaluator_config.get("pos_label", 1)
+            )
         )
 
         if self.y_probs is not None:
@@ -726,7 +726,7 @@ class DefaultEvaluator(ModelEvaluator):
 
     def _log_multiclass_classifier(self):
         per_class_metrics_collection_df = _get_classifier_per_class_metrics_collection_df(
-            self.y, self.y_pred, labels=self.label_list, pos_label=self.pos_label
+            self.y, self.y_pred, labels=self.label_list
         )
 
         log_roc_pr_curve = False
@@ -994,7 +994,6 @@ class DefaultEvaluator(ModelEvaluator):
         run_id,
         evaluator_config,
         custom_metrics=None,
-        pos_label=None,
         **kwargs,
     ):
         import matplotlib
@@ -1011,7 +1010,6 @@ class DefaultEvaluator(ModelEvaluator):
             self.dataset_name = dataset.name
             self.feature_names = dataset.feature_names
             self.custom_metrics = custom_metrics
-            self.pos_label = pos_label
 
             model_loader_module, raw_model = _extract_raw_model(model)
             predict_fn, predict_proba_fn = _extract_predict_fn(model, raw_model)
