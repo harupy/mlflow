@@ -14,7 +14,7 @@ option (scalapb.options) = {
 service MlflowService {
 
 
-  // Get metadata for an experimen.
+  // Get metadata for an experiment.
   //
   // This endpoint will return deleted experiments, but prefers the active experiment
   // if an active and deleted experiment share the same name. If multiple deleted
@@ -30,7 +30,7 @@ service MlflowService {
         since { major: 2, minor: 0 },
       }],
       visibility: PUBLIC,
-      rpc_doc_title: "Get Experiment By Name",
+      rpc_doc_title: "Get Experiment By name",
     };
   }
 
