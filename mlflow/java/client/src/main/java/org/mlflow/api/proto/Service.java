@@ -54267,7 +54267,7 @@ public final class Service {
       "xperimentByName\022\033.mlflow.GetExperimentBy" +
       "Name\032$.mlflow.GetExperimentByName.Respon" +
       "se\"L\362\206\031H\n,\n\003GET\022\037/mlflow/experiments/get" +
-      "-by-name\032\004\010\002\020\000\020\001*\026Get Experiment By Name" +
+      "-by-name\032\004\010\002\020\000\020\001*\026Get Experiment By name" +
       "\022\306\001\n\020createExperiment\022\030.mlflow.CreateExp" +
       "eriment\032!.mlflow.CreateExperiment.Respon" +
       "se\"u\362\206\031q\n(\n\004POST\022\032/mlflow/experiments/cr" +
