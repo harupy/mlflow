@@ -377,6 +377,7 @@ class Model:
                 # We need to swallow all mlflow exceptions to maintain backwards compatibility with
                 # older tracking servers. Only print out a warning for now.
                 _logger.warning(_LOG_MODEL_METADATA_WARNING_TEMPLATE, mlflow.get_artifact_uri())
+                raise
             if registered_model_name is not None:
                 run_id = mlflow.tracking.fluent.active_run().info.run_id
                 mlflow.register_model(
