@@ -400,6 +400,7 @@ def get_databricks_host_creds(server_uri=None):
     :return: :py:class:`mlflow.rest_utils.MlflowHostCreds` which includes the hostname and
         authentication information necessary to talk to the Databricks server.
     """
+    print(server_uri)
     profile, path = get_db_info_from_uri(server_uri)
     if not hasattr(provider, "get_config"):
         _logger.warning(
