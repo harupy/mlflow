@@ -647,6 +647,7 @@ def save_model(
     """
     _validate_model(spark_model)
     _validate_env_arguments(conda_env, pip_requirements, extra_pip_requirements)
+    print("save_model", pip_requirements)
 
     from pyspark.ml import PipelineModel
 
