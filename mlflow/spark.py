@@ -477,6 +477,8 @@ def _save_model_metadata(
     """
     import pyspark
 
+    print("pip_requirements", pip_requirements)
+
     if sample_input is not None:
         mleap.add_to_model(
             mlflow_model=mlflow_model,
