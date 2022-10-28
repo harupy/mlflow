@@ -209,6 +209,7 @@ def log_model(
     _validate_model(spark_model)
     from pyspark.ml import PipelineModel
 
+    print("log_model", pip_requirements)
     if not isinstance(spark_model, PipelineModel):
         spark_model = PipelineModel([spark_model])
     run_id = mlflow.tracking.fluent._get_or_start_run().info.run_id
