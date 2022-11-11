@@ -58,7 +58,7 @@ def main():
 ### Failed to find a documentation preview link for {args.commit_sha}.
 
 <details>
-<summary>Info</summary>
+<summary>More info</summary>
 
 - If the `ci/circleci: {build_doc_job_name}` job status is successful, you can see the preview with the following steps:
   1. Click `Details`.
@@ -96,7 +96,7 @@ def main():
 ### Documentation preview for {args.commit_sha} will be available [here]({artifact_url}).
 
 <details>
-<summary>Info</summary>
+<summary>More info</summary>
 
 - Ignore this comment if this PR does not change the documentation.
 - It takes a few minutes for the preview to be available.
