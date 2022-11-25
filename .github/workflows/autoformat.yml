@@ -67,6 +67,8 @@ jobs:
           pip install requests
       - name: Check diff
         id: check-diff
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           changed_files="$(gh pr view ${{ needs.check-comment.outputs.pull_number }} --json files --jq '.files.[].path')"
           protos_changed=$([[ -z $(echo "$changed_files" | grep '^mlflow/protos') ]] && echo "false" || echo "true")
