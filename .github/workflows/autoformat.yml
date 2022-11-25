@@ -224,7 +224,7 @@ jobs:
   apply-patches:
     # Apply the patches and commit changes to the PR branch.
     runs-on: ubuntu-latest
-    needs: [check-comment, check-diff, protos, python, ui]
+    needs: [check-comment, check-diff, protos, python, prettier, ui]
     if: |
       always() &&
       (needs.protos.result == 'success' && needs.protos.outputs.has_diff == 'true') ||
