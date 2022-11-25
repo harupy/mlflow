@@ -25,8 +25,10 @@ jobs:
     outputs:
       should_autoformat: ${{ fromJSON(steps.create-status.outputs.result).shouldAutoformat }}
       repository: ${{ fromJSON(steps.create-status.outputs.result).repository }}
-      ref: ${{ fromJSON(steps.create-status.outputs.result).ref }}
-      sha: ${{ fromJSON(steps.create-status.outputs.result).sha }}
+      head_ref: ${{ fromJSON(steps.create-status.outputs.result).head_ref }}
+      head_sha: ${{ fromJSON(steps.create-status.outputs.result).head_sha }}
+      base_ref: ${{ fromJSON(steps.create-status.outputs.result).base_ref }}
+      base_sha: ${{ fromJSON(steps.create-status.outputs.result).base_sha }}
       pull_number: ${{ fromJSON(steps.create-status.outputs.result).pull_number }}
     steps:
       - uses: actions/checkout@v3
@@ -61,15 +63,16 @@ jobs:
       ui_changed: ${{ steps.check-diff.outputs.ui_changed }}
     steps:
       - uses: actions/checkout@v3
+        with:
+          repository: ${{ needs.check-comment.outputs.repository }}
+          ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/merge
       - uses: ./.github/actions/setup-python
       - run: |
           pip install requests
       - name: Check diff
         id: check-diff
         run: |
-          repository="${{ github.repository }}"
-          pull_number="${{ needs.check-comment.outputs.pull_number }}"
-          changed_files="$(python dev/list_changed_files.py --repository $repository --pr-num $pull_number)"
+          changed_files="$(git diff-tree --no-commit-id --name-only -r $(git rev-parse HEAD))"
           protos_changed=$([[ -z $(echo "$changed_files" | grep '^mlflow/protos') ]] && echo "false" || echo "true")
           py_changed=$([[ -z $(echo "$changed_files" | grep '\.py$') ]] && echo "false" || echo "true")
           ui_changed=$([[ -z $(echo "$changed_files" | grep '^mlflow/server/js') ]] && echo "false" || echo "true")
@@ -88,7 +91,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           repository: ${{ needs.check-comment.outputs.repository }}
-          ref: ${{ needs.check-comment.outputs.ref }}
+          ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/merge
       - name: Generate protos
         env:
           DOCKER_BUILDKIT: 1
@@ -120,7 +123,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           repository: ${{ needs.check-comment.outputs.repository }}
-          ref: ${{ needs.check-comment.outputs.ref }}
+          ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/merge
       - uses: ./.github/actions/setup-python
       - name: Install dependencies
         run: |
@@ -156,7 +159,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           repository: ${{ needs.check-comment.outputs.repository }}
-          ref: ${{ needs.check-comment.outputs.ref }}
+          ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/merge
       - uses: actions/setup-node@v3
         with:
           node-version: '16'

@@ -22,15 +22,21 @@ const getPullInformation = async (context, github) => {
   const pull_number = context.issue.number;
   const pr = await github.rest.pulls.get({ owner, repo, pull_number });
   const {
-    sha,
-    ref,
+    sha: head_sha,
+    ref: head_ref,
     repo: { full_name },
   } = pr.data.head;
+  const {
+    sha: base_sha,
+    ref: base_ref,
+  } = pr.data.base;
   return {
     repository: full_name,
     pull_number,
-    sha,
-    ref,
+    head_sha,
+    head_ref,
+    base_sha,
+    base_ref,
   };
 };
 
