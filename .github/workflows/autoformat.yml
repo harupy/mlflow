@@ -73,7 +73,7 @@ jobs:
         id: check-diff
         run: |
           git branch --list
-          git fetch origin/${{ needs.check-comment.outputs.base_ref }}
+          git fetch origin ${{ needs.check-comment.outputs.base_ref }}
           changed_files="git diff origin/${{ needs.check-comment.outputs.base_ref }}...HEAD"
           protos_changed=$([[ -z $(echo "$changed_files" | grep '^mlflow/protos') ]] && echo "false" || echo "true")
           py_changed=$([[ -z $(echo "$changed_files" | grep '\.py$') ]] && echo "false" || echo "true")
