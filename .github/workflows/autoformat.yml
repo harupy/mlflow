@@ -90,6 +90,7 @@ jobs:
         with:
           repository: ${{ needs.check-comment.outputs.repository }}
           ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/head
+          fetch-depth: 300
       - name: Run base branch
         run: |
           git fetch origin ${{ needs.check-comment.outputs.base_ref }}
@@ -126,6 +127,7 @@ jobs:
         with:
           repository: ${{ needs.check-comment.outputs.repository }}
           ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/head
+          fetch-depth: 300
       - name: Run base branch
         run: |
           git fetch origin ${{ needs.check-comment.outputs.base_ref }}
@@ -166,6 +168,7 @@ jobs:
         with:
           repository: ${{ needs.check-comment.outputs.repository }}
           ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/head
+          fetch-depth: 300
       - name: Run base branch
         run: |
           git fetch origin ${{ needs.check-comment.outputs.base_ref }}
