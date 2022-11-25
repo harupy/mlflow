@@ -242,6 +242,6 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const needs = ${{ toJson(needs) }};
-            const sha = '${{ needs.check-comment.outputs.sha }}'
+            const head_sha = '${{ needs.check-comment.outputs.head_sha }}'
             const autoformat = require('./.github/workflows/autoformat.js');
-            await autoformat.updateStatus(context, github, sha, needs);
+            await autoformat.updateStatus(context, github, head_sha, needs);
