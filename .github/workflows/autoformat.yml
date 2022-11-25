@@ -72,7 +72,9 @@ jobs:
       - name: Check diff
         id: check-diff
         run: |
-          changed_files="$(git diff-tree --no-commit-id --name-only -r $(git rev-parse HEAD))"
+          git branch --list
+          git fetch origin/${{ needs.check-comment.outputs.base_ref }}
+          changed_files="git diff origin/${{ needs.check-comment.outputs.base_ref }}...HEAD"
           protos_changed=$([[ -z $(echo "$changed_files" | grep '^mlflow/protos') ]] && echo "false" || echo "true")
           py_changed=$([[ -z $(echo "$changed_files" | grep '\.py$') ]] && echo "false" || echo "true")
           ui_changed=$([[ -z $(echo "$changed_files" | grep '^mlflow/server/js') ]] && echo "false" || echo "true")
