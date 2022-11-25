@@ -74,7 +74,7 @@ jobs:
           protos_changed=$([[ -z $(echo "$changed_files" | grep '^mlflow/protos') ]] && echo "false" || echo "true")
           py_changed=$([[ -z $(echo "$changed_files" | grep '\.py$') ]] && echo "false" || echo "true")
           ui_changed=$([[ -z $(echo "$changed_files" | grep '^mlflow/server/js') ]] && echo "false" || echo "true")
-          prettier_changed=$([[ -z $(echo "$changed_files" | grep -P '^(?!docs/|mlflow/server/js/|pypi_package_index.json).+\.(md|json|ya?ml|js)$') ]] && echo "false" || echo "true")
+          prettier_changed=$([[ -z $(echo "$changed_files" | grep -P '^(?!docs/|mlflow/server/js/|mlflow/pypi_package_index.json).+\.(md|json|ya?ml|js)$') ]] && echo "false" || echo "true")
           echo "protos_changed=$protos_changed" >> $GITHUB_OUTPUT
           echo "py_changed=$py_changed" >> $GITHUB_OUTPUT
           echo "ui_changed=$ui_changed" >> $GITHUB_OUTPUT
