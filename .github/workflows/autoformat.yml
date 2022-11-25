@@ -93,6 +93,8 @@ jobs:
           fetch-depth: 300
       - name: Run base branch
         run: |
+          git config user.name 'mlflow-automation'
+          git config user.email 'mlflow-automation@users.noreply.github.com'
           git fetch origin ${{ needs.check-comment.outputs.base_ref }}
           git merge origin/${{ needs.check-comment.outputs.base_ref }}
       - name: Generate protos
@@ -130,6 +132,8 @@ jobs:
           fetch-depth: 300
       - name: Run base branch
         run: |
+          git config user.name 'mlflow-automation'
+          git config user.email 'mlflow-automation@users.noreply.github.com'
           git fetch origin ${{ needs.check-comment.outputs.base_ref }}
           git merge origin/${{ needs.check-comment.outputs.base_ref }}
       - uses: ./.github/actions/setup-python
@@ -171,6 +175,8 @@ jobs:
           fetch-depth: 300
       - name: Run base branch
         run: |
+          git config user.name 'mlflow-automation'
+          git config user.email 'mlflow-automation@users.noreply.github.com'
           git fetch origin ${{ needs.check-comment.outputs.base_ref }}
           git merge origin/${{ needs.check-comment.outputs.base_ref }}
       - uses: actions/setup-node@v3
@@ -237,8 +243,8 @@ jobs:
           git diff
       - name: Commit changes
         run: |
-          git config --global user.name 'mlflow-automation'
-          git config --global user.email 'mlflow-automation@users.noreply.github.com'
+          git config user.name 'mlflow-automation'
+          git config user.email 'mlflow-automation@users.noreply.github.com'
           run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           git commit -sam "Autoformat: $run_url"
           git push
