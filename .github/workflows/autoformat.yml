@@ -162,9 +162,9 @@ jobs:
         run: |
           pip install -r requirements/lint-requirements.txt
           pre-commit install -t pre-commit -t prepare-commit-msg
-      - name: Run black
+      - name: Run prettier
         run: |
-          pre-commit run prettier --all-files --color=always
+          pre-commit run prettier --all-files --color=always || true
       - name: Check diff
         id: check-diff
         run: |
@@ -272,8 +272,7 @@ jobs:
 
   update-status:
     runs-on: ubuntu-latest
-    needs:
-      [check-comment, check-diff, protos, python, prettier, ui, apply-patches]
+    needs: [check-comment, check-diff, protos, python, prettier, ui, apply-patches]
     if: ${{ always() && needs.check-comment.outputs.should_autoformat == 'true' }}
     steps:
       - uses: actions/checkout@v3
