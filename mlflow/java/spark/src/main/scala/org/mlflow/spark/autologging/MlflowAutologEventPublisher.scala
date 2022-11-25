@@ -4,6 +4,7 @@ import java.util.concurrent.{ConcurrentHashMap, ScheduledFuture, ScheduledThread
 
 import py4j.Py4JException
 import org.apache.spark.scheduler.SparkListener
+import org.apache.spark.annotation.Py4JWhitelist
 
 import scala.collection.JavaConverters._
 import org.apache.spark.sql.SparkSession
@@ -77,6 +78,7 @@ private[autologging] trait MlflowAutologEventPublisherImpl {
 
   // Initialize Spark listener that pulls Delta query plan information & bubbles it up to registered
   // Python subscribers, along with a GC loop for removing unrespoins
+  @Py4JWhitelist
   def init(gcDeadSubscribersIntervalSec: Int = 1): Unit = synchronized {
     if (sparkQueryListener == null) {
       val listener = getSparkDataSourceListener
