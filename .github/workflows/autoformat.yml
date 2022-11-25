@@ -91,7 +91,7 @@ jobs:
           repository: ${{ needs.check-comment.outputs.repository }}
           ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/head
           fetch-depth: 300
-      - name: Run base branch
+      - name: Merge base branch
         run: |
           git config user.name 'mlflow-automation'
           git config user.email 'mlflow-automation@users.noreply.github.com'
@@ -130,7 +130,7 @@ jobs:
           repository: ${{ needs.check-comment.outputs.repository }}
           ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/head
           fetch-depth: 300
-      - name: Run base branch
+      - name: Merge base branch
         run: |
           git config user.name 'mlflow-automation'
           git config user.email 'mlflow-automation@users.noreply.github.com'
@@ -173,7 +173,7 @@ jobs:
           repository: ${{ needs.check-comment.outputs.repository }}
           ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/head
           fetch-depth: 300
-      - name: Run base branch
+      - name: Merge base branch
         run: |
           git config user.name 'mlflow-automation'
           git config user.email 'mlflow-automation@users.noreply.github.com'
@@ -216,7 +216,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           repository: ${{ needs.check-comment.outputs.repository }}
-          ref: ${{ needs.check-comment.outputs.ref }}
+          ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/head
           # As described in the doc below, if we use `secrets.GITHUB_TOKEN`, a commit created by
           # this workflow will not trigger other workflows:
           # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow
@@ -237,14 +237,18 @@ jobs:
         with:
           name: ui.${{ github.run_id }}.diff
           path: /tmp/patches
+      - name: Merge base branch
+        run: |
+          git config user.name 'mlflow-automation'
+          git config user.email 'mlflow-automation@users.noreply.github.com'
+          git fetch origin ${{ needs.check-comment.outputs.base_ref }}
+          git merge origin/${{ needs.check-comment.outputs.base_ref }}
       - name: Apply patches
         run: |
           find /tmp/patches -maxdepth 1 -type f -name '*.diff' | xargs git apply --verbose
           git diff
       - name: Commit changes
         run: |
-          git config user.name 'mlflow-automation'
-          git config user.email 'mlflow-automation@users.noreply.github.com'
           run_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           git commit -sam "Autoformat: $run_url"
           git push
