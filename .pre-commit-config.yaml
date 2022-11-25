@@ -3,8 +3,9 @@ repos:
     rev: v2.7.1
     hooks:
       - id: prettier
-        files: ^\.github
+        files: '^(?!docs/|mlflow/server/js/|pypi_package_index.json).+\.(md|json|ya?ml|js)$'
         args: [--no-config]
+
   - repo: local
     hooks:
       - id: black
