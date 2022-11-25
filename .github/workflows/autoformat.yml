@@ -89,7 +89,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           repository: ${{ needs.check-comment.outputs.repository }}
-          ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/head
+          ref: ${{ needs.check-comment.outputs.head_ref }}
           fetch-depth: 300
       - name: Merge base branch
         run: |
@@ -128,7 +128,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           repository: ${{ needs.check-comment.outputs.repository }}
-          ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/head
+          ref: ${{ needs.check-comment.outputs.head_ref }}
           fetch-depth: 300
       - name: Merge base branch
         run: |
@@ -171,7 +171,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           repository: ${{ needs.check-comment.outputs.repository }}
-          ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/head
+          ref: ${{ needs.check-comment.outputs.head_ref }}
           fetch-depth: 300
       - name: Merge base branch
         run: |
