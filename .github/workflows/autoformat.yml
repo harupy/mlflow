@@ -63,19 +63,12 @@ jobs:
       ui_changed: ${{ steps.check-diff.outputs.ui_changed }}
     steps:
       - uses: actions/checkout@v3
-        with:
-          repository: ${{ needs.check-comment.outputs.repository }}
-          ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/merge
-          fetch-depth: 0
-      - uses: ./.github/actions/setup-python
       - run: |
           pip install requests
       - name: Check diff
         id: check-diff
         run: |
-          git branch --list
-          git fetch origin ${{ needs.check-comment.outputs.base_ref }}
-          changed_files="$(git diff --name-only origin/${{ needs.check-comment.outputs.base_ref }}...HEAD)"
+          changed_files="$(gh pr view ${{ needs.check-comment.outputs.pull_number }} --json files --jq '.files.[].path')"
           protos_changed=$([[ -z $(echo "$changed_files" | grep '^mlflow/protos') ]] && echo "false" || echo "true")
           py_changed=$([[ -z $(echo "$changed_files" | grep '\.py$') ]] && echo "false" || echo "true")
           ui_changed=$([[ -z $(echo "$changed_files" | grep '^mlflow/server/js') ]] && echo "false" || echo "true")
@@ -94,7 +87,11 @@ jobs:
       - uses: actions/checkout@v3
         with:
           repository: ${{ needs.check-comment.outputs.repository }}
-          ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/merge
+          ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/head
+      - name: Run base branch
+        run: |
+          git fetch origin ${{ needs.check-comment.outputs.base_ref }}
+          git merge origin/${{ needs.check-comment.outputs.base_ref }}
       - name: Generate protos
         env:
           DOCKER_BUILDKIT: 1
@@ -126,7 +123,11 @@ jobs:
       - uses: actions/checkout@v3
         with:
           repository: ${{ needs.check-comment.outputs.repository }}
-          ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/merge
+          ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/head
+      - name: Run base branch
+        run: |
+          git fetch origin ${{ needs.check-comment.outputs.base_ref }}
+          git merge origin/${{ needs.check-comment.outputs.base_ref }}
       - uses: ./.github/actions/setup-python
       - name: Install dependencies
         run: |
@@ -162,10 +163,14 @@ jobs:
       - uses: actions/checkout@v3
         with:
           repository: ${{ needs.check-comment.outputs.repository }}
-          ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/merge
+          ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/head
+      - name: Run base branch
+        run: |
+          git fetch origin ${{ needs.check-comment.outputs.base_ref }}
+          git merge origin/${{ needs.check-comment.outputs.base_ref }}
       - uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: "16"
       - name: Install dependencies
         run: |
           yarn install
