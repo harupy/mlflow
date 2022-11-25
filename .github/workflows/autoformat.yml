@@ -217,6 +217,7 @@ jobs:
         with:
           repository: ${{ needs.check-comment.outputs.repository }}
           ref: refs/pull/${{ needs.check-comment.outputs.pull_number }}/head
+          fetch-depth: 300
           # As described in the doc below, if we use `secrets.GITHUB_TOKEN`, a commit created by
           # this workflow will not trigger other workflows:
           # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow
