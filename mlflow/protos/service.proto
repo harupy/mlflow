@@ -1024,3 +1024,4 @@ message GetExperimentByName {
     optional Experiment experiment = 1;
   }
 }
+message Foo {}
