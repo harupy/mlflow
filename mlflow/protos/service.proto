@@ -20,7 +20,7 @@ service MlflowService {
   // if an active and deleted experiment share the same name. If multiple deleted
   // experiments share the same name, the API will return one of them.
   //
-  // Throws ``RESOURCE_DOES_NOT_EXIST`` if no experiment with the specified name exists.
+  // Throw ``RESOURCE_DOES_NOT_EXIST`` if no experiment with the specified name exists.
   //
   rpc getExperimentByName (GetExperimentByName) returns (GetExperimentByName.Response) {
     option (rpc) = {
