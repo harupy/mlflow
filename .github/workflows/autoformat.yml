@@ -75,10 +75,11 @@ jobs:
           echo "protos=$protos" >> $GITHUB_OUTPUT
           echo "python=$python" >> $GITHUB_OUTPUT
           echo "js=$js" >> $GITHUB_OUTPUT
-      # Merge the base branch (which is master in most cases) to use the latest formatting configurations
+      # Merge the base branch (which is usually master) to apply formatting using the latest configurations.
       - name: Merge base branch
         run: |
           git remote -v
+          cat .git/config
           git config user.name 'mlflow-automation'
           git config user.email 'mlflow-automation@users.noreply.github.com'
           git fetch origin ${{ needs.check-comment.outputs.base_ref }}
@@ -86,12 +87,13 @@ jobs:
       ##########################################################################
       # protos
       ##########################################################################
-      - name: protos
-        if: steps.diff.outputs.protos == 'true'
+      - if: steps.diff.outputs.protos == 'true'
         env:
           DOCKER_BUILDKIT: 1
         run: |
           docker build -t gen-protos -f dev/Dockerfile.protos .
+      - if: steps.diff.outputs.protos == 'true'
+        run: |
           docker run --rm -w /mlflow -v $(pwd):/mlflow gen-protos ./dev/generate-protos.sh
       ##########################################################################
       # python
