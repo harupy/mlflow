@@ -1,11 +1,4 @@
-# How to test this workflow (assuming you have already filed a PR in https://github.com/mlflow/mlflow):
-# - Change the default branch of your fork to the PR branch (pr-branch).
-# - Create a GitHub token with full repo permissions.
-# - Register the token as a repository secret (name: MLFLOW_AUTOMATION_TOKEN) in your fork.
-# - Create a branch (test-branch) that contains formatting issues such as trailing whitespace, and file a PR from that branch in your fork.
-# - Comment '@mlflow-automation autoformat' on test-branch and ensure that the workflow pushes a commit to fix the formatting issues.
-#   You can check the workflow status on https://github.com/<your github username>/mlflow/actions/workflows/autoformat.yml.
-# - Once you confirm everything works fine, delete the token and repository secret and reset the default branch of your fork to master.
+# See .github/workflows/autoformat.md for instructions on how to test this workflow.
 
 name: Autoformat
 on:
