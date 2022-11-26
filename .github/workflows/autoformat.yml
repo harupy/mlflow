@@ -78,8 +78,6 @@ jobs:
       # Merge the base branch (which is usually master) to apply formatting using the latest configurations.
       - name: Merge base branch
         run: |
-          git remote -v
-          cat .git/config
           git config user.name 'mlflow-automation'
           git config user.email 'mlflow-automation@users.noreply.github.com'
           git fetch origin ${{ needs.check-comment.outputs.base_ref }}
