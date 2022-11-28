@@ -49,14 +49,14 @@ def _gen_lightgbm_sklearn_estimators_to_patch():
     import lightgbm as lgb
 
     all_classes = inspect.getmembers(lgb.sklearn, inspect.isclass)
-    base_class = lgb.sklearn._LGBMModelBase
+    base_classes = (lgb.sklearn._LGBMModelBase, lgb.sklearn.LGBMModel)
     sklearn_estimators = []
     for _, class_object in all_classes:
         package_name = class_object.__module__.split(".")[0]
         if (
             package_name == mlflow.lightgbm.FLAVOR_NAME
-            and issubclass(class_object, base_class)
-            and class_object != base_class
+            and issubclass(class_object, base_classes)
+            and class_object not in base_classes
         ):
             sklearn_estimators.append(class_object)
 
