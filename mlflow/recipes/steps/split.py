@@ -6,7 +6,7 @@ import sys
 from functools import partial
 import numpy as np
 import pandas as pd
-from sklearn.utils import compute_class_weight
+# from sklearn.utils import compute_class_weight
 from multiprocessing.pool import ThreadPool, Pool
 
 from mlflow.recipes.artifacts import DataframeArtifact

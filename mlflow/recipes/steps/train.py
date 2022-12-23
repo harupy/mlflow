@@ -9,7 +9,7 @@ import yaml
 import cloudpickle
 
 import mlflow
-import sklearn
+# import sklearn
 from mlflow.entities import SourceType, ViewType
 from mlflow.exceptions import MlflowException, INVALID_PARAMETER_VALUE, BAD_REQUEST
 from mlflow.recipes.artifacts import (
