@@ -140,7 +140,7 @@ class SqlAlchemyStore(AbstractStore):
             SqlLatestMetric.__tablename__,
         ]
         inspected_tables = set(sqlalchemy.inspect(self.engine).get_table_names())
-        _logger.info("Creating initial MLflow database tables if necessary...")
+        _logger.info("Creating initial MLflow database tables if necessary %s", self.db_uri)
         if any(table not in inspected_tables for table in expected_tables):
             mlflow.store.db.utils._initialize_tables(self.engine)
         Base.metadata.bind = self.engine
