@@ -118,9 +118,10 @@ def _install_python(version, pyenv_root=None, capture_output=False):
     :param capture_output: Set the `capture_output` argument when calling `_exec_cmd`
     :return: Path to the installed python binary.
     """
+    version = ".".join(version.split(".")[:2])
     version = (
         version
-        if _SEMANTIC_VERSION_REGEX.match(".".join(version.split(".")[:2]))
+        if _SEMANTIC_VERSION_REGEX.match(version)
         else _find_latest_installable_python_version(version)
     )
     _logger.info("Installing python %s if it does not exist", version)
