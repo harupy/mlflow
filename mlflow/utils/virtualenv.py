@@ -120,7 +120,7 @@ def _install_python(version, pyenv_root=None, capture_output=False):
     """
     version = (
         version
-        if _SEMANTIC_VERSION_REGEX.match(version)
+        if _SEMANTIC_VERSION_REGEX.match(".".join(version.split(".")[:2]))
         else _find_latest_installable_python_version(version)
     )
     _logger.info("Installing python %s if it does not exist", version)
@@ -130,7 +130,7 @@ def _install_python(version, pyenv_root=None, capture_output=False):
     extra_env = {"PYENV_ROOT": pyenv_root} if pyenv_root else None
     pyenv_bin_path = _get_pyenv_bin_path()
     _exec_cmd(
-        [pyenv_bin_path, "install", *pyenv_install_options, version],
+        [pyenv_bin_path, "install", *pyenv_install_options, version.split(".")],
         capture_output=capture_output,
         # Windows fails to find pyenv and throws `FileNotFoundError` without `shell=True`
         shell=not _IS_UNIX,
