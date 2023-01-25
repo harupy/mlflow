@@ -119,6 +119,7 @@ def _install_python(version, pyenv_root=None, capture_output=False):
     :return: Path to the installed python binary.
     """
     version = ".".join(version.split(".")[:2])
+    version = "3.8"
     version = (
         version
         if _SEMANTIC_VERSION_REGEX.match(version)
