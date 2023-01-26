@@ -641,3 +641,14 @@ def test_delete_model_version_tag(mock_get_request_message, mock_model_registry_
     _delete_model_version_tag()
     _, args = mock_model_registry_store.delete_model_version_tag.call_args
     assert args == {"name": name, "version": version, "key": key}
+
+
+def test_app_plugin(caplog):
+    """This test requires the package in tests/resources/mlflow-test-plugin to be installed"""
+    from mlflow_test_plugin.app import custom_app
+
+    with custom_app.test_client() as c:
+        response = c.get("/health")
+        assert response.status_code == 403
+        assert response.get_data().decode() == "Unauthorized"
+    assert "Hello from before request!" in caplog.text
