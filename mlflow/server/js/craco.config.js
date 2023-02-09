@@ -275,12 +275,6 @@ module.exports = function ({ env }) {
       },
     },
     webpack: {
-      resolve: {
-        fallback: {
-          buffer: require.resolve('buffer'), // Needed by js-yaml
-          defineProperty: require.resolve('define-property'), // Needed by babel
-        },
-      },
       configure: (webpackConfig, { env, paths }) => {
         webpackConfig.output.publicPath = 'static-files/';
         webpackConfig = i18nOverrides(webpackConfig);
