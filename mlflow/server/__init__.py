@@ -3,8 +3,9 @@ import shlex
 import sys
 import textwrap
 import importlib.metadata
+import functools
 
-from flask import Flask, send_from_directory, Response
+from flask import Flask, send_from_directory, Response, request, make_response
 
 from mlflow.exceptions import MlflowException
 from mlflow.server import handlers
@@ -76,6 +77,49 @@ def serve_get_metric_history_bulk():
     return get_metric_history_bulk_handler()
 
 
+def auth_required(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        if not request.authorization:
+            res = make_response()
+            res.status_code = 401
+            res.headers["WWW-Authenticate"] = 'Basic realm="mlflow"'
+            return res
+        return f(*args, **kwargs)
+
+    return wrapper
+
+
+@app.route("/signup", methods=["GET"])
+def signup_get():
+    return """
+<form action="/signup" method="post">
+  Username:
+  <br>
+  <input type=text name=username>
+  <br>
+
+  Password:
+  <br>
+  <input type=password name=password>
+  <br>
+
+  <br>
+  <input type="submit" value="Signup">
+</form>
+"""
+
+
+from werkzeug.security import generate_password_hash, check_password_hash
+
+
+@app.route("/signup", methods=["POST"])
+def signup_post():
+    username = request.form["username"]
+    password = request.form["password"]
+    return "Signup successful"
+
+
 # We expect the react app to be built assuming it is hosted at /static-files, so that requests for
 # CSS/JS resources will be made to e.g. /static-files/main.css and we can handle them here.
 @app.route(_add_static_prefix("/static-files/<path:path>"))
@@ -85,6 +129,7 @@ def serve_static_file(path):
 
 # Serve the index.html for the React App for all other routes.
 @app.route(_add_static_prefix("/"))
+@auth_required
 def serve():
     if os.path.exists(os.path.join(STATIC_DIR, "index.html")):
         return send_from_directory(STATIC_DIR, "index.html")
