@@ -34,7 +34,6 @@ REL_STATIC_DIR = "js/build"
 
 app = Flask(__name__, static_folder=REL_STATIC_DIR)
 auth.init_app(app)
-# auth_provider = auth.AuthProvider()
 STATIC_DIR = os.path.join(app.root_path, REL_STATIC_DIR)
 
 
@@ -89,7 +88,6 @@ def serve_static_file(path):
 
 # Serve the index.html for the React App for all other routes.
 @app.route(_add_static_prefix("/"))
-# @auth_provider
 def serve():
     if os.path.exists(os.path.join(STATIC_DIR, "index.html")):
         return send_from_directory(STATIC_DIR, "index.html")
