@@ -5,7 +5,7 @@ import textwrap
 import importlib.metadata
 import functools
 
-from flask import Flask, send_from_directory, Response, request, make_response
+from flask import Flask, send_from_directory, Response
 
 from mlflow.exceptions import MlflowException
 from mlflow.server import handlers
@@ -18,6 +18,7 @@ from mlflow.server.handlers import (
 )
 from mlflow.utils.process import _exec_cmd
 from mlflow.version import VERSION
+from . import auth
 
 # NB: These are internal environment variables used for communication between
 # the cli and the forked gunicorn processes.
@@ -32,6 +33,8 @@ ARTIFACTS_ONLY_ENV_VAR = "_MLFLOW_SERVER_ARTIFACTS_ONLY"
 REL_STATIC_DIR = "js/build"
 
 app = Flask(__name__, static_folder=REL_STATIC_DIR)
+auth.init_app(app)
+# auth_provider = auth.AuthProvider()
 STATIC_DIR = os.path.join(app.root_path, REL_STATIC_DIR)
 
 
@@ -77,49 +80,6 @@ def serve_get_metric_history_bulk():
     return get_metric_history_bulk_handler()
 
 
-def auth_required(f):
-    @functools.wraps(f)
-    def wrapper(*args, **kwargs):
-        if not request.authorization:
-            res = make_response()
-            res.status_code = 401
-            res.headers["WWW-Authenticate"] = 'Basic realm="mlflow"'
-            return res
-        return f(*args, **kwargs)
-
-    return wrapper
-
-
-@app.route("/signup", methods=["GET"])
-def signup_get():
-    return """
-<form action="/signup" method="post">
-  Username:
-  <br>
-  <input type=text name=username>
-  <br>
-
-  Password:
-  <br>
-  <input type=password name=password>
-  <br>
-
-  <br>
-  <input type="submit" value="Signup">
-</form>
-"""
-
-
-from werkzeug.security import generate_password_hash, check_password_hash
-
-
-@app.route("/signup", methods=["POST"])
-def signup_post():
-    username = request.form["username"]
-    password = request.form["password"]
-    return "Signup successful"
-
-
 # We expect the react app to be built assuming it is hosted at /static-files, so that requests for
 # CSS/JS resources will be made to e.g. /static-files/main.css and we can handle them here.
 @app.route(_add_static_prefix("/static-files/<path:path>"))
@@ -129,7 +89,7 @@ def serve_static_file(path):
 
 # Serve the index.html for the React App for all other routes.
 @app.route(_add_static_prefix("/"))
-@auth_required
+# @auth_provider
 def serve():
     if os.path.exists(os.path.join(STATIC_DIR, "index.html")):
         return send_from_directory(STATIC_DIR, "index.html")
