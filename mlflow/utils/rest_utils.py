@@ -129,7 +129,8 @@ def http_request(
 
     :return: requests.Response object.
     """
-    max_retries = max_retries or MLFLOW_HTTP_REQUEST_MAX_RETRIES.get()
+    max_retries = 0  # max_retries or MLFLOW_HTTP_REQUEST_MAX_RETRIES.get()
+    print(endpoint, method)
     backoff_factor = backoff_factor or MLFLOW_HTTP_REQUEST_BACKOFF_FACTOR.get()
     timeout = timeout or MLFLOW_HTTP_REQUEST_TIMEOUT.get()
     hostname = host_creds.host
