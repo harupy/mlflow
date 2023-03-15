@@ -44,15 +44,6 @@ jobs:
           tags: |
             type=ref,event=tag
 
-      - name: Build and Push Base Image
-        uses: docker/build-push-action@v3
-        with:
-          context: docker
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          build-args: |
-            VERSION=${{ steps.meta.outputs.version }}
-
       - name: Gather Docker Metadata for Model Server
         id: modelmeta
         uses: docker/metadata-action@v4
@@ -63,11 +54,6 @@ jobs:
           # generate Docker tags based on the following events/attributes
           tags: |
             type=ref,event=tag
-
-      - name: Build Model Server Image
-        run: |
-          pip install -e .
-          mlflow models build-docker -n model-server:latest --mlflow-home `pwd`
 
       - name: Push Model Server Image
         run: |
