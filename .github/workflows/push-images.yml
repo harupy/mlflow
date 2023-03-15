@@ -39,7 +39,7 @@ jobs:
         with:
           # list of Docker images to use as base name for tags
           images: |
-            ghcr.io/mlflow/mlflow
+            ghcr.io/harupy/mlflow
           # generate Docker tags based on the following events/attributes
           tags: |
             type=ref,event=tag
@@ -59,7 +59,7 @@ jobs:
         with:
           # list of Docker images to use as base name for tags
           images: |
-            ghcr.io/mlflow/model-server
+            ghcr.io/harupy/model-server
           # generate Docker tags based on the following events/attributes
           tags: |
             type=ref,event=tag
@@ -73,7 +73,7 @@ jobs:
         run: |
           set -x
 
-          for tag in ${{ join(steps.modelmeta.outputs.tags, ' ') }}; do
+          for tag in ${{ join(steps.modelmeta.outputs.tags, '-') }}; do
             docker tag model-server:latest $tag
             docker push $tag
           done
