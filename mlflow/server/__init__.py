@@ -18,7 +18,6 @@ from mlflow.server.handlers import (
 )
 from mlflow.utils.process import _exec_cmd
 from mlflow.version import VERSION
-from . import auth
 
 # NB: These are internal environment variables used for communication between
 # the cli and the forked gunicorn processes.
@@ -33,12 +32,11 @@ ARTIFACTS_ONLY_ENV_VAR = "_MLFLOW_SERVER_ARTIFACTS_ONLY"
 REL_STATIC_DIR = "js/build"
 
 app = Flask(__name__, static_folder=REL_STATIC_DIR)
-auth.init_app(app)
 STATIC_DIR = os.path.join(app.root_path, REL_STATIC_DIR)
 
 
-for http_path, handler, methods in handlers.get_endpoints():
-    app.add_url_rule(http_path, handler.__name__, handler, methods=methods)
+for http_path, handler, method in handlers.get_endpoints():
+    app.add_url_rule(http_path, handler.__name__, handler, methods=[method])
 
 if os.getenv(PROMETHEUS_EXPORTER_ENV_VAR):
     from mlflow.server.prometheus_exporter import activate_prometheus_exporter
@@ -183,4 +181,5 @@ def _run_server(
         full_command = _build_waitress_command(waitress_opts, host, port, app_spec)
     else:
         full_command = _build_gunicorn_command(gunicorn_opts, host, port, workers or 4, app_spec)
+    print(app_spec)
     _exec_cmd(full_command, extra_env=env_map, capture_output=False)

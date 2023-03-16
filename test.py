@@ -39,6 +39,9 @@ assert_fail(lambda: mlflow.create_experiment(name_a))
 
 with a:
     exp_id_a = mlflow.create_experiment(name_a)
+    mlflow.set_experiment(name_a)
+    with mlflow.start_run():
+        pass
     assert a.client.get_experiment_permission(exp_id_a, a.username)["permission"] == "MANAGE"
 
 name_b = f"b_{uuid.uuid4().hex}"
@@ -50,4 +53,5 @@ with b:
 
 with a:
     a.client.update_experiment_permission(exp_id_a, b.username, "READ")
+with b:
     print(mlflow.get_experiment(exp_id_a))

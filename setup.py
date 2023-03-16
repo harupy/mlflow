@@ -153,6 +153,12 @@ setup(
     entry_points="""
         [console_scripts]
         mlflow=mlflow.cli:cli
+
+        [mlflow.app]
+        basic_auth=mlflow.server.auth:app
+
+        [mlflow.app.manager]
+        basic_auth=mlflow.auth.app:AuthClient
     """,
     cmdclass={
         "dependencies": ListDependencies,
