@@ -158,6 +158,7 @@ def http_request(
 
     cleaned_hostname = strip_suffix(hostname, "/")
     url = f"{cleaned_hostname}{endpoint}"
+    print(url)
     try:
         return _get_http_response_with_retries(
             method,
