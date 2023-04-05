@@ -789,10 +789,25 @@ def _delete_registered_model_tag():
     return _wrap_response(DeleteRegisteredModelTag.Response())
 
 
+def is_local_source(source):
+    import urllib.parse
+
+    if not source:
+        return False
+
+    parsed = urllib.parse.urlparse(source)
+    return parsed.scheme in ["", "file"]
+
+
 @catch_mlflow_exception
 @_disable_if_artifacts_only
 def _create_model_version():
     request_message = _get_request_message(CreateModelVersion())
+    if is_local_source(request_message.source):
+        raise MlflowException(
+            "Invalid model version source: '%s'. Local source is not allowed",
+            error_code=INVALID_PARAMETER_VALUE,
+        )
     model_version = _get_model_registry_store().create_model_version(
         name=request_message.name,
         source=request_message.source,
