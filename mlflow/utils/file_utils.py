@@ -15,7 +15,7 @@ from contextlib import contextmanager
 
 import urllib.parse
 import urllib.request
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from urllib.parse import unquote
 from urllib.request import pathname2url
 
@@ -643,8 +643,9 @@ def parallelized_download_file_using_http_uri(
             starting_index = 1
 
     failed_downloads = {}
-    with ProcessPoolExecutor(
-        max_workers=MAX_PARALLEL_DOWNLOAD_WORKERS, mp_context=multiprocessing.get_context("fork")
+    with ThreadPoolExecutor(
+        max_workers=MAX_PARALLEL_DOWNLOAD_WORKERS,
+        # mp_context=multiprocessing.get_context("fork"),
     ) as executor:
         for i in range(starting_index, num_requests):
             fut = executor.submit(
