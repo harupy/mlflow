@@ -686,7 +686,7 @@ class DatabricksArtifactRepository(ArtifactRepository):
             for staged_upload, write_credential_info in zip(
                 staged_upload_chunk, write_credential_infos
             ):
-                print("Uploading")
+                # print("Uploading")
                 upload_future = self.thread_pool.submit(
                     self._upload_to_cloud,
                     cloud_credential_info=write_credential_info,
