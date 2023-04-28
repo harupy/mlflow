@@ -699,6 +699,7 @@ class DatabricksArtifactRepository(ArtifactRepository):
 
             for src_file_path, upload_future in inflight_uploads.items():
                 try:
+                    print("Waiting", src_file_path)
                     upload_future.result()
                 except Exception as e:
                     failed_uploads[src_file_path] = repr(e)
