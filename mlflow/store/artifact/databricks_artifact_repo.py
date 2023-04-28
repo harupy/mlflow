@@ -402,6 +402,7 @@ class DatabricksArtifactRepository(ArtifactRepository):
         Upload a local file to the specified run-relative `dst_run_relative_artifact_path` using
         the supplied `cloud_credential_info`.
         """
+        print("_upload_to_cloud")
         if cloud_credential_info.type == ArtifactCredentialType.AZURE_SAS_URI:
             self._azure_upload_file(
                 cloud_credential_info, src_file_path, dst_run_relative_artifact_path
