@@ -232,6 +232,7 @@ class DatabricksArtifactRepository(ArtifactRepository):
         # Base64-encode a UUID, producing a UTF8-encoded bytestring. Then, decode
         # the bytestring for compliance with Azure Blob Storage API requests
         block_id = base64.b64encode(uuid.uuid4().hex.encode()).decode("utf-8")
+        print(start_byte)
         chunk = read_chunk(local_file, size, start_byte)
         try:
             put_block(credentials.signed_uri, block_id, chunk, headers=headers)
