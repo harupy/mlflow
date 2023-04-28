@@ -232,8 +232,8 @@ class DatabricksArtifactRepository(ArtifactRepository):
         # Base64-encode a UUID, producing a UTF8-encoded bytestring. Then, decode
         # the bytestring for compliance with Azure Blob Storage API requests
         block_id = base64.b64encode(uuid.uuid4().hex.encode()).decode("utf-8")
-        print(start_byte)
         chunk = read_chunk(local_file, size, start_byte)
+        print("_azure_upload_chunk called", block_id)
         try:
             put_block(credentials.signed_uri, block_id, chunk, headers=headers)
         except requests.HTTPError as e:
@@ -248,6 +248,7 @@ class DatabricksArtifactRepository(ArtifactRepository):
                 put_block(credential_info.signed_uri, block_id, chunk, headers=headers)
             else:
                 raise e
+        print("_azure_upload_chunk done", block_id)
         return block_id
 
     def _azure_upload_file(self, credentials, local_file, artifact_path):
@@ -404,7 +405,7 @@ class DatabricksArtifactRepository(ArtifactRepository):
         Upload a local file to the specified run-relative `dst_run_relative_artifact_path` using
         the supplied `cloud_credential_info`.
         """
-        print("_upload_to_cloud", cloud_credential_info.type)
+        print("_upload_to_cloud called", src_file_path)
         if cloud_credential_info.type == ArtifactCredentialType.AZURE_SAS_URI:
             self._azure_upload_file(
                 cloud_credential_info, src_file_path, dst_run_relative_artifact_path
@@ -424,6 +425,7 @@ class DatabricksArtifactRepository(ArtifactRepository):
             raise MlflowException(
                 message="Cloud provider not supported.", error_code=INTERNAL_ERROR
             )
+        print("_upload_to_cloud done", src_file_path)
 
     def _parallelized_download_from_cloud(
         self, cloud_credential_info, file_size, dst_local_file_path, dst_run_relative_artifact_path
