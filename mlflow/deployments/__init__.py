@@ -73,7 +73,7 @@ class PredictionsResponse(dict):
         try:
             parsed_response = json.loads(json_str)
         except Exception as e:
-            raise MlflowException("Predictions response contents are not valid JSON") from e
+            raise MlflowException(f"Predictions response contents {json_str} are not valid JSON") from e
         if not isinstance(parsed_response, dict) or "predictions" not in parsed_response:
             raise MlflowException(
                 f"Invalid response. Predictions response contents must be a dictionary"
