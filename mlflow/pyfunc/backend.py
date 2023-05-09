@@ -270,8 +270,8 @@ class PyFuncBackend(FlavorBackend):
         return self.prepare_env(local_path).execute(
             command=f"python {_STDIN_SERVER_SCRIPT} --model-uri {local_path}",
             stdin=subprocess.PIPE,
-            # stdout=stdout,
-            # stderr=stderr,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             synchronous=False,
         )
 

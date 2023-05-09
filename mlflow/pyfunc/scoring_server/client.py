@@ -112,12 +112,11 @@ class StdinScoringServerClient(BaseScoringServerClient):
             try:
                 with self.output_json.open(mode="r+") as f:
                     resp = PredictionsResponse.from_json(f.read())
-                    raise Exception(resp)
                     if resp.get("id") == request_id:
                         f.truncate(0)
                         return resp
             except Exception as e:
                 _logger.info("Exception while waiting for scoring to complete: %s", e)
             if time.time() - begin_time > 60:
-                raise MlflowException("Scoring timeout")
+                raise MlflowException(f"Scoring timeout {self.process.stdout.read()}, {self.process.stderr.read()}")
             time.sleep(1)
