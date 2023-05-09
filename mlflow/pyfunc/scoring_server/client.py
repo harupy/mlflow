@@ -112,6 +112,7 @@ class StdinScoringServerClient(BaseScoringServerClient):
             try:
                 with self.output_json.open(mode="r+") as f:
                     resp = PredictionsResponse.from_json(f.read())
+                    raise Exception(resp)
                     if resp.get("id") == request_id:
                         f.truncate(0)
                         return resp
