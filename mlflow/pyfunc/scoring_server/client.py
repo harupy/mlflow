@@ -117,7 +117,6 @@ class StdinScoringServerClient(BaseScoringServerClient):
                         f.truncate(0)
                         return resp
             except Exception as e:
-                raise
                 _logger.debug("Exception while waiting for scoring to complete: %s", e)
             if time.time() - begin_time > 60:
                 raise MlflowException("Scoring timeout")
