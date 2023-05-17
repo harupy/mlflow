@@ -10,6 +10,8 @@ Usage
 import logging
 import uuid
 import os
+import requests
+import base64
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -96,6 +98,50 @@ def _get_auth_config_path():
 auth_config_path = _get_auth_config_path()
 auth_config = read_auth_config(auth_config_path)
 store = SqlAlchemyStore()
+
+
+class PermissionClient:
+    def __init__(self, tracking_uri) -> None:
+        self.tracking_uri = tracking_uri
+
+    def _call_api(self, path, method, **kwargs):
+        headers = kwargs.pop("headers", {})
+        username = os.getenv("MLFLOW_TRACKING_USERNAME")
+        password = os.getenv("MLFLOW_TRACKING_PASSWORD")
+        if username and password:
+            basic_auth_str = f"{username}:{password}".encode("utf-8")
+            auth_str = "Basic " + base64.standard_b64encode(basic_auth_str).decode("utf-8")
+            headers["Authorization"] = auth_str
+        resp = requests.request(
+            method=method,
+            url=self.tracking_uri + path,
+            headers=headers,
+            **kwargs,
+        )
+        resp.raise_for_status()
+        return resp
+
+    def update_experiment_permission(self, experiment_id, username, permission):
+        self._call_api(
+            ROUTES.UPDATE_EXPERIMENT_PERMISSION,
+            "PATCH",
+            json={
+                "experiment_id": experiment_id,
+                "username": username,
+                "permission": permission,
+            },
+        )
+
+    def create_experiment_permission(self, experiment_id, username, permission):
+        self._call_api(
+            ROUTES.CREATE_EXPERIMENT_PERMISSION,
+            "POST",
+            json={
+                "experiment_id": experiment_id,
+                "username": username,
+                "permission": permission,
+            },
+        )
 
 
 class ROUTES:

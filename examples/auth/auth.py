@@ -1,5 +1,6 @@
 import os
 import mlflow
+from mlflow.server import get_app_client
 
 
 class User:
@@ -34,7 +35,10 @@ class User:
         self.env.clear()
 
 
-mlflow.set_tracking_uri("http://localhost:5000")
+tracking_uri = "http://localhost:5000"
+mlflow.set_tracking_uri(tracking_uri)
+client = mlflow.server.get_app_client("basic-auth", tracking_uri)
+
 A = User("user_a", "password_a")
 B = User("user_b", "password_b")
 
@@ -44,9 +48,15 @@ with A:
         mlflow.log_metric("a", 1)
 
 with B:
-    print(mlflow.get_experiment_by_name("experiment_a").tags)  # allowed
+    exp_a = mlflow.get_experiment_by_name("experiment_a")  # allowed
     try:
         with mlflow.start_run():  # not allowed
             mlflow.log_metric("b", 2)
     except Exception as e:
         print(str(e))
+
+with A:
+    # Grant B permission to edit A's experiment
+    client.create_experiment_permission(str(exp_a.experiment_id), "user_b", "EDIT")
+    with mlflow.start_run():
+        mlflow.log_metric("b", 2)  # B can edit now, should be able to log a metric
