@@ -87,7 +87,7 @@ def _complete_futures(futures_dict):
     """
     results = {}
     errors = {}
-    import tqdm
+    import tqdm.notebook
 
     for future in tqdm.notebook.tqdm(as_completed(futures_dict)):
         key = futures_dict[future]
