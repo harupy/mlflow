@@ -87,7 +87,9 @@ def _complete_futures(futures_dict):
     """
     results = {}
     errors = {}
-    for future in as_completed(futures_dict):
+    import tqdm
+
+    for future in tqdm.tqdm(as_completed(futures_dict)):
         key = futures_dict[future]
         try:
             results[key] = future.result()
