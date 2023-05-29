@@ -605,7 +605,7 @@ def download_chunk(request_index, chunk_size, headers, download_path, http_uri):
     with cloud_storage_http_request(
         "get", http_uri, stream=stream, headers=combined_headers
     ) as response:
-        print(time.perf_counter() - a, "sec")
+        print("before write", time.perf_counter() - a, "sec")
         # File will have been created upstream. Use r+b to ensure chunks
         # don't overwrite the entire file.
         with open(download_path, "r+b") as f:
@@ -614,7 +614,7 @@ def download_chunk(request_index, chunk_size, headers, download_path, http_uri):
                 if not chunk:
                     break
                 f.write(chunk)
-        print(time.perf_counter() - a, "sec")
+        print("after write", time.perf_counter() - a, "sec")
 
 
 def parallelized_download_file_using_http_uri(
