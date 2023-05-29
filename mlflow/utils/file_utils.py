@@ -587,7 +587,7 @@ def download_file_using_http_uri(
     if headers is None:
         headers = {}
 
-    part_size = 100_000_000  # 10 MB
+    part_size = 10_000_000  # 10 MB
     num_chunks = int(math.ceil(file_size / float(part_size)))
 
     def download_chunk_with_ranged_request(index):
