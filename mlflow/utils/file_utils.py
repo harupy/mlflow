@@ -599,14 +599,15 @@ def download_chunk(request_index, chunk_size, headers, download_path, http_uri):
     range_start = chunk_size * request_index
     range_end = range_start + chunk_size - 1
     combined_headers = {**headers, "Range": f"bytes={range_start}-{range_end}"}
+    stream = os.getenv("MLFLOW_STREAM", "FALSE").lower() == "true"
     with cloud_storage_http_request(
-        "get", http_uri, stream=True, headers=combined_headers
+        "get", http_uri, stream=stream, headers=combined_headers
     ) as response:
         # File will have been created upstream. Use r+b to ensure chunks
         # don't overwrite the entire file.
         with open(download_path, "r+b") as f:
             f.seek(range_start)
-            for chunk in response.iter_content(chunk_size=1_000_000):
+            for chunk in response.iter_content(chunk_size=1_000_000 if stream else None):
                 if not chunk:
                     break
                 f.write(chunk)
@@ -647,7 +648,7 @@ def parallelized_download_file_using_http_uri(
 
     failed_downloads = {}
     with ThreadPoolExecutor(
-        max_workers=MAX_PARALLEL_DOWNLOAD_WORKERS,
+        max_workers=int(os.getenv("MLFLOW_MAX_WORKERS", "1")),
         # mp_context=multiprocessing.get_context("fork"),
     ) as executor:
         for i in range(starting_index, num_requests):
