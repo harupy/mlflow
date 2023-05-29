@@ -66,6 +66,9 @@ def timer() -> float:
 def main():
     print(mlflow.__version__)
 
+    mlflow.set_tracking_uri("databricks")
+    mlflow.set_experiment("/Users/harutaka.kawamura@databricks.com/test")
+
     KiB = 1000
     MiB = KiB * KiB
     GiB = MiB * KiB
