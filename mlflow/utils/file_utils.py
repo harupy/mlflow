@@ -606,7 +606,7 @@ def download_chunk(request_index, chunk_size, headers, download_path, http_uri):
         # don't overwrite the entire file.
         with open(download_path, "r+b") as f:
             f.seek(range_start)
-            for chunk in response.iter_content(chunk_size=10_000_000):
+            for chunk in response.iter_content(chunk_size=1_000_000):
                 if not chunk:
                     break
                 f.write(chunk)
