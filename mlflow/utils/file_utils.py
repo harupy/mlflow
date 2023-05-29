@@ -587,10 +587,7 @@ def download_file_using_http_uri(
     if headers is None:
         headers = {}
 
-    part_size = 100_000_000  # 10 MB
-    num_chunks = int(math.ceil(file_size / float(part_size)))
-
-    def download_chunk_with_ranged_request(start, end):
+    def download_chunk_with_ranged_request(start, end, headers):
         # _logger.info("Downloading %s...", index)
         with cloud_storage_http_request(
             "get", http_uri, stream=True, headers={**headers, "Range": f"bytes={start}-{end}"}
@@ -604,6 +601,8 @@ def download_file_using_http_uri(
                         break
                     output_file.write(chunk)
 
+    part_size = int(os.getenv("MLFLOW_DOWNLOAD_CHUNK_SIZE", "10_000_000"))  # 10 MB by default
+    num_chunks = int(math.ceil(file_size / float(part_size)))
     max_workers = int(os.getenv("MLFLOW_MAX_WORKERS", "1"))
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {}
