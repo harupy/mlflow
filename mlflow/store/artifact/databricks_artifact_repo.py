@@ -447,8 +447,8 @@ class DatabricksArtifactRepository(ArtifactRepository):
                 self._extract_headers_from_credentials(cloud_credential_info.headers),
                 file_size=file_size,
             )
-        except Exception as err:
-            raise MlflowException(err)
+        except Exception:
+            raise
 
     def _get_run_relative_artifact_path_for_upload(self, src_file_path, dst_artifact_dir):
         """

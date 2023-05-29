@@ -587,8 +587,7 @@ def download_file_using_http_uri(
     if headers is None:
         headers = {}
 
-    def download_chunk_with_ranged_request(start, end, headers):
-        # _logger.info("Downloading %s...", index)
+    def download_chunk_with_ranged_request(start, end):
         with cloud_storage_http_request(
             "get", http_uri, stream=True, headers={**headers, "Range": f"bytes={start}-{end}"}
         ) as response:
