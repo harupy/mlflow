@@ -13,6 +13,8 @@ from contextlib import contextmanager
 import uuid
 import fnmatch
 import json
+import math
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import urllib.parse
 import urllib.request
@@ -569,7 +571,9 @@ def yield_file_in_chunks(file, chunk_size=100000000):
                 break
 
 
-def download_file_using_http_uri(http_uri, download_path, chunk_size=100000000, headers=None):
+def download_file_using_http_uri(
+    http_uri, download_path, chunk_size=100000000, headers=None, file_size=None
+):
     """
     Downloads a file specified using the `http_uri` to a local `download_path`. This function
     uses a `chunk_size` to ensure an OOM error is not raised a large file is downloaded.
@@ -579,13 +583,40 @@ def download_file_using_http_uri(http_uri, download_path, chunk_size=100000000, 
     """
     if headers is None:
         headers = {}
-    with cloud_storage_http_request("get", http_uri, stream=True, headers=headers) as response:
-        augmented_raise_for_status(response)
-        with open(download_path, "wb") as output_file:
-            for chunk in response.iter_content(chunk_size=chunk_size):
-                if not chunk:
-                    break
-                output_file.write(chunk)
+
+    chunk_size = 10_000_000  # 10 MB
+    num_chunks = int(math.ceil(file_size / float(chunk_size)))
+
+    def download_chunk_with_ranged_request(index):
+        start = index * chunk_size
+        end = min(start + chunk_size, file_size) - 1
+        with cloud_storage_http_request(
+            "get", http_uri, stream=True, headers={**headers, "Range": f"bytes={start}-{end}"}
+        ) as response:
+            augmented_raise_for_status(response)
+            with open(download_path, "rb+") as output_file:
+                output_file.seek(start)
+                for chunk in response.iter_content(chunk_size=chunk_size):
+                    if not chunk:
+                        break
+                    output_file.write(chunk)
+
+    with ThreadPoolExecutor() as executor:
+        futures = {}
+        for i in range(num_chunks):
+            f = executor.submit(download_chunk_with_ranged_request, i)
+            futures[f] = i
+
+        for f in as_completed(futures):
+            f.result()
+
+    # with cloud_storage_http_request("get", http_uri, stream=True, headers=headers) as response:
+    #     augmented_raise_for_status(response)
+    #     with open(download_path, "wb") as output_file:
+    #         for chunk in response.iter_content(chunk_size=chunk_size):
+    #             if not chunk:
+    #                 break
+    #             output_file.write(chunk)
 
 
 def _handle_readonly_on_windows(func, path, exc_info):

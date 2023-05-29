@@ -424,7 +424,7 @@ class DatabricksArtifactRepository(ArtifactRepository):
                 message="Cloud provider not supported.", error_code=INTERNAL_ERROR
             )
 
-    def _download_from_cloud(self, cloud_credential_info, dst_local_file_path):
+    def _download_from_cloud(self, cloud_credential_info, dst_local_file_path, file_size):
         """
         Download a file from the input `cloud_credential_info` and save it to `dst_local_file_path`.
         """
@@ -438,11 +438,14 @@ class DatabricksArtifactRepository(ArtifactRepository):
                 message="Cloud provider not supported.", error_code=INTERNAL_ERROR
             )
         try:
+            with open(dst_local_file_path, "w"):
+                pass
             download_file_using_http_uri(
                 cloud_credential_info.signed_uri,
                 dst_local_file_path,
                 _DOWNLOAD_CHUNK_SIZE,
                 self._extract_headers_from_credentials(cloud_credential_info.headers),
+                file_size=file_size,
             )
         except Exception as err:
             raise MlflowException(err)
@@ -721,9 +724,14 @@ class DatabricksArtifactRepository(ArtifactRepository):
         )
         # Read credentials for only one file were requested. So we expected only one value in
         # the response.
-        assert len(read_credentials) == 1
+        parent_dir = posixpath.dirname(remote_file_path)
+        file_infos = self.list_artifacts(parent_dir)
+        file_info = [info for info in file_infos if info.path == remote_file_path]
+        file_size = file_info[0].file_size
         self._download_from_cloud(
-            cloud_credential_info=read_credentials[0], dst_local_file_path=local_path
+            cloud_credential_info=read_credentials[0],
+            dst_local_file_path=local_path,
+            file_size=file_size,
         )
 
     def delete_artifacts(self, artifact_path=None):
