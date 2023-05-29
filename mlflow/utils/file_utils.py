@@ -11,6 +11,7 @@ import tarfile
 import tempfile
 import stat
 import pathlib
+import time
 from contextlib import contextmanager
 
 import urllib.parse
@@ -600,9 +601,11 @@ def download_chunk(request_index, chunk_size, headers, download_path, http_uri):
     range_end = range_start + chunk_size - 1
     combined_headers = {**headers, "Range": f"bytes={range_start}-{range_end}"}
     stream = os.getenv("MLFLOW_STREAM", "FALSE").lower() == "true"
+    a = time.perf_counter()
     with cloud_storage_http_request(
         "get", http_uri, stream=stream, headers=combined_headers
     ) as response:
+        print(time.perf_counter() - a, "sec")
         # File will have been created upstream. Use r+b to ensure chunks
         # don't overwrite the entire file.
         with open(download_path, "r+b") as f:
