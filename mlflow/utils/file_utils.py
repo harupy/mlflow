@@ -591,7 +591,7 @@ def download_file_using_http_uri(
     num_chunks = int(math.ceil(file_size / float(part_size)))
 
     def download_chunk_with_ranged_request(index):
-        _logger.info("Downloading %s...", index)
+        # _logger.info("Downloading %s...", index)
         start = index * part_size
         end = min(start + part_size, file_size) - 1
         with cloud_storage_http_request(
