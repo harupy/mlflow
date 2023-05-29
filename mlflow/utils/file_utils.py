@@ -600,8 +600,8 @@ def download_file_using_http_uri(
             augmented_raise_for_status(response)
             with open(download_path, "rb+") as output_file:
                 output_file.seek(start)
-                for idx, chunk in enumerate(response.iter_content(chunk_size=chunk_size)):
-                    _logger.info("Writing %s...", idx)
+                for _idx, chunk in enumerate(response.iter_content(chunk_size=chunk_size)):
+                    # _logger.info("Writing %s...", idx)
                     if not chunk:
                         break
                     output_file.write(chunk)
