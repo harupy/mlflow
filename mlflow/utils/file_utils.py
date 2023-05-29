@@ -14,6 +14,7 @@ import uuid
 import fnmatch
 import json
 import math
+import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import urllib.parse
@@ -39,6 +40,8 @@ from mlflow.utils.databricks_utils import _get_dbutils
 from mlflow.utils.os import is_windows
 
 ENCODING = "utf-8"
+
+_logger = logging.getLogger(__name__)
 
 
 def is_directory(name):
@@ -572,7 +575,7 @@ def yield_file_in_chunks(file, chunk_size=100000000):
 
 
 def download_file_using_http_uri(
-    http_uri, download_path, chunk_size=100000000, headers=None, file_size=None
+    http_uri, download_path, chunk_size=1024, headers=None, file_size=None
 ):
     """
     Downloads a file specified using the `http_uri` to a local `download_path`. This function
@@ -584,19 +587,21 @@ def download_file_using_http_uri(
     if headers is None:
         headers = {}
 
-    chunk_size = 10_000_000  # 10 MB
-    num_chunks = int(math.ceil(file_size / float(chunk_size)))
+    part_size = 100_000_000  # 10 MB
+    num_chunks = int(math.ceil(file_size / float(part_size)))
 
     def download_chunk_with_ranged_request(index):
-        start = index * chunk_size
-        end = min(start + chunk_size, file_size) - 1
+        _logger.info("Downloading %s...", index)
+        start = index * part_size
+        end = min(start + part_size, file_size) - 1
         with cloud_storage_http_request(
             "get", http_uri, stream=True, headers={**headers, "Range": f"bytes={start}-{end}"}
         ) as response:
             augmented_raise_for_status(response)
             with open(download_path, "rb+") as output_file:
                 output_file.seek(start)
-                for chunk in response.iter_content(chunk_size=chunk_size):
+                for idx, chunk in enumerate(response.iter_content(chunk_size=chunk_size)):
+                    _logger.info("Writing %s...", idx)
                     if not chunk:
                         break
                     output_file.write(chunk)
@@ -609,14 +614,6 @@ def download_file_using_http_uri(
 
         for f in as_completed(futures):
             f.result()
-
-    # with cloud_storage_http_request("get", http_uri, stream=True, headers=headers) as response:
-    #     augmented_raise_for_status(response)
-    #     with open(download_path, "wb") as output_file:
-    #         for chunk in response.iter_content(chunk_size=chunk_size):
-    #             if not chunk:
-    #                 break
-    #             output_file.write(chunk)
 
 
 def _handle_readonly_on_windows(func, path, exc_info):
