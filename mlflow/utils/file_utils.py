@@ -614,6 +614,7 @@ def download_chunk(request_index, chunk_size, headers, download_path, http_uri):
                 if not chunk:
                     break
                 f.write(chunk)
+        print(time.perf_counter() - a, "sec")
 
 
 def parallelized_download_file_using_http_uri(
