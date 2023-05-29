@@ -443,7 +443,7 @@ class DatabricksArtifactRepository(ArtifactRepository):
             download_file_using_http_uri(
                 cloud_credential_info.signed_uri,
                 dst_local_file_path,
-                _DOWNLOAD_CHUNK_SIZE,
+                1_000_000,
                 self._extract_headers_from_credentials(cloud_credential_info.headers),
                 file_size=file_size,
             )
