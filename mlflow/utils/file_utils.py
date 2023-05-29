@@ -606,7 +606,8 @@ def download_file_using_http_uri(
                         break
                     output_file.write(chunk)
 
-    with ThreadPoolExecutor() as executor:
+    max_workers = int(os.getenv("MLFLOW_MAX_WORKERS", "1"))
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {}
         for i in range(num_chunks):
             f = executor.submit(download_chunk_with_ranged_request, i)
