@@ -590,10 +590,8 @@ def download_file_using_http_uri(
     part_size = 100_000_000  # 10 MB
     num_chunks = int(math.ceil(file_size / float(part_size)))
 
-    def download_chunk_with_ranged_request(index):
+    def download_chunk_with_ranged_request(start, end):
         # _logger.info("Downloading %s...", index)
-        start = index * part_size
-        end = min(start + part_size, file_size) - 1
         with cloud_storage_http_request(
             "get", http_uri, stream=True, headers={**headers, "Range": f"bytes={start}-{end}"}
         ) as response:
@@ -610,7 +608,9 @@ def download_file_using_http_uri(
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {}
         for i in range(num_chunks):
-            f = executor.submit(download_chunk_with_ranged_request, i)
+            start = i * part_size
+            end = min(start + part_size, file_size) - 1
+            f = executor.submit(download_chunk_with_ranged_request, start, end)
             futures[f] = i
 
         for f in as_completed(futures):
