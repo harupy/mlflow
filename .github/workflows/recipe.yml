@@ -52,8 +52,7 @@ jobs:
         run: |
           source ./dev/install-common-deps.sh
           pip install -e .
-          # TODO: Unpin once Delta supports Spark 3.3 (https://github.com/delta-io/delta/issues/1217)
-          pip install 'pyspark<3.3'
+          pip install pyspark
       - name: Run tests
         run: |
           export MLFLOW_HOME=$(pwd)
@@ -73,8 +72,10 @@ jobs:
           pip install --no-dependencies tests/resources/mlflow-test-plugin
           pip install -e .[extras]
           pip install -e .
-          # TODO: Unpin once Delta supports Spark 3.3 (https://github.com/delta-io/delta/issues/1217)
-          pip install 'pyspark<3.3'
+          # TODO: Unpin once Delta supports Spark 3.3 on Windows
+          # (https://github.com/delta-io/delta/issues/1217). Note that pandas is pinned because
+          # pyspark < 3.3 doesn't support pandas >= 2
+          pip install 'pyspark<3.3' 'pandas<2'
       - name: Download Hadoop winutils for Spark
         run: |
           git clone https://github.com/cdarlint/winutils
