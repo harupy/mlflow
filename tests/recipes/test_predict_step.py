@@ -100,7 +100,7 @@ def test_predict_step_runs(
         [(i, "a", i / 1000) for i in range(500)],
         schema=["id", "value", "float"],
     )
-    df.coalesce(1).write.format("parquet").mode("append").save(
+    df.coalesce(1).write.format("parquet").mode("overwrite").save(
         str(tmp_path.joinpath(_SCORED_OUTPUT_FILE_NAME))
     )
     # if register_model:
