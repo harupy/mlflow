@@ -11,11 +11,7 @@ import mlflow
 from mlflow.exceptions import MlflowException
 from mlflow.recipes.artifacts import RegisteredModelVersionInfo
 from mlflow.recipes.utils import _RECIPE_CONFIG_FILE_NAME
-from mlflow.recipes.steps.predict import (
-    PredictStep,
-    _INPUT_FILE_NAME,
-    # _SCORED_OUTPUT_FILE_NAME,
-)
+from mlflow.recipes.steps.predict import PredictStep, _INPUT_FILE_NAME, _SCORED_OUTPUT_FILE_NAME
 from mlflow.recipes.steps.register import _REGISTERED_MV_INFO_FILE
 from mlflow.utils.file_utils import read_yaml
 
@@ -96,17 +92,9 @@ experiment:
 def test_predict_step_runs(
     tmp_recipe_root_path: Path,
     predict_step_output_dir: Path,
-    # spark_session,
-    # tmp_path,
+    spark_session,
     register_model: bool,
 ):
-    # df = spark_session.createDataFrame(
-    #     [tuple(random.random() for _ in range(10)) for i in range(500)],
-    #     schema=[str(i) for i in range(10)],
-    # )
-    # df.coalesce(1).write.format("parquet").mode("overwrite").save(
-    #     str(tmp_path.joinpath(_SCORED_OUTPUT_FILE_NAME))
-    # )
     if register_model:
         model_name = "model_" + get_random_id()
         model_uri = train_log_and_register_model(model_name, is_dummy=True)
@@ -137,12 +125,12 @@ def test_predict_step_runs(
     predict_step.run(str(predict_step_output_dir))
 
     # # Test internal predict step output artifact
-    # artifact_file_name, artifact_file_extension = _SCORED_OUTPUT_FILE_NAME.split(".")
-    # prediction_assertions(
-    #     predict_step_output_dir, artifact_file_extension, artifact_file_name, spark_session
-    # )
+    artifact_file_name, artifact_file_extension = _SCORED_OUTPUT_FILE_NAME.split(".")
+    prediction_assertions(
+        predict_step_output_dir, artifact_file_extension, artifact_file_name, spark_session
+    )
     # # Test user specified output
-    # prediction_assertions(predict_step_output_dir, "parquet", "output", spark_session)
+    prediction_assertions(predict_step_output_dir, "parquet", "output", spark_session)
 
 
 def test_predict_step_uses_register_step_model_name(
