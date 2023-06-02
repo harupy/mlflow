@@ -59,9 +59,6 @@ def setup_env():
     nlp.install()
 
 
-setup_env()
-mlflow.johnsnowlabs._validate_env_vars()
-
 # Install licensed libraries on the fly into the current python environment
 # and make them available in the executing python process
 
@@ -69,7 +66,11 @@ MODEL_CACHE_FOLDER = None
 nlu_model = "en.classify.bert_sequence.covid_sentiment"
 
 
-# Before running any tests make sure the environment variables are set
+@pytest.fixture(scope="module", autouse=True)
+def validate():
+    # Before running any tests make sure the environment variables are set
+    setup_env()
+    mlflow.johnsnowlabs._validate_env_vars()
 
 
 @pytest.fixture
