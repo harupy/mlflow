@@ -32,7 +32,7 @@ from tests.recipes.helper_functions import (
 def spark_session():
     spark_warehouse_path = os.path.abspath(tempfile.mkdtemp())
     # TODO: Remove this conditional version selection once we unpin pyspark on Windows
-    delta_core_version = "2.0.2" if os.name == "nt" else "2.4.0"
+    delta_core_version = "1.2.1" if os.name == "nt" else "2.4.0"
     session = (
         SparkSession.builder.master("local[*]")
         .config("spark.jars.packages", f"io.delta:delta-core_2.12:{delta_core_version}")
