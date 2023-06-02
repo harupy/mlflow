@@ -32,7 +32,7 @@ from tests.recipes.helper_functions import (
 )  # pylint: enable=unused-import
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(scope="module")
 def spark_session():
     spark_warehouse_path = os.path.abspath(tempfile.mkdtemp())
     session = (
