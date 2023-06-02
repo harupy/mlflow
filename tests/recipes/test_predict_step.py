@@ -3,6 +3,7 @@ import tempfile
 import pandas as pd
 from pathlib import Path
 import pytest
+import random
 from pyspark.sql import SparkSession
 from sklearn.datasets import load_diabetes
 from unittest import mock
@@ -97,8 +98,8 @@ def test_predict_step_runs(
     _register_model: bool,
 ):
     df = spark_session.createDataFrame(
-        [(i, "a", i / 1000) for i in range(500)],
-        schema=["id", "value", "float"],
+        [tuple(random.random() for _ in range(10)) for i in range(500)],
+        schema=[str(i) for i in range(10)],
     )
     df.coalesce(1).write.format("parquet").mode("overwrite").save(
         str(tmp_path.joinpath(_SCORED_OUTPUT_FILE_NAME))
