@@ -3,7 +3,6 @@ import tempfile
 import pandas as pd
 from pathlib import Path
 import pytest
-import random
 from pyspark.sql import SparkSession
 from sklearn.datasets import load_diabetes
 from unittest import mock
@@ -12,7 +11,11 @@ import mlflow
 from mlflow.exceptions import MlflowException
 from mlflow.recipes.artifacts import RegisteredModelVersionInfo
 from mlflow.recipes.utils import _RECIPE_CONFIG_FILE_NAME
-from mlflow.recipes.steps.predict import PredictStep, _INPUT_FILE_NAME, _SCORED_OUTPUT_FILE_NAME
+from mlflow.recipes.steps.predict import (
+    PredictStep,
+    _INPUT_FILE_NAME,
+    # _SCORED_OUTPUT_FILE_NAME,
+)
 from mlflow.recipes.steps.register import _REGISTERED_MV_INFO_FILE
 from mlflow.utils.file_utils import read_yaml
 
@@ -89,49 +92,49 @@ experiment:
     return predict_step_output_dir
 
 
-@pytest.mark.parametrize("_register_model", [True, False])
+@pytest.mark.parametrize("register_model", [True, False])
 def test_predict_step_runs(
-    # tmp_recipe_root_path: Path,
-    # predict_step_output_dir: Path,
-    spark_session,
-    tmp_path,
-    _register_model: bool,
+    tmp_recipe_root_path: Path,
+    predict_step_output_dir: Path,
+    # spark_session,
+    # tmp_path,
+    register_model: bool,
 ):
-    df = spark_session.createDataFrame(
-        [tuple(random.random() for _ in range(10)) for i in range(500)],
-        schema=[str(i) for i in range(10)],
-    )
-    df.coalesce(1).write.format("parquet").mode("overwrite").save(
-        str(tmp_path.joinpath(_SCORED_OUTPUT_FILE_NAME))
-    )
-    # if register_model:
-    #     model_name = "model_" + get_random_id()
-    #     model_uri = train_log_and_register_model(model_name, is_dummy=True)
-    # else:
-    #     run_id, _ = train_and_log_model(is_dummy=True)
-    #     model_uri = "runs:/{run_id}/{artifact_path}".format(
-    #         run_id=run_id, artifact_path="train/model"
-    #     )
+    # df = spark_session.createDataFrame(
+    #     [tuple(random.random() for _ in range(10)) for i in range(500)],
+    #     schema=[str(i) for i in range(10)],
+    # )
+    # df.coalesce(1).write.format("parquet").mode("overwrite").save(
+    #     str(tmp_path.joinpath(_SCORED_OUTPUT_FILE_NAME))
+    # )
+    if register_model:
+        model_name = "model_" + get_random_id()
+        model_uri = train_log_and_register_model(model_name, is_dummy=True)
+    else:
+        run_id, _ = train_and_log_model(is_dummy=True)
+        model_uri = "runs:/{run_id}/{artifact_path}".format(
+            run_id=run_id, artifact_path="train/model"
+        )
 
-    # recipe_config = read_yaml(tmp_recipe_root_path, _RECIPE_CONFIG_FILE_NAME)
-    # recipe_config.update(
-    #     {
-    #         "steps": {
-    #             "predict": {
-    #                 "output": {
-    #                     "using": "parquet",
-    #                     "location": str(predict_step_output_dir.joinpath("output.parquet")),
-    #                 },
-    #                 "model_uri": model_uri,
-    #             },
-    #         },
-    #     }
-    # )
-    # predict_step = PredictStep.from_recipe_config(
-    #     recipe_config,
-    #     str(tmp_recipe_root_path),
-    # )
-    # predict_step.run(str(predict_step_output_dir))
+    recipe_config = read_yaml(tmp_recipe_root_path, _RECIPE_CONFIG_FILE_NAME)
+    recipe_config.update(
+        {
+            "steps": {
+                "predict": {
+                    "output": {
+                        "using": "parquet",
+                        "location": str(predict_step_output_dir.joinpath("output.parquet")),
+                    },
+                    "model_uri": model_uri,
+                },
+            },
+        }
+    )
+    predict_step = PredictStep.from_recipe_config(
+        recipe_config,
+        str(tmp_recipe_root_path),
+    )
+    predict_step.run(str(predict_step_output_dir))
 
     # # Test internal predict step output artifact
     # artifact_file_name, artifact_file_extension = _SCORED_OUTPUT_FILE_NAME.split(".")
