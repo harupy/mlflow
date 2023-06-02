@@ -6,6 +6,8 @@ import pytest
 from pyspark.sql import SparkSession
 from sklearn.datasets import load_diabetes
 from unittest import mock
+import logging
+
 
 import mlflow
 from mlflow.exceptions import MlflowException
@@ -27,12 +29,15 @@ from tests.recipes.helper_functions import (
     train_log_and_register_model,
 )  # pylint: enable=unused-import
 
+_logger = logging.getLogger(__name__)
+
 
 @pytest.fixture(scope="module", autouse=True)
 def spark_session():
     spark_warehouse_path = os.path.abspath(tempfile.mkdtemp())
     # TODO: Remove this conditional version selection once we unpin pyspark on Windows
     delta_core_version = "1.2.1" if os.name == "nt" else "2.4.0"
+    _logger.warning("delta_core_version: %s, os.name: %s", delta_core_version, os.name)
     session = (
         SparkSession.builder.master("local[*]")
         .config("spark.jars.packages", f"io.delta:delta-core_2.12:{delta_core_version}")

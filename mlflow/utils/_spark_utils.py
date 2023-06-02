@@ -2,6 +2,9 @@ import tempfile
 import shutil
 import os
 import zipfile
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 def _get_active_spark_session():
@@ -46,6 +49,7 @@ def _create_local_spark_session_for_recipes():
     _prepare_subprocess_environ_for_creating_local_spark_session()
     # TODO: Remove this conditional version selection once we unpin pyspark on Windows
     delta_core_version = "1.2.1" if os.name == "nt" else "2.4.0"
+    _logger.warning("delta_core_version: %s, os.name: %s", delta_core_version, os.name)
     return (
         SparkSession.builder.master("local[*]")
         .config("spark.jars.packages", f"io.delta:delta-core_2.12:{delta_core_version}")
