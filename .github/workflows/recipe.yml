@@ -72,7 +72,7 @@ jobs:
           pip install --no-dependencies tests/resources/mlflow-test-plugin
           pip install -e .
           pip install pyspark
-          pip uninstall datasets
+          pip uninstall -y datasets
       - name: Download Hadoop winutils for Spark
         run: |
           git clone https://github.com/cdarlint/winutils
