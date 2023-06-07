@@ -13,7 +13,7 @@ module.exports = async ({ context, github }) => {
     status: "in_progress",
     per_page: 100,
   });
-  console.log(runs.data.workflow_runs);
+  console.log(prRuns.data.workflow_runs);
 
   // Cancel the runs
   for (const run of prRuns) {
