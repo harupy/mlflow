@@ -16,7 +16,7 @@ module.exports = async ({ context, github }) => {
   console.log(prRuns.data.workflow_runs);
 
   // Cancel the runs
-  for (const run of prRuns) {
+  for (const run of prRuns.data.workflow_runs) {
     await github.rest.actions.cancelWorkflowRun({
       owner,
       repo,
