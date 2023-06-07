@@ -11,7 +11,7 @@ module.exports = async ({ context, github }) => {
     status: "in_progress",
     per_page: 100,
   });
-  console.log(runs);
+  console.log(runs.data.workflow_runs);
 
   // Filter to only get runs associated with this PR.
   const prRuns = runs.data.workflow_runs.filter(({ pull_requests }) =>
