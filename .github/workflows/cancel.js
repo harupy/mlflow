@@ -2,11 +2,13 @@ module.exports = async ({ context, github }) => {
   const owner = context.repo.owner;
   const repo = context.repo.repo;
   const prNumber = context.payload.pull_request.number;
+  const headSha = context.payload.pull_request.head.sha;
 
   // Get all workflow runs associated with the PR.
   const runs = await github.rest.actions.listWorkflowRunsForRepo({
     owner,
     repo,
+    head_sha: headSha,
     event: "pull_request",
     status: "in_progress",
     per_page: 100,
