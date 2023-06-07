@@ -17,6 +17,8 @@ module.exports = async ({ context, github }) => {
     pull_requests.some(({ number }) => number === prNumber)
   );
 
+  console.log(prRuns);
+
   // Cancel the runs
   for (const run of prRuns) {
     await github.rest.actions.cancelWorkflowRun({
