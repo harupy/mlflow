@@ -44,7 +44,7 @@ from mlflow.utils.request_utils import download_chunk
 
 
 ENCODING = "utf-8"
-MAX_PARALLEL_DOWNLOAD_WORKERS = os.cpu_count() * 2
+MAX_PARALLEL_DOWNLOAD_WORKERS = min(os.cpu_count() * 2, 10)
 
 
 def is_directory(name):
