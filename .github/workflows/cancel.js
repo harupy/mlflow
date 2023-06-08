@@ -12,10 +12,9 @@ module.exports = async ({ context, github }) => {
     event: "pull_request",
     per_page: 100,
   });
-  console.log(prRuns);
 
   // Cancel the runs
-  for (const run of prRuns.data.workflow_runs) {
+  for (const run of prRuns) {
     try {
       await github.rest.actions.cancelWorkflowRun({
         owner,
