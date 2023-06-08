@@ -13,9 +13,12 @@ module.exports = async ({ context, github }) => {
     per_page: 100,
   });
 
+  const unfinishedRuns = prRuns.filter((run) => run.status !== "completed");
+
   // Cancel the runs
-  for (const run of prRuns) {
+  for (const run of unfinishedRuns) {
     try {
+      // Some runs may have already completed, so we need to handle errors.
       await github.rest.actions.cancelWorkflowRun({
         owner,
         repo,
