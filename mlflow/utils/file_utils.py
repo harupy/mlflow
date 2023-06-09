@@ -635,7 +635,7 @@ def parallelized_download_file_using_http_uri(
             starting_index = 1
 
     num_requests = int(math.ceil(file_size / float(chunk_size)))
-    with ThreadPoolExecutor(max_workers=MAX_PARALLEL_DOWNLOAD_WORKERS) as p:
+    with ThreadPoolExecutor(max_workers=2) as p:
         futures = {}
         for index in range(starting_index, num_requests):
             future = p.submit(
