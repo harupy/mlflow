@@ -22,7 +22,7 @@ from mlflow.store.artifact.utils.models import (
 )
 
 _logger = logging.getLogger(__name__)
-_DOWNLOAD_CHUNK_SIZE = 100_000_000  # 100 MB
+_DOWNLOAD_CHUNK_SIZE = 10_000_000  # 10 MB
 # The constant REGISTRY_LIST_ARTIFACT_ENDPOINT is defined as @developer_stable
 REGISTRY_LIST_ARTIFACTS_ENDPOINT = "/api/2.0/mlflow/model-versions/list-artifacts"
 # The constant REGISTRY_ARTIFACT_PRESIGNED_URI_ENDPOINT is defined as @developer_stable
