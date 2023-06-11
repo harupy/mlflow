@@ -189,7 +189,9 @@ def test_spark_udf(spark, model_path):
 
 @pytest.mark.parametrize("sklearn_version", ["0.22.1", "0.24.0"])
 @pytest.mark.parametrize("env_manager", ["virtualenv", "conda"])
-def test_spark_udf_env_manager_can_restore_env(spark, model_path, sklearn_version, env_manager):
+def test_spark_udf_env_manager_can_restore_env(
+    spark, model_path, sklearn_version, env_manager, monkeypatch
+):
     class EnvRestoringTestModel(mlflow.pyfunc.PythonModel):
         def __init__(self):
             pass
@@ -211,10 +213,12 @@ def test_spark_udf_env_manager_can_restore_env(spark, model_path, sklearn_versio
             "pytest==6.2.5",
         ],
     )
-    # tests/helper_functions.py
+
     from tests.helper_functions import _get_mlflow_home
 
-    os.environ["MLFLOW_HOME"] = _get_mlflow_home()
+    # use monkeypatch.setenv instead of os.environ to avoid side effects in other tests
+    monkeypatch.setenv("MLFLOW_HOME", _get_mlflow_home())
+
     python_udf = mlflow.pyfunc.spark_udf(
         spark, model_path, env_manager=env_manager, result_type="string"
     )

@@ -647,10 +647,10 @@ def test_with_startrun():
     assert mlflow.active_run() is None
 
 
-def test_parent_create_run():
+def test_parent_create_run(monkeypatch):
     with mlflow.start_run() as parent_run:
         parent_run_id = parent_run.info.run_id
-    os.environ[_RUN_ID_ENV_VAR] = parent_run_id
+    monkeypatch.setenv(_RUN_ID_ENV_VAR, parent_run_id)
     with mlflow.start_run() as parent_run:
         assert parent_run.info.run_id == parent_run_id
         with pytest.raises(Exception, match="To start a nested run"):

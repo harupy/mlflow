@@ -3,7 +3,6 @@
 import abc
 import copy
 import inspect
-import os
 import pytest
 from collections import namedtuple
 from contextlib import nullcontext as does_not_raise
@@ -154,21 +153,12 @@ def mock_event_logger():
         AutologgingEventLogger.set_logger(prev_logger)
 
 
-def test_is_testing_respects_environment_variable():
-    prev_env_var_value = os.environ.pop("MLFLOW_AUTOLOGGING_TESTING", None)
-    try:
-        assert not is_testing()
+def test_is_testing_respects_environment_variable(monkeypatch):
+    monkeypatch.setenv("MLFLOW_AUTOLOGGING_TESTING", "false")
+    assert not is_testing()
 
-        os.environ["MLFLOW_AUTOLOGGING_TESTING"] = "false"
-        assert not is_testing()
-
-        os.environ["MLFLOW_AUTOLOGGING_TESTING"] = "true"
-        assert is_testing()
-    finally:
-        if prev_env_var_value:
-            os.environ["MLFLOW_AUTOLOGGING_TESTING"] = prev_env_var_value
-        else:
-            del os.environ["MLFLOW_AUTOLOGGING_TESTING"]
+    monkeypatch.setenv("MLFLOW_AUTOLOGGING_TESTING", "true")
+    assert is_testing()
 
 
 def test_safe_patch_forwards_expected_arguments_to_function_based_patch_implementation(
