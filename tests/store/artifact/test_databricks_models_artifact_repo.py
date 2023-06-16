@@ -161,7 +161,6 @@ def test_list_artifacts(databricks_model_artifact_repo):
             )
 
     list_artifact_dir_response_mock = mock.MagicMock()
-    list_artifact_dir_response_mock.status_code = status_code
     list_artifact_dir_json_mock = {
         "files": [
             {"path": "MLmodel", "is_dir": False, "file_size": 294},
@@ -170,8 +169,10 @@ def test_list_artifacts(databricks_model_artifact_repo):
     }
     list_artifact_dir_response_mock.text = json.dumps(list_artifact_dir_json_mock)
     list_artifact_dir_response_mock.raise_for_status.side_effect = _raise_for_status
-    with mock.patch(DATABRICKS_MODEL_ARTIFACT_REPOSITORY + "._call_endpoint") as call_endpoint_mock:
-        call_endpoint_mock.return_value = list_artifact_dir_response_mock
+    with mock.patch(
+        DATABRICKS_MODEL_ARTIFACT_REPOSITORY + "._call_endpoint",
+        return_value=list_artifact_dir_response_mock,
+    ) as call_endpoint_mock:
         artifacts = databricks_model_artifact_repo.list_artifacts("")
         assert isinstance(artifacts, list)
         assert len(artifacts) == 2
@@ -186,11 +187,12 @@ def test_list_artifacts(databricks_model_artifact_repo):
     # errors from API are propagated through to cli response
     list_artifact_dir_bad_response_mock = mock.MagicMock()
     status_code = 404
-    list_artifact_dir_bad_response_mock.status_code = status_code
     list_artifact_dir_bad_response_mock.text = "An error occurred"
     list_artifact_dir_bad_response_mock.raise_for_status.side_effect = _raise_for_status
-    with mock.patch(DATABRICKS_MODEL_ARTIFACT_REPOSITORY + "._call_endpoint") as call_endpoint_mock:
-        call_endpoint_mock.return_value = list_artifact_dir_bad_response_mock
+    with mock.patch(
+        DATABRICKS_MODEL_ARTIFACT_REPOSITORY + "._call_endpoint",
+        return_value=list_artifact_dir_bad_response_mock,
+    ) as call_endpoint_mock:
         with pytest.raises(
             MlflowException,
             match=r"API request to list files under path `` failed with status code 404. "
@@ -201,15 +203,14 @@ def test_list_artifacts(databricks_model_artifact_repo):
 
 
 def test_list_artifacts_for_single_file(databricks_model_artifact_repo):
-    list_artifact_file_response_mock = mock.MagicMock()
-    list_artifact_file_response_mock.status_code = 200
     list_artifact_file_json_mock = {
         "files": [{"path": "MLmodel", "is_dir": False, "file_size": 294}]
     }
-    list_artifact_file_response_mock.text = json.dumps(list_artifact_file_json_mock)
-    with mock.patch(DATABRICKS_MODEL_ARTIFACT_REPOSITORY + "._call_endpoint") as call_endpoint_mock:
+    with mock.patch(
+        DATABRICKS_MODEL_ARTIFACT_REPOSITORY + "._call_endpoint",
+        return_value=list_artifact_file_json_mock,
+    ):
         # Calling list_artifacts() on a path that's a file should return an empty list
-        call_endpoint_mock.return_value = list_artifact_file_response_mock
         artifacts = databricks_model_artifact_repo.list_artifacts("MLmodel")
         assert len(artifacts) == 0
 
