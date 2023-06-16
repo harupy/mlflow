@@ -221,9 +221,7 @@ def test_run_kubernetes_job_in_cluster():
 
 def test_push_image_to_registry():
     image_uri = "dockerhub_account/mlflow-kubernetes-example"
-    with mock.patch("docker.from_env") as docker_mock:
-        client = mock.MagicMock()
-        docker_mock.return_value = client
+    with mock.patch("docker.from_env", return_value=mock.MagicMock()) as client:
         kb.push_image_to_registry(image_uri)
         assert client.images.push.call_count == 1
         args = client.images.push.call_args_list
@@ -267,8 +265,9 @@ def test_submitted_run_get_status_failed():
         succeeded=None,
     )
     job = kubernetes.client.models.V1Job(status=job_status)
-    with mock.patch("kubernetes.client.BatchV1Api.read_namespaced_job_status") as kube_api_mock:
-        kube_api_mock.return_value = job
+    with mock.patch(
+        "kubernetes.client.BatchV1Api.read_namespaced_job_status", return_value=job
+    ) as kube_api_mock:
         submitted_run = kb.KubernetesSubmittedRun(mlflow_run_id, job_name, job_namespace)
         assert RunStatus.FAILED == submitted_run.get_status()
         assert kube_api_mock.call_count == 1
@@ -291,8 +290,9 @@ def test_submitted_run_get_status_succeeded():
         succeeded=1,
     )
     job = kubernetes.client.models.V1Job(status=job_status)
-    with mock.patch("kubernetes.client.BatchV1Api.read_namespaced_job_status") as kube_api_mock:
-        kube_api_mock.return_value = job
+    with mock.patch(
+        "kubernetes.client.BatchV1Api.read_namespaced_job_status", return_value=job
+    ) as kube_api_mock:
         submitted_run = kb.KubernetesSubmittedRun(mlflow_run_id, job_name, job_namespace)
         assert RunStatus.FINISHED == submitted_run.get_status()
         assert kube_api_mock.call_count == 1
@@ -309,8 +309,9 @@ def test_submitted_run_get_status_running():
         active=1, completion_time=None, conditions=None, failed=1, start_time=1, succeeded=1
     )
     job = kubernetes.client.models.V1Job(status=job_status)
-    with mock.patch("kubernetes.client.BatchV1Api.read_namespaced_job_status") as kube_api_mock:
-        kube_api_mock.return_value = job
+    with mock.patch(
+        "kubernetes.client.BatchV1Api.read_namespaced_job_status", return_value=job
+    ) as kube_api_mock:
         submitted_run = kb.KubernetesSubmittedRun(mlflow_run_id, job_name, job_namespace)
         assert RunStatus.RUNNING == submitted_run.get_status()
         assert kube_api_mock.call_count == 1
@@ -325,11 +326,15 @@ def test_state_transitions():
     job_namespace = "job-namespace"
     submitted_run = kb.KubernetesSubmittedRun(mlflow_run_id, job_name, job_namespace)
 
-    with mock.patch("kubernetes.client.BatchV1Api.read_namespaced_job_status") as kube_api_mock:
+    with mock.patch("kubernetes.client.BatchV1Api.read_namespaced_job_status"):
 
         def set_return_value(**kwargs):
             job_status = kubernetes.client.models.V1JobStatus(**kwargs)
-            kube_api_mock.return_value = kubernetes.client.models.V1Job(status=job_status)
+            kube_api_mock = mock.patch(
+                "kubernetes.client.models.V1Job",
+                return_value=kubernetes.client.models.V1Job(status=job_status),
+            )
+            kube_api_mock.start()
 
         set_return_value()
         assert RunStatus.SCHEDULED == submitted_run.get_status()
