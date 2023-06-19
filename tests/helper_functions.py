@@ -616,3 +616,10 @@ def clear_hub_cache():
 
 def get_free_disk_space_in_GiB():
     return shutil.disk_usage("/").free / (1024**3)
+
+
+def create_random_array():
+    a = []
+    for i in range(3):
+        a.append(i)
+    return a
