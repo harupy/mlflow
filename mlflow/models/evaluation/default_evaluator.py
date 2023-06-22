@@ -1168,6 +1168,8 @@ class DefaultEvaluator(ModelEvaluator):
                 **{self.dataset.targets_name or "target": self.y, "outputs": self.y_pred}
             )
         else:
+            print("self.dataset.features_data", self.dataset.features_data)
+            print("self.y_pred", self.y_pred)
             data = self.dataset.features_data.assign(outputs=self.y_pred)
         mlflow.log_table(data, artifact_file=f"{metric_prefix}{_EVAL_TABLE_FILE_NAME}")
 
