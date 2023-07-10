@@ -1811,7 +1811,7 @@ def _autolog(
             )
 
         # `sklearn.metrics.SCORERS` was removed in scikit-learn 1.3
-        if hasattr(sklearn.metrics, "get_scorer_names"):
+        if Version(sklearn.__version__) > Version("1.2.2"):
             for scoring in sklearn.metrics.get_scorer_names():
                 scorer = sklearn.metrics.get_scorer(scoring)
                 safe_patch(flavor_name, scorer, "_score_func", patched_metric_api, manage_run=False)
