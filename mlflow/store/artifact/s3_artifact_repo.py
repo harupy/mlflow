@@ -3,6 +3,7 @@ import logging
 import math
 import os
 import posixpath
+import time
 import urllib.parse
 from datetime import datetime
 from functools import lru_cache
@@ -241,8 +242,10 @@ class S3ArtifactRepository(CloudArtifactRepository):
         # define helper functions for uploading data
         def _upload_part(presigned_url, local_file, start_byte, size):
             data = read_chunk(local_file, size, start_byte)
+            s = time.time()
             with cloud_storage_http_request("put", presigned_url, data=data) as response:
                 augmented_raise_for_status(response)
+                print(f"Uploaded part in {time.time() - s} seconds")  # noqa
                 return response.headers["ETag"]
 
         try:
