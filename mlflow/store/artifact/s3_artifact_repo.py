@@ -75,7 +75,7 @@ def _cached_get_s3_client(
             signature_version=signature_version,
             s3={"addressing_style": addressing_style},
             parameter_validation=False,
-            # max_pool_connections=os.cpu_count() * 2,
+            max_pool_connections=os.cpu_count() * 2,
         ),
         endpoint_url=s3_endpoint_url,
         verify=verify,
