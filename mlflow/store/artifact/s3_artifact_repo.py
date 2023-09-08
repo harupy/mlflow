@@ -72,7 +72,10 @@ def _cached_get_s3_client(
     return boto3.client(
         "s3",
         config=Config(
-            signature_version=signature_version, s3={"addressing_style": addressing_style}
+            signature_version=signature_version,
+            s3={"addressing_style": addressing_style},
+            parameter_validation=False,
+            # max_pool_connections=os.cpu_count() * 2,
         ),
         endpoint_url=s3_endpoint_url,
         verify=verify,
