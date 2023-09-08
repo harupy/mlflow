@@ -3,6 +3,7 @@ import logging
 import math
 import os
 import posixpath
+import time
 import urllib.parse
 from datetime import datetime
 from functools import lru_cache
@@ -23,8 +24,6 @@ from mlflow.store.artifact.cloud_artifact_repo import (
     _complete_futures,
 )
 from mlflow.utils.file_utils import read_chunk
-from mlflow.utils.request_utils import cloud_storage_http_request
-from mlflow.utils.rest_utils import augmented_raise_for_status
 
 _logger = logging.getLogger(__name__)
 
@@ -241,9 +240,11 @@ class S3ArtifactRepository(CloudArtifactRepository):
         # define helper functions for uploading data
         def _upload_part(local_file, start_byte, size, part_number):
             data = read_chunk(local_file, size, start_byte)
+            s = time.time()
             part = s3_client.upload_part(
                 Bucket=bucket, Key=key, PartNumber=part_number, UploadId=upload_id, Body=data
             )
+            print(f"upload part {part_number} took {time.time() - s} seconds")  # noqa
             return part["ETag"]
 
         try:
