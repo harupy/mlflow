@@ -247,7 +247,9 @@ class S3ArtifactRepository(CloudArtifactRepository):
             part = s3_client.upload_part(
                 Bucket=bucket, Key=key, PartNumber=part_number, UploadId=upload_id, Body=data
             )
-            print(f"upload part {part_number} took {time.time() - s} seconds")  # noqa
+            print(  # noqa
+                f"upload part {part_number} took {time.time() - s} seconds {id(s3_client)}"
+            )
             return part["ETag"]
 
         try:
