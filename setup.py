@@ -23,6 +23,8 @@ def package_files(directory):
     return paths
 
 
+
+
 def is_comment_or_empty(line):
     stripped = line.strip()
     return stripped == "" or stripped.startswith("#")
