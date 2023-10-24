@@ -219,11 +219,13 @@ class CloudArtifactRepository(ArtifactRepository):
                 raise MlflowException(f"Failed to download artifact {remote_file_path}:\n{failure}")
 
             if failed_downloads:
+                _logger.warning(f"Failed downloads: {failed_downloads}")
                 new_cloud_creds = self._get_read_credential_infos([remote_file_path])[0]
                 new_signed_uri = new_cloud_creds.signed_uri
                 new_headers = self._extract_headers_from_credentials(new_cloud_creds.headers)
 
                 for i in failed_downloads:
+                    _logger.info(f"Retrying chunk {i} of {remote_file_path}")
                     download_chunk(i, _DOWNLOAD_CHUNK_SIZE, new_headers, local_path, new_signed_uri)
 
     def _download_file(self, remote_file_path, local_path):
