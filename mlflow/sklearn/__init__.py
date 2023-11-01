@@ -130,6 +130,7 @@ def _gen_estimators_to_patch():
 
 def get_default_pip_requirements(include_cloudpickle=False):
     """
+
     :return: A list of default pip requirements for MLflow Models produced by this flavor.
              Calls to :func:`save_model()` and :func:`log_model()` produce a pip environment
              that, at minimum, contains these requirements.
