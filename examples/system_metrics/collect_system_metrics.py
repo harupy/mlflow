@@ -4,6 +4,7 @@ import mlflow
 
 if __name__ == "__main__":
     mlflow.enable_system_metrics_logging()
+    mlflow.set_system_metrics_sampling_interval(2)
     with mlflow.start_run() as run:
         time.sleep(11)
 
