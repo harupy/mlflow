@@ -6,6 +6,7 @@ For example:
 .. code:: python
 
     import mlflow
+    import pandas as pd
 
     mlflow.start_run()
     mlflow.log_param("my", "param")
