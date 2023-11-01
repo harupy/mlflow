@@ -2,7 +2,7 @@ name: Automerge
 
 on:
   schedule:
-    - cron: "*/10 * * * *" # Run every 10 minutes
+    - cron: "*/1 * * * *" # Run every minute
 
 jobs:
   merge:
