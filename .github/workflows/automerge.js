@@ -50,6 +50,10 @@ module.exports = async ({ github, context, dryRun }) => {
       repo,
       ref,
     });
+
+    checkRuns.check_runs.forEach(({ name, status, conclusion }) => {
+      console.log(`name: ${name}, status: ${status}, conclusion: ${conclusion}`);
+    });
     return checkRuns.check_runs.every(({ conclusion }) =>
       ["success", "skipped"].includes(conclusion)
     );
@@ -60,6 +64,9 @@ module.exports = async ({ github, context, dryRun }) => {
       owner,
       repo,
       pull_number: prNumber,
+    });
+    reviews.forEach(({ user, state }) => {
+      console.log(`user: ${user.login}, state: ${state}`);
     });
     return reviews.some(({ state }) => state === "APPROVED");
   }
