@@ -51,12 +51,10 @@ module.exports = async ({ github, context, dryRun }) => {
       ref,
     });
 
-    checkRuns.check_runs.forEach(({ name, status, conclusion }) => {
+    checkRuns.forEach(({ name, status, conclusion }) => {
       console.log(`name: ${name}, status: ${status}, conclusion: ${conclusion}`);
     });
-    return checkRuns.check_runs.every(({ conclusion }) =>
-      ["success", "skipped"].includes(conclusion)
-    );
+    return checkRuns.every(({ conclusion }) => ["success", "skipped"].includes(conclusion));
   }
 
   async function isPrApproved(prNumber) {
