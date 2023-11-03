@@ -15,6 +15,10 @@ on:
   schedule:
     - cron: "*/10 * * * *" # Run every 10 minutes
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   merge:
     runs-on: ubuntu-latest
