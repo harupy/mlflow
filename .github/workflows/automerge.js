@@ -53,7 +53,7 @@ module.exports = async ({ github, context, dryRun }) => {
 
     console.log(`check runs for ref ${ref}:`);
     checkRuns.forEach(({ name, status, conclusion }) => {
-      console.log(`name: ${name}, status: ${status}, conclusion: ${conclusion}`);
+      console.log(`- name: ${name}, status: ${status}, conclusion: ${conclusion}`);
     });
     return checkRuns.every(({ conclusion }) => ["success", "skipped"].includes(conclusion));
   }
