@@ -46,6 +46,7 @@ module.exports = async ({ github, context, dryRun }) => {
   }
 
   async function allChecksPassed(ref) {
+    // Check runs
     const checkRuns = await github.paginate(github.rest.checks.listForRef, {
       owner,
       repo,
@@ -56,7 +57,25 @@ module.exports = async ({ github, context, dryRun }) => {
     checkRuns.forEach(({ name, status, conclusion }) => {
       console.log(`- name: ${name}, status: ${status}, conclusion: ${conclusion}`);
     });
-    return checkRuns.every(({ conclusion }) => ["success", "skipped"].includes(conclusion));
+    const checkRunsPassed = checkRuns.every(({ conclusion }) =>
+      ["success", "skipped"].includes(conclusion)
+    );
+
+    // Commit statuses (e.g., CircleCI jobs)
+    const { data: statuses } = await github.rest.repos.listCommitStatusesForRef({
+      owner,
+      repo,
+      ref,
+      per_page: 100,
+    });
+
+    console.log(`statuses for ref ${ref}:`);
+    statuses.forEach(({ state, context }) => {
+      console.log(`- state: ${state}, context: ${context}`);
+    });
+    const statusesPassed = statuses.every(({ state }) => state === "success");
+
+    return checkRunsPassed && statusesPassed;
   }
 
   async function isPrApproved(prNumber) {
