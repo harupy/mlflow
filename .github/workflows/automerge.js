@@ -93,6 +93,7 @@ module.exports = async ({ github, context, dryRun }) => {
   }
 
   for (const { number } of prs) {
+    console.log(`Processing PR #${number}...`);
     const pr = await waitUntilMergeable(number);
     if (pr === null) {
       console.log(`PR #${number} is not mergeable. Skipping...`);
