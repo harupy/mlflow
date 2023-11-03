@@ -66,7 +66,6 @@ module.exports = async ({ github, context, dryRun }) => {
       owner,
       repo,
       ref,
-      per_page: 100,
     });
 
     console.log(`statuses for ref ${ref}:`);
