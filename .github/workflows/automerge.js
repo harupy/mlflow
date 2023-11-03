@@ -105,10 +105,10 @@ module.exports = async ({ github, context, dryRun }) => {
       continue;
     }
 
-    if (!(await isPrApproved(pr.number))) {
-      console.log(`PR #${pr.number} is not approved. Skipping...`);
-      continue;
-    }
+    // if (!(await isPrApproved(pr.number))) {
+    //   console.log(`PR #${pr.number} is not approved. Skipping...`);
+    //   continue;
+    // }
 
     try {
       if (dryRun) {
