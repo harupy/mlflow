@@ -62,7 +62,7 @@ module.exports = async ({ github, context, dryRun }) => {
     );
 
     // Commit statuses (e.g., CircleCI jobs)
-    const { data: statuses } = await github.rest.repos.listCommitStatusesForRef({
+    const statuses = await github.paginate(github.rest.repos.listCommitStatusesForRef, {
       owner,
       repo,
       ref,
