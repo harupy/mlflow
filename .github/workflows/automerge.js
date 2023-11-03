@@ -118,6 +118,7 @@ module.exports = async ({ github, context, dryRun }) => {
           owner,
           repo,
           pull_number: pr.number,
+          merge_method: "squash",
         });
       }
       console.log(`Merged PR #${pr.number}`);
