@@ -12,6 +12,7 @@ For example:
     mlflow.log_metric("score", 100)
     mlflow.end_run()
 
+
 You can also use the context manager syntax like this:
 
 .. code:: python
