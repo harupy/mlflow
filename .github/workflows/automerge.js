@@ -29,6 +29,8 @@ module.exports = async ({ github, context, dryRun }) => {
         })
         .then((res) => res.data);
 
+      console.log(`mergeable: ${pr.mergeable}, mergeable_state: ${pr.mergeable_state}`);
+
       if (pr.merged) {
         return null;
       }
@@ -38,7 +40,6 @@ module.exports = async ({ github, context, dryRun }) => {
         await sleep(PR_FETCH_RETRY_INTERVAL_MS);
         continue;
       }
-      console.log(`mergeable: ${pr.mergeable}, mergeable_state: ${pr.mergeable_state}`);
       return pr.mergeable && pr.mergeable_state === "clean" ? pr : null;
     }
     return null;
