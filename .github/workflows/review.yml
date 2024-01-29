@@ -16,8 +16,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const author = context.payload.pull_request.user.login;
-            const reviewers = [
+            const members = [
               "B-Step62",
               "BenWilson2",
               "daniellok-db",
@@ -25,9 +24,13 @@ jobs:
               "serena-ruan",
               "WeichenXu123",
             ];
+            const author = context.payload.pull_request.user.login;
+            const approved = context.payload.pull_request.reviews
+              .filter((r) => r.state === "APPROVED")
+              .map((r) => r.user.login);
             await github.rest.pulls.requestReviewers({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: context.payload.pull_request.number,
-              reviewers: reviewers.filter((r) => r !== author),
-            })
+              reviewers: members.filter((m) => !approved.includes(m) && m !== author);,
+            });
