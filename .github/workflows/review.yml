@@ -16,11 +16,18 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const author = context.payload.pull_request.user.login;
+            const reviewers = [
+              "B-Step62",
+              "BenWilson2",
+              "daniellok-db",
+              "harupy",
+              "serena-ruan",
+              "WeichenXu123",
+            ];
             await github.rest.pulls.requestReviewers({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: context.payload.pull_request.number,
-              reviewers: [
-                "serena-ruan",
-              ]
+              reviewers: reviewers.filter((r) => r !== author),
             })
