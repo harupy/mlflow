@@ -7,7 +7,7 @@ from sklearn.linear_model import LinearRegression
 import mlflow
 import mlflow.spark
 
-from tests.spark.autologging.utils import _assert_spark_data_logged
+from tests.spark.autologging.utils import _assert_spark_data_logged, _get_or_create_spark_session
 
 
 @pytest.fixture
@@ -15,6 +15,12 @@ def http_tracking_uri_mock():
     mlflow.set_tracking_uri("http://some-cool-uri")
     yield
     mlflow.set_tracking_uri(None)
+
+
+@pytest.fixture(scope="module")
+def spark_session():
+    with _get_or_create_spark_session() as session:
+        yield session
 
 
 def _fit_sklearn(pandas_df):
