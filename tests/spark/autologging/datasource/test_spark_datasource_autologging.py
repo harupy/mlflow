@@ -1,6 +1,7 @@
 import time
 from unittest import mock
 
+import pytest
 from pyspark.sql import Row
 from pyspark.sql.types import IntegerType, StructField, StructType
 
@@ -9,8 +10,14 @@ import mlflow.spark
 from mlflow.spark._autolog import _SPARK_TABLE_INFO_TAG_NAME
 from mlflow.utils.validation import MAX_TAG_VAL_LENGTH
 
-from tests.spark.autologging.utils import _assert_spark_data_logged
+from tests.spark.autologging.utils import _assert_spark_data_logged, _get_or_create_spark_session
 from tests.tracking.integration_test_utils import _init_server
+
+
+@pytest.fixture(scope="module")
+def spark_session():
+    with _get_or_create_spark_session() as session:
+        yield session
 
 
 def _get_expected_table_info_row(path, data_format, version=None):

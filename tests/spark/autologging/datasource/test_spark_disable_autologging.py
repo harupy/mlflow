@@ -1,15 +1,24 @@
 import time
 
+import pytest
+
 import mlflow
 import mlflow.spark
 
 from tests.spark.autologging.utils import (
     _assert_spark_data_logged,
     _assert_spark_data_not_logged,
+    _get_or_create_spark_session,
 )
 
 # Note that the following tests run one-after-the-other and operate on the SAME spark_session
 #   (it is not reset between tests)
+
+
+@pytest.fixture(scope="module")
+def spark_session():
+    with _get_or_create_spark_session() as session:
+        yield session
 
 
 def test_autologging_disabled_logging_datasource_with_different_formats(

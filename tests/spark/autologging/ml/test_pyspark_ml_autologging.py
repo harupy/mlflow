@@ -51,10 +51,16 @@ from mlflow.utils.validation import (
 )
 
 from tests.helper_functions import AnyStringWith
-from tests.utils.test_file_utils import spark_session  # noqa: F401
+from tests.spark.autologging.utils import _get_or_create_spark_session
 
 MODEL_DIR = "model"
 MLFLOW_PARENT_RUN_ID = "mlflow.parentRunId"
+
+
+@pytest.fixture(scope="module")
+def spark_session():
+    with _get_or_create_spark_session() as session:
+        yield session
 
 
 @pytest.fixture(scope="module")
