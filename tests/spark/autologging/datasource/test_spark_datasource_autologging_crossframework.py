@@ -17,7 +17,7 @@ def http_tracking_uri_mock():
     mlflow.set_tracking_uri(None)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def spark_session():
     with _get_or_create_spark_session() as session:
         yield session
