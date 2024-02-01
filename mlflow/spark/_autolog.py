@@ -144,7 +144,6 @@ def _listen_for_spark_activity(spark_context):
         _spark_table_info_listener = PythonSubscriber()
         event_publisher.register(_spark_table_info_listener)
     except Exception as e:
-        raise
         if callback_server_started:
             try:
                 gw.shutdown_callback_server()
