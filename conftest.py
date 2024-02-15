@@ -265,7 +265,7 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):  # pylint: di
 def clean_up_envs():
     yield
 
-    if "GITHUB_ACTIONS" in os.environ:
+    if "GITHUB_ACTIONS" in os.environ and "GITHUB_RUN_ID" in os.environ:
         from mlflow.utils.virtualenv import _get_mlflow_virtualenv_root
 
         shutil.rmtree(_get_mlflow_virtualenv_root(), ignore_errors=True)
