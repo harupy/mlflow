@@ -11,10 +11,6 @@ def get_current_py_version() -> str:
     return re.search(r'VERSION = "(.+)"', text).group(1)
 
 
-def replace_dev_suffix_with(version, repl):
-    return re.sub(r"\.dev0$", repl, version)
-
-
 def replace_occurrences(files: List[Path], pattern: str, repl: str) -> None:
     pattern = re.compile(pattern)
     for f in files:
@@ -27,11 +23,11 @@ def replace_occurrences(files: List[Path], pattern: str, repl: str) -> None:
 
 def update_versions(new_py_version: str) -> None:
     """
-    `new_py_version` is either a release version (e.g. "2.1.0") or a dev version
-    (e.g. "2.1.0.dev0").
+    `new_py_version` is either a release version (e.g. "2.1.0"), a dev version
+    (e.g. "2.1.0.dev0") or a release candidate (e.g. "2.1.0rc1").
     """
     current_py_version = get_current_py_version()
-    current_py_version_without_suffix = replace_dev_suffix_with(current_py_version, "")
+    current_py_base_version = Version(current_py_version).base_version
 
     # Python
     replace_occurrences(
@@ -59,15 +55,15 @@ def update_versions(new_py_version: str) -> None:
     for java_extension in ["xml", "java"]:
         replace_occurrences(
             files=Path("mlflow", "java").rglob(f"*.{java_extension}"),
-            pattern=rf"{re.escape(current_py_version_without_suffix)}(-SNAPSHOT)?",
-            repl=replace_dev_suffix_with(new_py_version, "-SNAPSHOT"),
+            pattern=rf"{re.escape(current_py_base_version)}(-SNAPSHOT)?",
+            repl=f"{current_py_base_version}-SNAPSHOT",
         )
 
     # R
     replace_occurrences(
         files=[Path("mlflow", "R", "mlflow", "DESCRIPTION")],
-        pattern=f"Version: {re.escape(current_py_version_without_suffix)}",
-        repl=f"Version: {replace_dev_suffix_with(new_py_version, '')}",
+        pattern=f"Version: {re.escape(current_py_base_version)}",
+        repl=f"Version: {current_py_base_version}",
     )
 
 
