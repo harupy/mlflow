@@ -15,8 +15,8 @@ class TraceData:
     spans: List[Span] = field(default_factory=list)
 
     @classmethod
-    def from_dict(cls, d):
-        return cls(spans=[Span(**span) for span in d["spans"]])
+    def from_dict(cls, d) -> "TraceData":
+        return cls(spans=[Span.from_dict(s) for s in d.get("spans", [])])
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

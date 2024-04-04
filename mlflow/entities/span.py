@@ -56,5 +56,20 @@ class Span(_MlflowObject):
     attributes: Dict[str, Any] = field(default_factory=dict)
     events: List[SpanEvent] = field(default_factory=list)
 
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "Span":
+        events = d.pop("events", [])
+        context = d.pop("context")
+        status = d.pop("status")
+        return cls(
+            **d,
+            context=SpanContext(**context),
+            status=SpanStatus(**status),
+            events=[SpanEvent(**event) for event in events],
+        )
+
     def to_json(self) -> str:
         return json.dumps(asdict(self), default=str)
