@@ -89,4 +89,4 @@ Note that GitHub prefixes anchor names in markdown with "user-content-".
 <!-- patch -->
 
 - [ ] Yes
-- [x] No
+- [ ] No
