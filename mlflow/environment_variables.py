@@ -4,16 +4,19 @@ This module defines environment variables used in MLflow.
 import os
 from pathlib import Path
 
+from mlflow.exceptions import MlflowException
+
 
 class _EnvironmentVariable:
     """
     Represents an environment variable.
     """
 
-    def __init__(self, name, type_, default):
+    def __init__(self, name, type_, default, callback=None):
         self.name = name
         self.type = type_
         self.default = default
+        self.callback = callback
 
     @property
     def defined(self):
@@ -35,9 +38,14 @@ class _EnvironmentVariable:
         """
         if (val := self.get_raw()) is not None:
             try:
-                return self.type(val)
+                value = self.type(val)
             except Exception as e:
                 raise ValueError(f"Failed to convert {val!r} to {self.type} for {self.name}: {e}")
+
+            if self.callback:
+                self.callback(value)
+
+            return value
         return self.default
 
     def __str__(self):
@@ -499,16 +507,30 @@ _MLFLOW_MPD_RETRY_INTERVAL_SECONDS = _EnvironmentVariable(
     "_MLFLOW_MPD_RETRY_INTERVAL_SECONDS", int, 1
 )
 
+
 #: Specifies the minimum file size in bytes to use multipart upload when logging artifacts
 #: (default: ``524_288_000`` (500 MB))
 MLFLOW_MULTIPART_UPLOAD_MINIMUM_FILE_SIZE = _EnvironmentVariable(
-    "MLFLOW_MULTIPART_UPLOAD_MINIMUM_FILE_SIZE", int, 500 * 1024**2
+    "MLFLOW_MULTIPART_UPLOAD_MINIMUM_FILE_SIZE",
+    int,
+    500 * 1024**2,
 )
+
+
+def _validate_mlflow_multipart_upload_chunk_size(value: int):
+    if value < 5 * 1024**2:
+        raise MlflowException.invalid_parameter_value(
+            f"Invalid value for MLFLOW_MULTIPART_UPLOAD_CHUNK_SIZE: {value}, must be at least 5MB."
+        )
+
 
 #: Specifies the chunk size in bytes to use when performing multipart upload
 #: (default: ``104_857_60`` (10 MB))
 MLFLOW_MULTIPART_UPLOAD_CHUNK_SIZE = _EnvironmentVariable(
-    "MLFLOW_MULTIPART_UPLOAD_CHUNK_SIZE", int, 10 * 1024**2
+    "MLFLOW_MULTIPART_UPLOAD_CHUNK_SIZE",
+    int,
+    10 * 1024**2,
+    _validate_mlflow_multipart_upload_chunk_size,
 )
 
 #: Specifies the chunk size in bytes to use when performing multipart download
