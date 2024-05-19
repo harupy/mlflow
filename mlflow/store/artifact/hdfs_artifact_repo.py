@@ -209,8 +209,10 @@ def hdfs_system(scheme, host, port):
             kerb_ticket=kerb_ticket,
             extra_conf=extra_conf,
         )
-    yield connected
-    connected.close()
+    try:
+        yield connected
+    finally:
+        connected.close()
 
 
 def _resolve_connection_params(artifact_uri):
