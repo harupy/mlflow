@@ -194,7 +194,9 @@ def hdfs_system(scheme, host, port):
 
     pyarrow_version = packaging.version.parse(pyarrow.__version__)
     if pyarrow_version.major >= 2:
-        connected = pyarrow.fs.HadoopFileSystem(
+        from pyarrow import fs
+
+        connected = fs.HadoopFileSystem(
             host=host,
             port=port or 0,
             user=kerberos_user,
