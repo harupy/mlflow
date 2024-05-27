@@ -698,6 +698,7 @@ class _LangChainModelWrapper:
         """
         from mlflow.langchain.api_request_parallel_processor import process_api_requests
 
+        s = time.time()
         self._update_dependencies_schemas_in_prediction_context(callback_handlers)
         messages, return_first_element = self._prepare_predict_messages(data)
         results = process_api_requests(
@@ -706,7 +707,8 @@ class _LangChainModelWrapper:
             callback_handlers=callback_handlers,
             convert_chat_responses=convert_chat_responses,
         )
-        return results[0] if return_first_element else results
+        _res = results[0] if return_first_element else results
+        return str(time.time() - s)
 
     def _prepare_predict_messages(self, data):
         """
