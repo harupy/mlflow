@@ -18,6 +18,7 @@ import inspect
 import json
 import logging
 import os
+import time
 import warnings
 from typing import Any, Dict, Iterator, List, Optional, Union
 
@@ -635,6 +636,7 @@ class _LangChainModelWrapper:
         # TODO: We don't automatically turn tracing on in OSS model serving, because we haven't
         # implemented storage option for traces in OSS model serving (counterpart to the
         # Inference Table in Databricks model serving).
+        s = time.time()
         if is_in_databricks_model_serving_environment() and MLFLOW_ENABLE_TRACE_IN_SERVING.get():
             from mlflow.langchain.langchain_tracer import MlflowLangchainTracer
 
@@ -649,7 +651,8 @@ class _LangChainModelWrapper:
         else:
             callbacks = None
 
-        return self._predict_with_callbacks(data, params, callback_handlers=callbacks)
+        _res = self._predict_with_callbacks(data, params, callback_handlers=callbacks)
+        return str(time.time() - s)
 
     def _update_dependencies_schemas_in_prediction_context(self, callback_handlers):
         from mlflow.langchain.langchain_tracer import MlflowLangchainTracer
