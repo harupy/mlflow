@@ -210,7 +210,7 @@ def traces_to_df(traces: List[Trace]) -> "pandas.DataFrame":
 
 def extract_span_inputs_outputs(
     traces: Union[List["mlflow.entities.Trace"], "pandas.DataFrame"],
-    fields: List[str],
+    fields: List[_ParsedField],
     col_name: Optional[str] = None,
 ) -> "pandas.DataFrame":
     """
@@ -218,8 +218,8 @@ def extract_span_inputs_outputs(
 
     Args:
         traces: A list of :py:class:`mlflow.entities.Trace` or a pandas DataFrame containing traces.
-        fields: A list of field strings of the form 'span_name.[inputs|outputs]' or
-            'span_name.[inputs|outputs].field_name'.
+        fields: A list of `_ParsedField` instances. Each object represents a field to extract from
+            the spans.
         col_name: The name of the column in the traces DataFrame containing the spans. If `traces`
             is a list of MLflow Traces, this argument should not be provided.
     """
@@ -233,8 +233,6 @@ def extract_span_inputs_outputs(
             ),
         )
 
-    parsed_fields = _parse_fields(fields)
-
     if isinstance(traces, list):
         if col_name is not None:
             raise MlflowException(
@@ -247,7 +245,7 @@ def extract_span_inputs_outputs(
         col_name = SPANS_COLUMN_NAME
 
     if isinstance(traces, pd.DataFrame):
-        return _extract_from_traces_pandas_df(df=traces, col_name=col_name, fields=parsed_fields)
+        return _extract_from_traces_pandas_df(df=traces, col_name=col_name, fields=fields)
 
     raise MlflowException(
         message=(

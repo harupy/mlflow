@@ -902,7 +902,20 @@ def test_search_traces_with_span_name(monkeypatch):
 
     monkeypatch.setattr("mlflow.tracing.fluent.MlflowClient", MockMlflowClient)
 
+
+@pytest.mark.parametrize(
+    "extract_field",
+    [
+        "span.llm.inputs",
+        "span.invalidname.outputs",
+        "span.llm.inputs.x",
+        "span.inputs.x.y",
+        "span.outputs.x.y",
+        "span",
+        "span.llm",
+        "",
+    ],
+)
+def test_search_traces_with_invalid_extract_fields(extract_field):
     with pytest.raises(MlflowException, match="Field must be of the form"):
-        mlflow.search_traces(
-            extract_fields=["span.llm.inputs", "span.invalidname.outputs", "span.llm.inputs.x"]
-        )
+        mlflow.search_traces(extract_fields=[extract_field])

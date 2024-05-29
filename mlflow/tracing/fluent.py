@@ -24,6 +24,7 @@ from mlflow.tracing.display import get_display_handler
 from mlflow.tracing.trace_manager import InMemoryTraceManager
 from mlflow.tracing.utils import (
     SPANS_COLUMN_NAME,
+    _parse_fields,
     capture_function_input_args,
     encode_span_id,
     extract_span_inputs_outputs,
@@ -339,6 +340,9 @@ def search_traces(
                 "or specify the list of experiment IDs in the `experiment_ids` parameter."
             )
 
+    # Parse `extract_fields` early to fail fast
+    parsed_fields = _parse_fields(extract_fields) if extract_fields else None
+
     def pagination_wrapper_func(number_to_get, next_page_token):
         return MlflowClient().search_traces(
             experiment_ids=experiment_ids,
@@ -357,10 +361,10 @@ def search_traces(
     get_display_handler().display_traces(results)
 
     traces_df = traces_to_df(results)
-    if extract_fields:
+    if parsed_fields:
         traces_df = extract_span_inputs_outputs(
             traces=traces_df,
-            fields=extract_fields,
+            fields=parsed_fields,
             col_name=SPANS_COLUMN_NAME,
         )
 
