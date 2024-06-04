@@ -878,6 +878,7 @@ def test_validation_thresholds_validation_thresholds_no_mock():
             targets=targets,
             validation_thresholds={
                 "recall_score": MetricThreshold(
+                    threshold=0.9,
                     min_absolute_change=0.1,
                     greater_is_better=True,
                 ),
