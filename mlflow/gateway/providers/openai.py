@@ -116,16 +116,16 @@ def run_func(name: str, args: Args, kwargs, timeout=60):
             return res
 
 
-def join_hosted_functions(hosted_func_calls):
+def join_uc_functions(hosted_func_calls):
     calls = [
         f"""
-<hosted_function_call>
+<uc_function_call>
 {json.dumps(request, indent=2)}
-</hosted_function_call>
+</uc_function_call>
 
-<hosted_function_result>
+<uc_function_result>
 {json.dumps(result, indent=2)}
-</hosted_function_result>
+</uc_function_result>
 """.strip()
         for (request, result) in hosted_func_calls
     ]
@@ -134,24 +134,24 @@ def join_hosted_functions(hosted_func_calls):
 
 _REGEX = re.compile(
     r"""
-<hosted_function_call>
-(?P<hosted_function_call>.*?)
-</hosted_function_call>
+<uc_function_call>
+(?P<uc_function_call>.*?)
+</uc_function_call>
 
-<hosted_function_result>
-(?P<hosted_function_result>.*?)
-</hosted_function_result>
+<uc_function_result>
+(?P<uc_function_result>.*?)
+</uc_function_result>
 """,
     re.DOTALL,
 )
 
 
-def parse_hosted_functions(content):
+def parse_uc_functions(content):
     tool_calls = []
     tool_messages = []
     for m in _REGEX.finditer(content):
-        c = m.group("hosted_function_call")
-        g = m.group("hosted_function_result")
+        c = m.group("uc_function_call")
+        g = m.group("uc_function_result")
 
         tool_calls.append(json.loads(c))
         tool_messages.append(json.loads(g))
@@ -172,7 +172,7 @@ class TokenUsageAccumulator:
 
 
 def prepend_host_functions(content, hosted_func_calls):
-    return join_hosted_functions(hosted_func_calls) + "\n\n" + content
+    return join_uc_functions(hosted_func_calls) + "\n\n" + content
 
 
 class OpenAIProvider(BaseProvider):
@@ -297,9 +297,7 @@ class OpenAIProvider(BaseProvider):
         user_msg = payload["messages"][0]["content"]
 
         token_usage_accumulator = TokenUsageAccumulator()
-        tool_calls, tool_messages, parsed = parse_hosted_functions(
-            payload["messages"][0]["content"]
-        )
+        tool_calls, tool_messages, parsed = parse_uc_functions(payload["messages"][0]["content"])
         if tool_calls:
             user_tool_messages = [m for m in payload["messages"] if m["role"] == "tool"]
             user_tool_calls = next(m for m in payload["messages"] if "tool_calls" in m).get(
@@ -330,18 +328,18 @@ class OpenAIProvider(BaseProvider):
                 ),
             )
 
-        elif any(t["type"] == "hosted_function" for t in payload.get("tools", [])):
+        elif any(t["type"] == "uc_function" for t in payload.get("tools", [])):
             updated_tools = []
             hosted_func_mapping = {}
             for tool in payload.get("tools", []):
-                if tool["type"] == "hosted_function":
-                    data, args = get_func(tool["hosted_function"]["name"])
+                if tool["type"] == "uc_function":
+                    data, args = get_func(tool["uc_function"]["name"])
                     t = {
                         "type": "function",
                         "function": data,
                     }
                     hosted_func_mapping[t["function"]["name"]] = (
-                        tool["hosted_function"]["name"],
+                        tool["uc_function"]["name"],
                         args,
                     )
                     updated_tools.append(t)
@@ -360,7 +358,7 @@ class OpenAIProvider(BaseProvider):
                 if should_break:
                     if hosted_func_calls:
                         resp["choices"][0]["message"]["content"] = (
-                            user_msg + "\n\n" + join_hosted_functions(hosted_func_calls)
+                            user_msg + "\n\n" + join_uc_functions(hosted_func_calls)
                         )
 
                     if user_tool_calls:
