@@ -215,7 +215,6 @@ select = [
   "SIM115",  # open-file-with-context-handler
   "SIM210",  # if-expr-with-true-false
   "SIM910",  # dict-get-with-none-default
-  "T20",     # flake8-print
   "TID251",  # banned-api
   "TID252",  # relative-improt
   "TRY302",  # useless-try-except

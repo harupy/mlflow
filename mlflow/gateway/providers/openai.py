@@ -1,5 +1,14 @@
+import concurrent.futures
 import json
-from typing import AsyncIterable
+import os
+import re
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from typing import AsyncIterable, List
+
+from databricks.sdk import WorkspaceClient
+from databricks.sdk.service.catalog import FunctionParameterInfo
+from fastapi import HTTPException
 
 from mlflow.exceptions import MlflowException
 from mlflow.gateway.config import OpenAIAPIType, OpenAIConfig, RouteConfig
@@ -8,6 +17,162 @@ from mlflow.gateway.providers.utils import send_request, send_stream_request
 from mlflow.gateway.schemas import chat, completions, embeddings
 from mlflow.gateway.utils import handle_incomplete_chunks, strip_sse_prefix
 from mlflow.utils.uri import append_to_uri_path, append_to_uri_query_params
+
+
+def transform_type(type_text: str) -> str:
+    return {
+        "boolean": "boolean",
+        "byte": "number",
+        "short": "number",
+        "int": "number",
+        "long": "number",
+        "float": "number",
+        "double": "number",
+        "date": "string",
+        "timestamp": "string",
+        "timestamp_ntz": "string",
+        "string": "string",
+        "binary": "string",
+        "decimal": "string",
+        "interval": "string",
+        # TODO: Support complex types
+        # "array": "array",
+        # "struct": "object",
+        # "table": ???
+    }.get(type_text, "string")
+
+
+def extract_param_metadata(p: FunctionParameterInfo) -> dict:
+    return {
+        "type": transform_type(p.type_text),
+        "description": p.comment
+        + (f" (default: {p.parameter_default})" if p.parameter_default else ""),
+    }
+
+
+def get_func(name):
+    w = WorkspaceClient()
+    func = w.functions.get(name=name)
+    return {
+        "description": func.comment,
+        "name": name.replace(".", "__")[-64:],
+        "parameters": {
+            "type": "object",
+            "properties": {p.name: extract_param_metadata(p) for p in func.input_params.parameters},
+            "required": [
+                p.name for p in func.input_params.parameters if p.parameter_default is None
+            ],
+        },
+    }, Args(
+        required=[p.name for p in func.input_params.parameters if p.parameter_default is None],
+        optional=[p.name for p in func.input_params.parameters if p.parameter_default],
+    )
+
+
+@dataclass
+class Args:
+    required: List[str]
+    optional: List[str]
+
+
+def run_func(name: str, args: Args, kwargs, timeout=60):
+    import sqlalchemy as sa
+    from sqlalchemy.orm import Session
+
+    host = os.getenv("DATABRICKS_SERVER_HOSTNAME")
+    http_path = os.getenv("DATABRICKS_HTTP_PATH")
+    access_token = os.getenv("DATABRICKS_TOKEN")
+
+    extra_connect_args = {
+        "_tls_verify_hostname": True,
+        "_user_agent_entry": "Test",
+    }
+
+    engine = sa.create_engine(
+        f"databricks://token:{access_token}@{host}?http_path={http_path}",
+        connect_args=extra_connect_args,
+        echo=True,
+    )
+
+    def job():
+        nonlocal args
+
+        with Session(engine) as session:
+            with session.begin():
+                # Python UDFs don't support named arguments yet.
+                # We can use named arguments for all arguments once it's supported.
+                required = [f":{k}" for k in args.required]
+                optional = [f"{k} => :{k}" for k in args.optional if k in kwargs]
+                args = ", ".join(required + optional)
+                sql = sa.text(f"{name}({args})").bindparams(**kwargs)
+                return session.query(sql).scalar()
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        try:
+            res = executor.submit(job).result(timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            raise HTTPException(status_code=408, detail=f"Function '{name}' timed out")
+        else:
+            return res
+
+
+def join_hosted_functions(hosted_func_calls):
+    calls = [
+        f"""
+<hosted_function_call>
+{json.dumps(request, indent=2)}
+</hosted_function_call>
+
+<hosted_function_result>
+{json.dumps(result, indent=2)}
+</hosted_function_result>
+""".strip()
+        for (request, result) in hosted_func_calls
+    ]
+    return "\n\n".join(calls)
+
+
+_REGEX = re.compile(
+    r"""
+<hosted_function_call>
+(?P<hosted_function_call>.*?)
+</hosted_function_call>
+
+<hosted_function_result>
+(?P<hosted_function_result>.*?)
+</hosted_function_result>
+""",
+    re.DOTALL,
+)
+
+
+def parse_hosted_functions(content):
+    tool_calls = []
+    tool_messages = []
+    for m in _REGEX.finditer(content):
+        c = m.group("hosted_function_call")
+        g = m.group("hosted_function_result")
+
+        tool_calls.append(json.loads(c))
+        tool_messages.append(json.loads(g))
+
+    return tool_calls, tool_messages, _REGEX.sub("", content).rstrip()
+
+
+@dataclass
+class TokenUsageAccumulator:
+    prompt_tokens: int = 0
+    completions_tokens: int = 0
+    total_tokens: int = 0
+
+    def update(self, usage_dict):
+        self.prompt_tokens += usage_dict.get("prompt_tokens", 0)
+        self.completions_tokens += usage_dict.get("completion_tokens", 0)
+        self.total_tokens += usage_dict.get("total_tokens", 0)
+
+
+def prepend_host_functions(content, hosted_func_calls):
+    return join_hosted_functions(hosted_func_calls) + "\n\n" + content
 
 
 class OpenAIProvider(BaseProvider):
@@ -124,15 +289,170 @@ class OpenAIProvider(BaseProvider):
     async def chat(self, payload: chat.RequestPayload) -> chat.ResponsePayload:
         from fastapi.encoders import jsonable_encoder
 
+        print("-" * 30)
+
         payload = jsonable_encoder(payload, exclude_none=True)
         self.check_for_model_field(payload)
 
-        resp = await send_request(
-            headers=self._request_headers,
-            base_url=self._request_base_url,
-            path="chat/completions",
-            payload=self._add_model_to_payload_if_necessary(payload),
+        user_msg = payload["messages"][0]["content"]
+
+        token_usage_accumulator = TokenUsageAccumulator()
+        tool_calls, tool_messages, parsed = parse_hosted_functions(
+            payload["messages"][0]["content"]
         )
+        if tool_calls:
+            user_tool_messages = [m for m in payload["messages"] if m["role"] == "tool"]
+            user_tool_calls = next(m for m in payload["messages"] if "tool_calls" in m).get(
+                "tool_calls"
+            )
+            messages = [
+                {
+                    "role": "user",
+                    "content": parsed,
+                },
+                {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": tool_calls + user_tool_calls,
+                },
+                *tool_messages,
+                *user_tool_messages,
+            ]
+            resp = await send_request(
+                headers=self._request_headers,
+                base_url=self._request_base_url,
+                path="chat/completions",
+                payload=self._add_model_to_payload_if_necessary(
+                    {
+                        **payload,
+                        "messages": messages,
+                    }
+                ),
+            )
+
+        elif any(t["type"] == "hosted_function" for t in payload.get("tools", [])):
+            updated_tools = []
+            hosted_func_mapping = {}
+            for tool in payload.get("tools", []):
+                if tool["type"] == "hosted_function":
+                    data, args = get_func(tool["hosted_function"]["name"])
+                    t = {
+                        "type": "function",
+                        "function": data,
+                    }
+                    hosted_func_mapping[t["function"]["name"]] = (
+                        tool["hosted_function"]["name"],
+                        args,
+                    )
+                    updated_tools.append(t)
+                    continue
+                else:
+                    updated_tools.append(tool)
+
+            payload["tools"] = updated_tools
+
+            messages = payload.pop("messages")
+            hosted_func_calls = []
+            user_tool_calls = []
+            resp = None
+            should_break = False
+            for _ in range(20):
+                if should_break:
+                    if hosted_func_calls:
+                        resp["choices"][0]["message"]["content"] = (
+                            user_msg + "\n\n" + join_hosted_functions(hosted_func_calls)
+                        )
+
+                    if user_tool_calls:
+                        resp["choices"][0]["message"]["tool_calls"] = user_tool_calls
+                    break
+
+                resp = await send_request(
+                    headers=self._request_headers,
+                    base_url=self._request_base_url,
+                    path="chat/completions",
+                    payload=self._add_model_to_payload_if_necessary(
+                        {
+                            **payload,
+                            "messages": messages,
+                        }
+                    ),
+                )
+                token_usage_accumulator.update(resp.get("usage", {}))
+                # TODO to support n > 1.
+                assistant_msg = resp["choices"][0]["message"]
+                tool_calls = assistant_msg.get("tool_calls")
+                if tool_calls is None:
+                    if hosted_func_calls:
+                        resp["choices"][0]["message"]["content"] = prepend_host_functions(
+                            resp["choices"][0]["message"]["content"], hosted_func_calls
+                        )
+
+                    if user_tool_calls:
+                        resp["choices"][0]["message"]["tool_calls"] = user_tool_calls
+
+                    break
+
+                tool_messages = []
+                for tool_call in tool_calls:  # TODO: should run in parallel
+                    func = tool_call["function"]
+                    kwargs = json.loads(func["arguments"])
+                    if v := hosted_func_mapping.get(func["name"]):
+                        (name, args) = v
+                        result = run_func(name, args, kwargs)
+                        tool_message = {
+                            "role": "tool",
+                            "tool_call_id": tool_call["id"],
+                            "content": str(result),
+                        }
+                        tool_messages.append(tool_message)
+
+                    if func["name"] in hosted_func_mapping:
+                        hosted_func_calls.append(
+                            (
+                                {
+                                    "id": tool_call["id"],
+                                    "type": "function",
+                                    "function": {
+                                        "name": func["name"],
+                                        "arguments": func["arguments"],
+                                    },
+                                },
+                                {
+                                    "role": "tool",
+                                    "tool_call_id": tool_call["id"],
+                                    "content": str(result),
+                                },
+                            )
+                        )
+                    else:
+                        should_break = True
+                        user_tool_calls.append(
+                            {
+                                "id": tool_call["id"],
+                                "type": "function",
+                                "function": {
+                                    "name": func["name"],
+                                    "arguments": func["arguments"],
+                                },
+                            }
+                        )
+                print(assistant_msg)
+
+                if message_content := assistant_msg.pop("content", None):
+                    messages.append({"role": "assistant", "content": message_content})
+                assistant_msg.pop("function_call", None)
+                messages += [assistant_msg, *tool_messages]
+            else:
+                raise MlflowException("Max iterations reached")
+
+        else:
+            resp = await send_request(
+                headers=self._request_headers,
+                base_url=self._request_base_url,
+                path="chat/completions",
+                payload=self._add_model_to_payload_if_necessary(payload),
+            )
         # Response example (https://platform.openai.com/docs/api-reference/chat/create)
         # ```
         # {
@@ -166,7 +486,11 @@ class OpenAIProvider(BaseProvider):
                 chat.Choice(
                     index=idx,
                     message=chat.ResponseMessage(
-                        role=c["message"]["role"], content=c["message"]["content"]
+                        role=c["message"]["role"],
+                        content=c["message"].get("content"),
+                        tool_calls=[
+                            chat.ToolCall(**tc) for tc in c["message"].get("tool_calls", [])
+                        ],
                     ),
                     finish_reason=c["finish_reason"],
                 )
