@@ -4,7 +4,7 @@ import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from typing import AsyncIterable, List
+from typing import Any, AsyncIterable, Dict, List, Union
 
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.catalog import FunctionParameterInfo
@@ -19,32 +19,66 @@ from mlflow.gateway.utils import handle_incomplete_chunks, strip_sse_prefix
 from mlflow.utils.uri import append_to_uri_path, append_to_uri_query_params
 
 
-def transform_type(type_text: str) -> str:
-    return {
-        "boolean": "boolean",
-        "byte": "number",
-        "short": "number",
-        "int": "number",
-        "long": "number",
-        "float": "number",
-        "double": "number",
-        "date": "string",
-        "timestamp": "string",
-        "timestamp_ntz": "string",
-        "string": "string",
-        "binary": "string",
-        "decimal": "string",
-        "interval": "string",
-        # TODO: Support complex types
-        # "array": "array",
-        # "struct": "object",
-        # "table": ???
-    }.get(type_text, "string")
+def uc_type_to_json_schema_type(uc_type_json: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Converts the JSON representation of a Unity Catalog data type to the corresponding JSON schema
+    type. The conversion is lossy because we do not need to convert it back.
+    """
+    # See https://docs.databricks.com/en/sql/language-manual/sql-ref-datatypes.html
+    # The actual type name in type_json is different from the corresponding SQL type name.
+    mapping = {
+        "long": {"type": "integer"},
+        "binary": {"type": "string"},
+        "boolean": {"type": "boolean"},
+        "date": {"type": "string", "format": "date"},
+        "double": {"type": "number"},
+        "float": {"type": "number"},
+        "integer": {"type": "integer"},
+        "void": {"type": "null"},
+        "short": {"type": "integer"},
+        "string": {"type": "string"},
+        "timestamp": {"type": "string", "format": "date-time"},
+        "timestamp_ntz": {"type": "string", "format": "date-time"},
+        "byte": {"type": "integer"},
+    }
+    if isinstance(uc_type_json, str):
+        if uc_type_json in mapping:
+            return mapping[uc_type_json]
+        else:
+            if uc_type_json.startswith("decimal"):
+                return {"type": "number"}
+            elif uc_type_json.startswith("interval"):
+                raise TypeError(f"Type {uc_type_json} is not supported.")
+            else:
+                raise TypeError(f"Unknown type {uc_type_json}. Try upgrading this package.")
+    else:
+        assert isinstance(uc_type_json, dict)
+        type = uc_type_json["type"]
+        if type == "array":
+            element_type = uc_type_to_json_schema_type(uc_type_json["elementType"])
+            return {"type": "array", "items": element_type}
+        elif type == "map":
+            key_type = uc_type_json["keyType"]
+            assert key_type == "string", TypeError(
+                f"Only support STRING key type for MAP but got {key_type}."
+            )
+            value_type = uc_type_to_json_schema_type(uc_type_json["valueType"])
+            return {
+                "type": "object",
+                "additionalProperties": value_type,
+            }
+        elif type == "struct":
+            properties = {}
+            for field in uc_type_json["fields"]:
+                properties[field["name"]] = uc_type_to_json_schema_type(field["type"])
+            return {"type": "object", "properties": properties}
+        else:
+            raise TypeError(f"Unknown type {uc_type_json}. Try upgrading this package.")
 
 
 def extract_param_metadata(p: FunctionParameterInfo) -> dict:
     return {
-        "type": transform_type(p.type_text),
+        "type": uc_type_to_json_schema_type(p.type_json),
         "description": p.comment
         + (f" (default: {p.parameter_default})" if p.parameter_default else ""),
     }
