@@ -77,11 +77,11 @@ def uc_type_to_json_schema_type(uc_type_json: Union[str, Dict[str, Any]]) -> Dic
 
 
 def extract_param_metadata(p: FunctionParameterInfo) -> dict:
-    return {
-        "type": uc_type_to_json_schema_type(p.type_json),
-        "description": p.comment
-        + (f" (default: {p.parameter_default})" if p.parameter_default else ""),
-    }
+    type_json = json.loads(p.type_json)["type"]
+    json_schema_type = uc_type_to_json_schema_type(type_json)
+    json_schema_type["name"] = p.name
+    json_schema_type["description"] = p.comment + f" (default: {p.parameter_default})" if p.parameter_default else ""
+    return json_schema_type
 
 
 def get_func(name):
