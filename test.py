@@ -47,8 +47,8 @@ resp = client.chat.completions.create(
     **req,
     tools=[
         {
-            "type": "hosted_function",  # type: ignore
-            "hosted_function": {
+            "type": "uc_function",  # type: ignore
+            "uc_function": {
                 "name": "ml.haru.add",
             },
         }
@@ -58,8 +58,8 @@ print(resp.choices[0].message.content)
 
 hosted_funcs = [
     {
-        "type": "hosted_function",  # type: ignore
-        "hosted_function": {
+        "type": "uc_function",  # type: ignore
+        "uc_function": {
             "name": "ml.haru.add",
         },
     }
