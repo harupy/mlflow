@@ -13,7 +13,7 @@ mlflow deployments start-server \
     --config-path examples/deployments/deployments_server/openai/config.yaml --port 7000
 
 # Run client
-python test.py
+python examples/deployments/uc_functions/run.py
 """
 
 import openai
