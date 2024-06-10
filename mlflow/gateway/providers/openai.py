@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, AsyncIterable, Dict, List, Literal, Optio
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.catalog import FunctionParameterInfo
 
+from mlflow.environment_variables import MLFLOW_ENABLE_UC_FUNCTIONS
 from mlflow.exceptions import MlflowException
 from mlflow.gateway.config import OpenAIAPIType, OpenAIConfig, RouteConfig
 from mlflow.gateway.providers.base import BaseProvider
@@ -432,10 +433,45 @@ class OpenAIProvider(BaseProvider):
                 ],
             )
 
-    async def chat(self, payload: chat.RequestPayload) -> chat.ResponsePayload:
+    async def _chat(self, payload: chat.RequestPayload) -> chat.ResponsePayload:
         from fastapi.encoders import jsonable_encoder
 
-        print("-" * 30)
+        payload = jsonable_encoder(payload, exclude_none=True)
+        self.check_for_model_field(payload)
+
+        return await send_request(
+            headers=self._request_headers,
+            base_url=self._request_base_url,
+            path="chat/completions",
+            payload=self._add_model_to_payload_if_necessary(payload),
+        )
+        # Response example (https://platform.openai.com/docs/api-reference/chat/create)
+        # ```
+        # {
+        #    "id":"chatcmpl-abc123",
+        #    "object":"chat.completion",
+        #    "created":1677858242,
+        #    "model":"gpt-3.5-turbo-0301",
+        #    "usage":{
+        #       "prompt_tokens":13,
+        #       "completion_tokens":7,
+        #       "total_tokens":20
+        #    },
+        #    "choices":[
+        #       {
+        #          "message":{
+        #             "role":"assistant",
+        #             "content":"\n\nThis is a test!"
+        #          },
+        #          "finish_reason":"stop",
+        #          "index":0
+        #       }
+        #    ]
+        # }
+        # ```
+
+    async def _chat_uc_function(self, payload: chat.RequestPayload) -> chat.ResponsePayload:
+        from fastapi.encoders import jsonable_encoder
 
         payload = jsonable_encoder(payload, exclude_none=True)
         self.check_for_model_field(payload)
@@ -622,6 +658,12 @@ class OpenAIProvider(BaseProvider):
         #    ]
         # }
         # ```
+
+    async def chat(self, payload: chat.RequestPayload) -> chat.ResponsePayload:
+        if MLFLOW_ENABLE_UC_FUNCTIONS.get():
+            resp = await self._chat_uc_function(payload)
+        else:
+            resp = await self._chat(payload)
         return chat.ResponsePayload(
             id=resp["id"],
             object=resp["object"],
