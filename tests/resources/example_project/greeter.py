@@ -13,4 +13,4 @@ if __name__ == "__main__":
     greeting = [args.greeting, args.name]
     if args.excitement is not None:
         greeting.append("!" * args.excitement)
-    print(" ".join(greeting))  # noqa: T201
+    print(" ".join(greeting))

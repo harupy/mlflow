@@ -853,7 +853,7 @@ def _init_databricks_cli_config_provider(entry_point):
                             host=ctx.apiUrl, token=ctx.apiToken, insecure=ctx.sslTrustAll
                         )
                 except Exception as e:
-                    print(  # noqa
+                    print(
                         "Unexpected internal error while constructing `DatabricksConfig` "
                         f"from REPL context: {e}",
                         file=stderr,
@@ -903,7 +903,7 @@ def _init_databricks_cli_config_provider(entry_point):
                             host=ctx.apiUrl, token=ctx.apiToken, insecure=ctx.sslTrustAll
                         )
                 except Exception as e:
-                    print(  # noqa
+                    print(
                         "Unexpected internal error while constructing `DatabricksConfig` "
                         f"from REPL context: {e}",
                         file=stderr,
