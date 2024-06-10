@@ -1,8 +1,7 @@
 import json
 import os
-from typing import TYPE_CHECKING, AsyncIterable
+from typing import AsyncIterable
 
-from databricks.sdk import WorkspaceClient
 from fastapi import HTTPException
 
 from mlflow.environment_variables import MLFLOW_ENABLE_UC_FUNCTIONS
@@ -17,13 +16,10 @@ from mlflow.gateway.uc_function_utils import (
     get_func_schema,
     join_uc_functions,
     parse_uc_functions,
-    prepend_host_functions,
+    prepend_uc_functions,
 )
 from mlflow.gateway.utils import handle_incomplete_chunks, strip_sse_prefix
 from mlflow.utils.uri import append_to_uri_path, append_to_uri_query_params
-
-if TYPE_CHECKING:
-    from databricks.sdk import WorkspaceClient
 
 
 class OpenAIProvider(BaseProvider):
@@ -151,16 +147,25 @@ class OpenAIProvider(BaseProvider):
         )
 
     async def _chat_uc_function(self, payload: chat.RequestPayload) -> chat.ResponsePayload:
-        from fastapi.encoders import jsonable_encoder
+        try:
+            from databricks.sdk import WorkspaceClient
+        except ImportError:
+            raise MlflowException(
+                message="Databricks SDK is required to use UC functions",
+                error_code=404,
+            )
 
-        payload = jsonable_encoder(payload, exclude_none=True)
-        self.check_for_model_field(payload)
         warehouse_id = os.environ.get("DATABRICKS_WAREHOUSE_ID")
         if warehouse_id is None:
             raise HTTPException(
                 status_code=400,
                 detail="DATABRICKS_WAREHOUSE_ID environment variable is not set",
             )
+
+        from fastapi.encoders import jsonable_encoder
+
+        payload = jsonable_encoder(payload, exclude_none=True)
+        self.check_for_model_field(payload)
 
         workspace_client = WorkspaceClient()
 
@@ -200,7 +205,7 @@ class OpenAIProvider(BaseProvider):
 
         elif any(t["type"] == "uc_function" for t in payload.get("tools", [])):
             updated_tools = []
-            hosted_func_mapping = {}
+            uc_func_mapping = {}
             for tool in payload.get("tools", []):
                 if tool["type"] == "uc_function":
                     function_name = tool["uc_function"]["name"]
@@ -210,7 +215,7 @@ class OpenAIProvider(BaseProvider):
                         "type": "function",
                         "function": param_metadata,
                     }
-                    hosted_func_mapping[t["function"]["name"]] = tool["uc_function"]["name"]
+                    uc_func_mapping[t["function"]["name"]] = function
                     updated_tools.append(t)
                     continue
                 else:
@@ -219,15 +224,15 @@ class OpenAIProvider(BaseProvider):
             payload["tools"] = updated_tools
 
             messages = payload.pop("messages")
-            hosted_func_calls = []
+            uc_func_calls = []
             user_tool_calls = []
             resp = None
             should_break = False
             for _ in range(20):
                 if should_break:
-                    if hosted_func_calls:
+                    if uc_func_calls:
                         resp["choices"][0]["message"]["content"] = (
-                            user_msg + "\n\n" + join_uc_functions(hosted_func_calls)
+                            user_msg + "\n\n" + join_uc_functions(uc_func_calls)
                         )
 
                     if user_tool_calls:
@@ -250,9 +255,9 @@ class OpenAIProvider(BaseProvider):
                 assistant_msg = resp["choices"][0]["message"]
                 tool_calls = assistant_msg.get("tool_calls")
                 if tool_calls is None:
-                    if hosted_func_calls:
-                        resp["choices"][0]["message"]["content"] = prepend_host_functions(
-                            resp["choices"][0]["message"]["content"], hosted_func_calls
+                    if uc_func_calls:
+                        resp["choices"][0]["message"]["content"] = prepend_uc_functions(
+                            resp["choices"][0]["message"]["content"], uc_func_calls
                         )
 
                     if user_tool_calls:
@@ -263,13 +268,13 @@ class OpenAIProvider(BaseProvider):
                 tool_messages = []
                 for tool_call in tool_calls:  # TODO: should run in parallel
                     func = tool_call["function"]
-                    kwargs = json.loads(func["arguments"])
-                    if _ := hosted_func_mapping.get(func["name"]):
+                    parameters = json.loads(func["arguments"])
+                    if function := uc_func_mapping.get(func["name"]):
                         result = execute_function(
                             ws=workspace_client,
                             warehouse_id=warehouse_id,
-                            function=workspace_client.functions.get(function_name),
-                            parameters=kwargs,
+                            function=function,
+                            parameters=parameters,
                         )
                         if result.value is not None:
                             tool_message = {
@@ -279,8 +284,8 @@ class OpenAIProvider(BaseProvider):
                             }
                         tool_messages.append(tool_message)
 
-                    if func["name"] in hosted_func_mapping:
-                        hosted_func_calls.append(
+                    if func["name"] in uc_func_mapping:
+                        uc_func_calls.append(
                             (
                                 {
                                     "id": tool_call["id"],

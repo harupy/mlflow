@@ -297,3 +297,19 @@ def parse_uc_functions(content):
         tool_messages.append(json.loads(g))
 
     return tool_calls, tool_messages, _REGEX.sub("", content).rstrip()
+
+
+@dataclass
+class TokenUsageAccumulator:
+    prompt_tokens: int = 0
+    completions_tokens: int = 0
+    total_tokens: int = 0
+
+    def update(self, usage_dict):
+        self.prompt_tokens += usage_dict.get("prompt_tokens", 0)
+        self.completions_tokens += usage_dict.get("completion_tokens", 0)
+        self.total_tokens += usage_dict.get("total_tokens", 0)
+
+
+def prepend_uc_functions(content, hosted_func_calls):
+    return join_uc_functions(hosted_func_calls) + "\n\n" + content
