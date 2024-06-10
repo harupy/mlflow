@@ -1,14 +1,11 @@
-import concurrent.futures
 import json
-import os
 import re
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from typing import Any, AsyncIterable, Dict, List, Union
+from io import StringIO
+from typing import TYPE_CHECKING, Any, AsyncIterable, Dict, List, Literal, Optional, Union
 
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.catalog import FunctionParameterInfo
-from fastapi import HTTPException
 
 from mlflow.exceptions import MlflowException
 from mlflow.gateway.config import OpenAIAPIType, OpenAIConfig, RouteConfig
@@ -17,6 +14,11 @@ from mlflow.gateway.providers.utils import send_request, send_stream_request
 from mlflow.gateway.schemas import chat, completions, embeddings
 from mlflow.gateway.utils import handle_incomplete_chunks, strip_sse_prefix
 from mlflow.utils.uri import append_to_uri_path, append_to_uri_query_params
+
+if TYPE_CHECKING:
+    from databricks.sdk import WorkspaceClient
+    from databricks.sdk.service.catalog import FunctionInfo
+    from databricks.sdk.service.sql import StatementParameterListItem
 
 
 def uc_type_to_json_schema_type(uc_type_json: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
@@ -77,11 +79,13 @@ def uc_type_to_json_schema_type(uc_type_json: Union[str, Dict[str, Any]]) -> Dic
 
 
 def extract_param_metadata(p: FunctionParameterInfo) -> dict:
-    return {
-        "type": uc_type_to_json_schema_type(p.type_json),
-        "description": p.comment
-        + (f" (default: {p.parameter_default})" if p.parameter_default else ""),
-    }
+    type_json = json.loads(p.type_json)["type"]
+    json_schema_type = uc_type_to_json_schema_type(type_json)
+    json_schema_type["name"] = p.name
+    json_schema_type["description"] = (
+        p.comment + f" (default: {p.parameter_default})" if p.parameter_default else ""
+    )
+    return json_schema_type
 
 
 def get_func(name):
@@ -109,45 +113,153 @@ class Args:
     optional: List[str]
 
 
-def run_func(name: str, args: Args, kwargs, timeout=60):
-    import sqlalchemy as sa
-    from sqlalchemy.orm import Session
+@dataclass
+class ParameterizedStatement:
+    statement: str
+    parameters: List["StatementParameterListItem"]
 
-    host = os.getenv("DATABRICKS_SERVER_HOSTNAME")
-    http_path = os.getenv("DATABRICKS_HTTP_PATH")
-    access_token = os.getenv("DATABRICKS_TOKEN")
 
-    extra_connect_args = {
-        "_tls_verify_hostname": True,
-        "_user_agent_entry": "Test",
-    }
+@dataclass
+class FunctionExecutionResult:
+    """
+    Result of executing a function.
+    We always use a string to present the result value for AI model to consume.
+    """
 
-    engine = sa.create_engine(
-        f"databricks://token:{access_token}@{host}?http_path={http_path}",
-        connect_args=extra_connect_args,
-        echo=True,
+    error: Optional[str] = None
+    format: Optional[Literal["SCALAR", "CSV"]] = None
+    value: Optional[str] = None
+    truncated: Optional[bool] = None
+
+    def to_json(self) -> str:
+        data = {k: v for (k, v) in self.__dict__.items() if v is not None}
+        return json.dumps(data)
+
+
+def is_scalar(function: "FunctionInfo") -> bool:
+    from databricks.sdk.service.catalog import ColumnTypeName
+
+    return function.data_type != ColumnTypeName.TABLE_TYPE
+
+
+def get_execute_function_sql_stmt(
+    function: "FunctionInfo", json_params: Dict[str, Any]
+) -> ParameterizedStatement:
+    from databricks.sdk.service.catalog import ColumnTypeName
+    from databricks.sdk.service.sql import StatementParameterListItem
+
+    parts = []
+    output_params = []
+    if is_scalar(function):
+        # TODO: IDENTIFIER(:function) did not work
+        parts.append(f"SELECT {function.full_name}(")
+    else:
+        parts.append(f"SELECT * FROM {function.full_name}(")
+    if function.input_params is None or function.input_params.parameters is None:
+        assert not json_params, "Function has no parameters but parameters were provided."
+    else:
+        args = []
+        use_named_args = False
+        for p in function.input_params.parameters:
+            if p.name not in json_params:
+                if p.parameter_default is not None:
+                    use_named_args = True
+                else:
+                    raise ValueError(f"Parameter {p.name} is required but not provided.")
+            else:
+                arg_clause = ""
+                if use_named_args:
+                    arg_clause += f"{p.name} => "
+                json_value = json_params[p.name]
+                if p.type_name in (
+                    ColumnTypeName.ARRAY,
+                    ColumnTypeName.MAP,
+                    ColumnTypeName.STRUCT,
+                ):
+                    # Use from_json to restore values of complex types.
+                    json_value_str = json.dumps(json_value)
+                    # TODO: parametrize type
+                    arg_clause += f"from_json(:{p.name}, '{p.type_text}')"
+                    output_params.append(
+                        StatementParameterListItem(name=p.name, value=json_value_str)
+                    )
+                elif p.type_name == ColumnTypeName.BINARY:
+                    # Use ubbase64 to restore binary values.
+                    arg_clause += f"unbase64(:{p.name})"
+                    output_params.append(StatementParameterListItem(name=p.name, value=json_value))
+                else:
+                    arg_clause += f":{p.name}"
+                    output_params.append(
+                        StatementParameterListItem(name=p.name, value=json_value, type=p.type_text)
+                    )
+                args.append(arg_clause)
+        parts.append(",".join(args))
+    parts.append(")")
+    # TODO: check extra params in kwargs
+    statement = "".join(parts)
+    return ParameterizedStatement(statement=statement, parameters=output_params)
+
+
+def execute_function(
+    ws: "WorkspaceClient",
+    warehouse_id: str,
+    function: "FunctionInfo",
+    parameters: Dict[str, Any],
+) -> FunctionExecutionResult:
+    """
+    Execute a function with the given arguments and return the result.
+    """
+    try:
+        import pandas as pd
+    except ImportError as e:
+        raise ImportError(
+            "Could not import pandas python package. "
+            "Please install it with `pip install pandas`."
+        ) from e
+    from databricks.sdk.service.sql import StatementState
+
+    # TODO: async so we can run functions in parallel
+    parametrized_statement = get_execute_function_sql_stmt(function, parameters)
+    # TODO: configurable limits
+    response = ws.statement_execution.execute_statement(
+        statement=parametrized_statement.statement,
+        warehouse_id=warehouse_id,
+        parameters=parametrized_statement.parameters,
+        wait_timeout="30s",
+        row_limit=100,
+        byte_limit=4096,
     )
-
-    def job():
-        nonlocal args
-
-        with Session(engine) as session:
-            with session.begin():
-                # Python UDFs don't support named arguments yet.
-                # We can use named arguments for all arguments once it's supported.
-                required = [f":{k}" for k in args.required]
-                optional = [f"{k} => :{k}" for k in args.optional if k in kwargs]
-                args = ", ".join(required + optional)
-                sql = sa.text(f"{name}({args})").bindparams(**kwargs)
-                return session.query(sql).scalar()
-
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        try:
-            res = executor.submit(job).result(timeout=timeout)
-        except concurrent.futures.TimeoutError:
-            raise HTTPException(status_code=408, detail=f"Function '{name}' timed out")
-        else:
-            return res
+    status = response.status
+    assert status is not None, f"Statement execution failed: {response}"
+    if status.state != StatementState.SUCCEEDED:
+        error = status.error
+        assert error is not None, "Statement execution failed but no error message was provided."
+        return FunctionExecutionResult(error=f"{error.error_code}: {error.message}")
+    manifest = response.manifest
+    assert manifest is not None
+    truncated = manifest.truncated
+    result = response.result
+    assert result is not None, "Statement execution succeeded but no result was provided."
+    data_array = result.data_array
+    if is_scalar(function):
+        value = None
+        if data_array and len(data_array) > 0 and len(data_array[0]) > 0:
+            value = str(data_array[0][0])  # type: ignore
+        return FunctionExecutionResult(format="SCALAR", value=value, truncated=truncated)
+    else:
+        schema = manifest.schema
+        assert (
+            schema is not None and schema.columns is not None
+        ), "Statement execution succeeded but no schema was provided."
+        columns = [c.name for c in schema.columns]
+        if data_array is None:
+            data_array = []
+        pdf = pd.DataFrame.from_records(data_array, columns=columns)
+        csv_buffer = StringIO()
+        pdf.to_csv(csv_buffer, index=False)
+        return FunctionExecutionResult(
+            format="CSV", value=csv_buffer.getvalue(), truncated=truncated
+        )
 
 
 def join_uc_functions(hosted_func_calls):
@@ -431,12 +543,13 @@ class OpenAIProvider(BaseProvider):
                     kwargs = json.loads(func["arguments"])
                     if v := hosted_func_mapping.get(func["name"]):
                         (name, args) = v
-                        result = run_func(name, args, kwargs)
-                        tool_message = {
-                            "role": "tool",
-                            "tool_call_id": tool_call["id"],
-                            "content": str(result),
-                        }
+                        result = execute_function(name, args, kwargs)
+                        if result.value is not None:
+                            tool_message = {
+                                "role": "tool",
+                                "tool_call_id": tool_call["id"],
+                                "content": str(result),
+                            }
                         tool_messages.append(tool_message)
 
                     if func["name"] in hosted_func_mapping:
