@@ -97,12 +97,6 @@ def get_func_schema(func: "FunctionInfo") -> Dict[str, Any]:
 
 
 @dataclass
-class Args:
-    required: List[str]
-    optional: List[str]
-
-
-@dataclass
 class ParameterizedStatement:
     statement: str
     parameters: List["StatementParameterListItem"]
