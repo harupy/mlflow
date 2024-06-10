@@ -1,12 +1,10 @@
 """
 # Set environment variables
 export DATABRICKS_HOST="..."
-export DATABRICKS_SERVER_HOSTNAME="..."
-export DATABRICKS_HTTP_PATH="..."
 export DATABRICKS_TOKEN="..."
-export DATABRICKS_CATALOG="..."
-export DATABRICKS_SCHEMA="..."
+export DATABRICKS_WAREHOUSE_ID="..."
 export OPENAI_API_KEY="..."
+export MLFLOW_ENABLE_UC_FUNCTIONS=true
 
 # Run server
 mlflow deployments start-server \
