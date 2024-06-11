@@ -77,20 +77,24 @@ def extract_param_metadata(p: FunctionParameterInfo) -> dict:
     json_schema_type = uc_type_to_json_schema_type(type_json)
     json_schema_type["name"] = p.name
     json_schema_type["description"] = (
-        p.comment + f" (default: {p.parameter_default})" if p.parameter_default else ""
+        (p.comment or "") + f" (default: {p.parameter_default})" if p.parameter_default else ""
     )
     return json_schema_type
 
 
 def get_func_schema(func: "FunctionInfo") -> Dict[str, Any]:
+    if func.input_params:
+        parameters = func.input_params.parameters
+    else:
+        parameters = []
     return {
         "description": func.comment,
         "name": _get_tool_name(func),
         "parameters": {
             "type": "object",
-            "properties": {p.name: extract_param_metadata(p) for p in func.input_params.parameters},
+            "properties": {p.name: extract_param_metadata(p) for p in parameters},
             "required": [
-                p.name for p in func.input_params.parameters if p.parameter_default is None
+                p.name for p in parameters if p.parameter_default is None
             ],
         },
     }

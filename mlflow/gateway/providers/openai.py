@@ -276,12 +276,11 @@ class OpenAIProvider(BaseProvider):
                             function=function,
                             parameters=parameters,
                         )
-                        if result.value is not None:
-                            tool_message = {
-                                "role": "tool",
-                                "tool_call_id": tool_call["id"],
-                                "content": str(result.value),
-                            }
+                        tool_message = {
+                            "role": "tool",
+                            "tool_call_id": tool_call["id"],
+                            "content": result.to_json(),
+                        }
                         tool_messages.append(tool_message)
 
                     if func["name"] in uc_func_mapping:
@@ -298,7 +297,7 @@ class OpenAIProvider(BaseProvider):
                                 {
                                     "role": "tool",
                                     "tool_call_id": tool_call["id"],
-                                    "content": str(result),
+                                    "content": result.to_json(),
                                 },
                             )
                         )
@@ -314,7 +313,6 @@ class OpenAIProvider(BaseProvider):
                                 },
                             }
                         )
-                print(assistant_msg)
 
                 if message_content := assistant_msg.pop("content", None):
                     messages.append({"role": "assistant", "content": message_content})
