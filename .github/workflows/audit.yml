@@ -1,0 +1,69 @@
+# Audit PR descriptions and comments for internal links
+name: Audit
+
+on:
+  pull_request:
+    types: [opened, edited]
+  pull_request_review_comment:
+    types: [created, edited]
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          AUDIT_PATTERN: ${{ secrets.AUDIT_PATTERN }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const regExp = new RegExp(process.env.AUDIT_PATTERN, "i");
+            switch (context.eventName) {
+              case "pull_request":
+                if (regExp.test(context.payload.pull_request.body)) {
+                  await github.issues.createComment({
+                    owner,
+                    repo,
+                    issue_number: context.issue.number,
+                    body: `@${context.actor} Please remove internal from the PR description.`
+                  });
+                }
+                break;
+              case "pull_request_review_comment":
+                if (regExp.test(context.payload.comment.body)) {
+                  await github.rest.issues.createReplyForReviewComment({
+                    owner,
+                    repo,
+                    pull_number: context.issue.number,
+                    comment_id: context.payload.comment.id,
+                    body: `@${context.actor} Please remove internal link from the review comment.`
+                  });
+                }
+                break;
+              case "issue_comment":
+                if (regExp.test(context.payload.comment.body)) {
+                  await github.rest.issues.createComment({
+                    owner,
+                    repo,
+                    issue_number: context.issue.number,
+                    body: `@${context.actor} Please remove internal links from the issue comment.`
+                  });
+                }
+                break;
+              case "issues":
+                if (regExp.test(context.payload.issue.body)) {
+                  await github.rest.issues.createComment({
+                    owner,
+                    repo,
+                    issue_number: context.issue.number,
+                    body: `@${context.actor} Please remove internal links from the issue description.`
+                  });
+                }
+                break;
+              default:
+                core.setFailed(`Unsupported event: ${context.eventName}`);
+            }
