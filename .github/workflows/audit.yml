@@ -2,7 +2,7 @@
 name: Audit
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, edited]
   pull_request_review_comment:
     types: [created, edited]
@@ -11,9 +11,15 @@ on:
   issue_comment:
     types: [created, edited]
 
+permissions:
+  contents: read
+
 jobs:
   audit:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
     steps:
       - uses: actions/github-script@v7
         env:
