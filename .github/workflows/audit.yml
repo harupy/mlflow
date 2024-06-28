@@ -26,6 +26,7 @@ jobs:
           AUDIT_PATTERN: ${{ secrets.AUDIT_PATTERN }}
         with:
           script: |
+            # test
             const { owner, repo } = context.repo;
             const regExp = new RegExp(process.env.AUDIT_PATTERN, "i");
             switch (context.eventName) {
