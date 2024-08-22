@@ -36,12 +36,12 @@ module.exports = async ({ github, context, core }) => {
       repo: context.repo.repo,
       issue_number: context.issue.number,
     });
-    const reviewedByMaintainer =
+    const maintainerReviewed =
       reviews.some(({ user: { login } }) => CORE_MAINTAINERS.has(login)) ||
       reviewComments.some(({ user: { login } }) => CORE_MAINTAINERS.has(login));
 
     const commentedBefore = comments.some(({ body }) => body.includes(marker));
-    if (!commentedBefore && !reviewedByMaintainer) {
+    if (!commentedBefore && !maintainerReviewed) {
       await github.rest.issues.createComment({
         owner: context.repo.owner,
         repo: context.repo.repo,
