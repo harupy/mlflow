@@ -20,7 +20,7 @@ module.exports = async ({ github, context }) => {
       ({ name, status, conclusion, app: { slug } }) =>
         slug === "github-actions" &&
         status === "completed" &&
-        conclusion === "failure" &&
+        (conclusion === "failure" || conclusion === "cancelled") &&
         name !== "re-run"
     )
     .map(
@@ -33,11 +33,10 @@ module.exports = async ({ github, context }) => {
 
   for (const run_id of [...new Set(runIdsToRerun)]) {
     console.log(`Re-running ${run_id}`);
-    const res = await github.rest.actions.reRunWorkflowFailedJobs({
+    await github.rest.actions.reRunWorkflowFailedJobs({
       repo,
       owner,
       run_id,
     });
-    console.log(res);
   }
 };
