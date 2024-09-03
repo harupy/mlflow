@@ -1,0 +1,30 @@
+name: re-run
+
+on:
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  set-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write # to rerun workflows
+    if: ${{ github.event.issue.pull_request }} && github.event.comment.body == '/rerun'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const rerun = require(`${process.env.GITHUB_WORKSPACE}/.github/workflows/re-run.js`);
+            await rerun({ context, github, workflow_id: "cross-version-tests.yml" });
