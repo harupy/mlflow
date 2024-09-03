@@ -38,12 +38,14 @@ module.exports = async ({ github, context }) => {
       }) => html_url.match(/\/actions\/runs\/(\d+)/)[1]
     );
 
-  for (const run_id of [...new Set(runIdsToRerun)]) {
+  const uniqueRunIds = [...new Set(runIdsToRerun)];
+  const promises = uniqueRunIds.map(async (run_id) => {
     console.log(`Re-running https://github.com/${owner}/${repo}/actions/runs/${run_id}`);
     await github.rest.actions.reRunWorkflowFailedJobs({
       repo,
       owner,
       run_id,
     });
-  }
+  });
+  await Promise.all(promises);
 };
