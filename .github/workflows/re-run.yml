@@ -12,12 +12,12 @@ permissions:
   contents: read
 
 jobs:
-  set-matrix:
+  re-run:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      pull-requests: write
-      actions: write
+      pull-requests: write # to create a reaction to the comment
+      actions: write # to re-run github action workflows
     if: ${{ github.event.issue.pull_request }} && github.event.comment.body == '/rerun'
     steps:
       - uses: actions/checkout@v4
