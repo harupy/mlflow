@@ -3,6 +3,13 @@ module.exports = async ({ github, context }) => {
     repo: { owner, repo },
   } = context;
 
+  await github.rest.reactions.createForIssueComment({
+    owner,
+    repo,
+    comment_id: context.payload.comment.id,
+    content: "rocket",
+  });
+
   const { data: pr } = await github.rest.pulls.get({
     owner,
     repo,
@@ -32,7 +39,7 @@ module.exports = async ({ github, context }) => {
     );
 
   for (const run_id of [...new Set(runIdsToRerun)]) {
-    console.log(`Re-running ${run_id}`);
+    console.log(`Re-running https://github.com/${owner}/${repo}/actions/runs/${run_id}`);
     await github.rest.actions.reRunWorkflowFailedJobs({
       repo,
       owner,
