@@ -31,15 +31,13 @@ module.exports = async ({ github, context }) => {
       }) => html_url.match(/\/actions\/runs\/(\d+)/)[1]
     );
 
-  // Re-run failed github actions runs
-  await Promise.all(
-    [...new Set(runIdsToRerun)].map((run_id) => {
-      console.log(`Re-running ${run_id}`);
-      github.rest.actions.reRunWorkflowFailedJobs({
-        repo,
-        owner,
-        run_id,
-      });
-    })
-  );
+  for (const run_id of [...new Set(runIdsToRerun)]) {
+    console.log(`Re-running ${run_id}`);
+    const res = await github.rest.actions.reRunWorkflowFailedJobs({
+      repo,
+      owner,
+      run_id,
+    });
+    console.log(res);
+  }
 };
