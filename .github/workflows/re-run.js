@@ -33,12 +33,13 @@ module.exports = async ({ github, context }) => {
 
   // Re-run failed github actions runs
   await Promise.all(
-    [...new Set(runIdsToRerun)].map((run_id) =>
+    [...new Set(runIdsToRerun)].map((run_id) => {
+      console.log(`Re-running ${run_id}`);
       github.rest.actions.reRunWorkflowFailedJobs({
         repo,
         owner,
         run_id,
-      })
-    )
+      });
+    })
   );
 };
