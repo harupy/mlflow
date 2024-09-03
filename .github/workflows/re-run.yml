@@ -16,7 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      actions: write # to rerun workflows
+      pull-requests: write
+      actions: write
     if: ${{ github.event.issue.pull_request }} && github.event.comment.body == '/rerun'
     steps:
       - uses: actions/checkout@v4
