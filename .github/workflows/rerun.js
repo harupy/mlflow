@@ -10,6 +10,16 @@ module.exports = async ({ github, context }) => {
     content: "rocket",
   });
 
+  if (!["OWNER", "MEMBER", "COLLABORATOR"].includes(context.payload.comment.author_association)) {
+    await github.rest.issues.createComment({
+      owner,
+      repo,
+      issue_number: context.issue.number,
+      body: "Only maintainers and collaborators can use the `/rerun` command.",
+    });
+    return;
+  }
+
   const { data: pr } = await github.rest.pulls.get({
     owner,
     repo,
