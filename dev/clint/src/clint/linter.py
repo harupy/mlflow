@@ -149,6 +149,12 @@ PARAM_MISMATCH = Rule(
     "Function arguments do not match docstring arguments: {args}.",
 )
 
+PARAM_ORDER_MISMATCH = Rule(
+    "MLF0008",
+    "param-order-mismatch",
+    "Function arguments do not match docstring arguments order.",
+)
+
 
 @dataclass
 class CodeBlock:
@@ -200,7 +206,7 @@ def _iter_code_blocks(docstring: str) -> Iterator[CodeBlock]:
 
 
 def _parse_docstring_args(docstring: str) -> set[str]:
-    args: set[str] = set()
+    args: list[str] = []
     args_indent: int | None = None
     first_arg_indent: int | None = None
     for line in docstring.split("\n"):
@@ -214,7 +220,7 @@ def _parse_docstring_args(docstring: str) -> set[str]:
                 first_arg_indent = _get_indent(line)
 
             if m := re.match(r"(\w+)", line[first_arg_indent:]):
-                args.add(m.group(1))
+                args.append(m.group(1))
 
         elif line.lstrip().startswith("Args:"):
             args_indent = _get_indent(line)
@@ -275,34 +281,34 @@ class Linter(ast.NodeVisitor):
         return self.stack and isinstance(self.stack[-1], ast.ClassDef)
 
     def _parse_func_args(self, func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
-        args: set[str] = set()
+        args: list[str] = []
         for arg in func.args.posonlyargs:
-            args.add(arg.arg)
+            args.append(arg.arg)
 
         for arg in func.args.args:
-            args.add(arg.arg)
+            args.append(arg.arg)
 
         for arg in func.args.kwonlyargs:
-            args.add(arg.arg)
+            args.append(arg.arg)
 
         if func.args.vararg:
-            args.add(func.args.vararg.arg)
+            args.append(func.args.vararg.arg)
 
         if func.args.kwarg:
-            args.add(func.args.kwarg.arg)
+            args.append(func.args.kwarg.arg)
 
         if self._is_in_class():
             # Is this a class method?
             if any(
                 isinstance(dec, ast.Name) and dec.id == "classmethod" for dec in func.decorator_list
             ):
-                args.discard("cls")
+                args.remove("cls")
             elif not any(
                 isinstance(dec, ast.Name) and dec.id == "staticmethod"
                 for dec in func.decorator_list
             ):
                 # Instance method
-                args.discard("self")
+                args.remove("self")
 
         return args
 
@@ -340,10 +346,12 @@ class Linter(ast.NodeVisitor):
         if node.name.startswith("_"):
             return
         if docstring_node := self._docstring(node):
-            doc_args = _parse_docstring_args(docstring_node.value)
-            func_args = self._parse_func_args(node)
-            if doc_args and (diff := doc_args - func_args):
-                self._check(Location.from_node(node), PARAM_MISMATCH.format(args=diff))
+            if doc_args := _parse_docstring_args(docstring_node.value):
+                func_args = self._parse_func_args(node)
+                if diff := set(doc_args) - set(func_args):
+                    self._check(Location.from_node(node), PARAM_MISMATCH.format(args=diff))
+                elif doc_args != func_args:
+                    self._check(Location.from_node(node), PARAM_ORDER_MISMATCH)
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self._test_name_typo(node)
