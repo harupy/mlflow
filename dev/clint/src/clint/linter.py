@@ -202,6 +202,7 @@ def _iter_code_blocks(docstring: str) -> Iterator[CodeBlock]:
 def _parse_docstring_args(docstring: str) -> set[str]:
     args: set[str] = set()
     args_indent: int | None = None
+    first_arg_indent: int | None = None
     for line in docstring.split("\n"):
         if args_indent is not None:
             indent = _get_indent(line)
@@ -209,34 +210,14 @@ def _parse_docstring_args(docstring: str) -> set[str]:
             if 0 < indent <= args_indent:
                 break
 
-            if m := re.match(r"(\w+)", line[args_indent + 4 :]):
+            if not args:
+                first_arg_indent = _get_indent(line)
+
+            if m := re.match(r"(\w+)", line[first_arg_indent:]):
                 args.add(m.group(1))
 
         elif line.lstrip().startswith("Args:"):
             args_indent = _get_indent(line)
-
-    return args
-
-
-def _parse_func_args(func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
-    args: set[str] = set()
-    for arg in func.args.posonlyargs:
-        args.add(arg.arg)
-
-    for arg in func.args.args:
-        args.add(arg.arg)
-
-    for arg in func.args.kwonlyargs:
-        args.add(arg.arg)
-
-    if func.args.vararg:
-        args.add(func.args.vararg.arg)
-
-    if func.args.kwarg:
-        args.add(func.args.kwarg.arg)
-
-    args.discard("self")
-    args.discard("cls")
 
     return args
 
@@ -251,7 +232,7 @@ class Linter(ast.NodeVisitor):
             ignore: Mapping of rule name to line numbers to ignore.
             cell: Index of the cell being linted in a Jupyter notebook.
         """
-        self.stack: list[ast.FunctionDef | ast.AsyncFunctionDef] = []
+        self.stack: list[ast.AST] = []
         self.path = path
         self.ignore = ignore
         self.cell = cell
@@ -290,6 +271,41 @@ class Linter(ast.NodeVisitor):
     def _is_in_function(self) -> bool:
         return bool(self.stack)
 
+    def _is_in_class(self) -> bool:
+        return self.stack and isinstance(self.stack[-1], ast.ClassDef)
+
+    def _parse_func_args(self, func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
+        args: set[str] = set()
+        for arg in func.args.posonlyargs:
+            args.add(arg.arg)
+
+        for arg in func.args.args:
+            args.add(arg.arg)
+
+        for arg in func.args.kwonlyargs:
+            args.add(arg.arg)
+
+        if func.args.vararg:
+            args.add(func.args.vararg.arg)
+
+        if func.args.kwarg:
+            args.add(func.args.kwarg.arg)
+
+        if self._is_in_class():
+            # Is this a class method?
+            if any(
+                isinstance(dec, ast.Name) and dec.id == "classmethod" for dec in func.decorator_list
+            ):
+                args.discard("cls")
+            elif not any(
+                isinstance(dec, ast.Name) and dec.id == "staticmethod"
+                for dec in func.decorator_list
+            ):
+                # Instance method
+                args.discard("self")
+
+        return args
+
     def _test_name_typo(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
         if not self.path.name.startswith("test_") or self._is_in_function():
             return
@@ -325,8 +341,8 @@ class Linter(ast.NodeVisitor):
             return
         if docstring_node := self._docstring(node):
             doc_args = _parse_docstring_args(docstring_node.value)
-            func_args = _parse_func_args(node)
-            if doc_args and (diff := doc_args.symmetric_difference(func_args)):
+            func_args = self._parse_func_args(node)
+            if doc_args and (diff := doc_args - func_args):
                 self._check(Location.from_node(node), PARAM_MISMATCH.format(args=diff))
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
