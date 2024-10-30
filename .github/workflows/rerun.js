@@ -1,19 +1,36 @@
-module.exports = async ({ github, context }) => {
+const fs = require("fs");
+
+async function download({ github, context }) {
+  const allArtifacts = await github.rest.actions.listWorkflowRunArtifacts({
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+    run_id: context.payload.workflow_run.id,
+  });
+
+  const matchArtifact = allArtifacts.data.artifacts.find((artifact) => {
+    return artifact.name == "pr_number";
+  });
+
+  const download = await github.rest.actions.downloadArtifact({
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+    artifact_id: matchArtifact.id,
+    archive_format: "zip",
+  });
+
+  fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/pr_number.zip`, Buffer.from(download.data));
+}
+
+async function rerun({ github, context }) {
+  const pull_number = Number(fs.readFileSync("./pr_number"));
   const {
     repo: { owner, repo },
   } = context;
 
-  await github.rest.reactions.createForIssueComment({
-    owner,
-    repo,
-    comment_id: context.payload.comment.id,
-    content: "rocket",
-  });
-
   const { data: pr } = await github.rest.pulls.get({
     owner,
     repo,
-    pull_number: context.issue.number,
+    pull_number,
   });
 
   const checkRuns = await github.paginate(github.rest.checks.listForRef, {
@@ -48,4 +65,9 @@ module.exports = async ({ github, context }) => {
     });
   });
   await Promise.all(promises);
+}
+
+module.exports = {
+  download,
+  rerun,
 };
