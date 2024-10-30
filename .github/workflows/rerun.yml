@@ -1,5 +1,5 @@
-# Triggers rerun_workflow_run.yml on PR review approval.
-# https://stackoverflow.com/questions/67247752/how-to-use-secret-in-pull-request-review-similar-to-pull-request-target explains why we need this approach.
+# Triggers rerun_workflow_run.yml on PR approval.
+# see https://stackoverflow.com/questions/67247752/how-to-use-secret-in-pull-request-review-similar-to-pull-request-target for why we need this approach.
 name: rerun
 
 on:
@@ -23,9 +23,9 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          mkdir -p ./pr
-          echo $PR_NUMBER > ./pr/pr_number
+          mkdir -p /tmp/pr
+          echo $PR_NUMBER > /tmp/pr/pr_number
       - uses: actions/upload-artifact@v4
         with:
           name: pr_number
-          path: pr/
+          path: /tmp/pr/
