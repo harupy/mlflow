@@ -1,3 +1,4 @@
+# Triggered by rerun.yml on PR approval.
 on:
   workflow_run:
     workflows: [rerun]
