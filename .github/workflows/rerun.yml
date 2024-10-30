@@ -1,4 +1,4 @@
-# Triggers .github/workflows/rerun_workflow.yml on PR review approval.
+# Triggers rerun_workflow.yml on PR review approval.
 # https://stackoverflow.com/questions/67247752/how-to-use-secret-in-pull-request-review-similar-to-pull-request-target explains why we need this approach.
 name: rerun
 
