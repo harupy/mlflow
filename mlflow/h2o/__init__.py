@@ -292,7 +292,10 @@ class _H2OModelWrapper:
         """
         import h2o
 
-        predicted = self.h2o_model.predict(h2o.H2OFrame(dataframe)).as_data_frame()
+        print("dataframe", dataframe)
+        h2o_frame = h2o.H2OFrame(dataframe)
+        print("h2o_frame", h2o_frame, h2o_frame.types)
+        predicted = self.h2o_model.predict(h2o_frame).as_data_frame()
         predicted.index = dataframe.index
         return predicted
 
