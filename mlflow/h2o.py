@@ -7,6 +7,7 @@ H20 (native) format
 :py:mod:`mlflow.pyfunc`
     Produced for use by generic pyfunc-based deployment tools and batch inference.
 """
+
 import os
 import warnings
 from typing import Any, Dict, Optional
@@ -271,9 +272,7 @@ class _H2OModelWrapper:
     def __init__(self, h2o_model):
         self.h2o_model = h2o_model
 
-    def predict(
-        self, dataframe, params: Optional[Dict[str, Any]] = None
-    ):  # pylint: disable=unused-argument
+    def predict(self, dataframe, params: Optional[Dict[str, Any]] = None):  # pylint: disable=unused-argument
         """
         :param dataframe: Model input data.
         :param params: Additional parameters to pass to the model for inference.
@@ -286,7 +285,7 @@ class _H2OModelWrapper:
         import h2o
 
         h2o_df = h2o.H2OFrame(dataframe)
-        raise Exception(dataframe, h2o_df)
+        raise Exception(dataframe, h2o_df.types)
 
         predicted = self.h2o_model.predict(h2o.H2OFrame(dataframe)).as_data_frame()
         predicted.index = dataframe.index
