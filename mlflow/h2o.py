@@ -285,7 +285,7 @@ class _H2OModelWrapper:
         import h2o
 
         h2o_df = h2o.H2OFrame(dataframe)
-        raise Exception(dataframe.dtypes, h2o_df.types)
+        # raise Exception(dataframe.dtypes, h2o_df.types)
 
         predicted = self.h2o_model.predict(h2o.H2OFrame(dataframe)).as_data_frame()
         predicted.index = dataframe.index
