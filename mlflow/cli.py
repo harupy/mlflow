@@ -22,7 +22,10 @@ from mlflow.environment_variables import MLFLOW_EXPERIMENT_ID, MLFLOW_EXPERIMENT
 from mlflow.exceptions import InvalidUrlException, MlflowException
 from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE
 from mlflow.store.artifact.artifact_repository_registry import get_artifact_repository
-from mlflow.store.tracking import DEFAULT_ARTIFACTS_URI, DEFAULT_LOCAL_FILE_AND_ARTIFACT_PATH
+from mlflow.store.tracking import (
+    DEFAULT_ARTIFACTS_URI,
+    DEFAULT_LOCAL_FILE_AND_ARTIFACT_PATH,
+)
 from mlflow.tracking import _get_store
 from mlflow.utils import cli_args
 from mlflow.utils.logging_utils import eprint
@@ -251,8 +254,7 @@ def _validate_server_args(gunicorn_opts=None, workers=None, waitress_opts=None):
     if sys.platform == "win32":
         if gunicorn_opts is not None or workers is not None:
             raise NotImplementedError(
-                "waitress replaces gunicorn on Windows, "
-                "cannot specify --gunicorn-opts or --workers"
+                "waitress replaces gunicorn on Windows, cannot specify --gunicorn-opts or --workers"
             )
     else:
         if waitress_opts is not None:
@@ -340,7 +342,9 @@ def _validate_static_prefix(ctx, param, value):
     help="Additional command line options forwarded to gunicorn processes.",
 )
 @click.option(
-    "--waitress-opts", default=None, help="Additional command line options for waitress-serve."
+    "--waitress-opts",
+    default=None,
+    help="Additional command line options for waitress-serve.",
 )
 @click.option(
     "--expose-prometheus",
@@ -606,8 +610,8 @@ def gc(older_than, backend_store_uri, artifacts_destination, run_ids, experiment
         run = backend_store.get_run(run_id)
         if run.info.lifecycle_stage != LifecycleStage.DELETED:
             raise MlflowException(
-                "Run % is not in `deleted` lifecycle stage. Only runs in"
-                " `deleted` lifecycle stage can be deleted." % run_id
+                f"Run {run_id} is not in `deleted` lifecycle stage. Only runs in"
+                " `deleted` lifecycle stage can be deleted."
             )
         # raise MlflowException if run_id is newer than older_than parameter
         if older_than and run_id not in deleted_run_ids_older_than:
