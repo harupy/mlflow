@@ -15,7 +15,7 @@ defaults:
     shell: bash --noprofile --norc -exo pipefail {0}
 
 jobs:
-  protos:
+  sync:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -36,4 +36,4 @@ jobs:
           # Use a token for PR creation
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          python sync.py
+          python .github/workflows/sync.py
