@@ -25,21 +25,31 @@ def main():
     # Exit if there is already a PR with the same title
     owner = "mlflow"
     repo = "mlflow"
-    prs = requests.get(
-        f"https://api.github.com/repos/{owner}/{repo}/pulls",
-        headers={"Authorization": f"token {GITHUB_TOKEN}"},
-        params={
-            "state": "open",
-            "base": MLFLOW_3_BRANCH_NAME,
-            "title": TITLE,
-        },
-    )
-    prs.raise_for_status()
-    prs_data = prs.json()
-    print(prs_data)
-    if prs_data:
-        url = prs_data[0]["html_url"]
-        print(f"PR already exists: {url}")
+
+    def iter_pull_requests():
+        per_page = 100
+        page = 1
+        while True:
+            prs = requests.get(
+                f"https://api.github.com/repos/{owner}/{repo}/pulls",
+                headers={"Authorization": f"token {GITHUB_TOKEN}"},
+                params={
+                    "state": "open",
+                    "base": MLFLOW_3_BRANCH_NAME,
+                    "per_page": per_page,
+                    "page": page,
+                },
+            )
+            prs.raise_for_status()
+            prs_data = prs.json()
+            for pr in prs_data:
+                yield pr
+            if len(prs_data) < per_page:
+                break
+            page += 1
+
+    if pr := next((pr for pr in iter_pull_requests() if pr["title"] == TITLE), None):
+        print(f"PR already exists: {pr['html_url']}")
         sys.exit(0)
 
     # Fetch master and mlflow-3 branches
