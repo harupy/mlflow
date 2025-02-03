@@ -1,6 +1,7 @@
 name: Sync
 
 on:
+  pull_request:
   schedule:
     # Run this workflow daily at 13:00 UTC
     - cron: "0 13 * * *"
