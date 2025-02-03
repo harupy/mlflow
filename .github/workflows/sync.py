@@ -1,3 +1,9 @@
+# /// script
+# requires-python = "==3.10"
+# dependencies = [
+#   "requests",
+# ]
+# ///
 # ruff: noqa: T201
 import os
 import subprocess
@@ -59,3 +65,7 @@ def main():
     # )
     # pr.raise_for_status()
     # print(pr.json()["html_url"])
+
+
+if __name__ == "__main__":
+    main()

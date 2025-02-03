@@ -28,6 +28,8 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
       - uses: actions/checkout@v4
         with:
+          sparse-checkout: |
+            .github
           # Use a token for push
           token: ${{ steps.app-token.outputs.token }}
       - uses: ./.github/actions/setup-python
@@ -36,4 +38,4 @@ jobs:
           # Use a token for PR creation
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          python .github/workflows/sync.py
+          uv run .github/workflows/sync.py
