@@ -36,8 +36,9 @@ def main():
     )
     prs.raise_for_status()
     prs_data = prs.json()
+    print(prs_data)
     if prs_data:
-        url = prs[0]["html_url"]
+        url = prs_data[0]["html_url"]
         print(f"PR already exists: {url}")
         sys.exit(0)
 
