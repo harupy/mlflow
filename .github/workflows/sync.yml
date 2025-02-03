@@ -30,6 +30,7 @@ jobs:
         with:
           sparse-checkout: |
             .github
+            requirements/python-version.txt
           # Use a token for push
           token: ${{ steps.app-token.outputs.token }}
       - uses: ./.github/actions/setup-python
