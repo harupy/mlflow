@@ -62,7 +62,6 @@ def main():
     subprocess.check_call(["git", "fetch", "origin", MLFLOW_3_BRANCH_NAME])
 
     # Sync master into mlflow-3
-
     subprocess.check_call(
         ["git", "checkout", "-b", PR_BRANCH_NAME, f"origin/{MLFLOW_3_BRANCH_NAME}"]
     )
