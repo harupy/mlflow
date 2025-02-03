@@ -23,8 +23,10 @@ def main():
     TITLE = "Sync with master"
 
     # Exit if there is already a PR with the same title
+    owner = "mlflow"
+    repo = "mlflow"
     prs = requests.get(
-        "https://api.github.com/repos/{owner}/{repo}/pulls",
+        f"https://api.github.com/repos/{owner}/{repo}/pulls",
         headers={"Authorization": f"token {GITHUB_TOKEN}"},
         params={
             "state": "open",
@@ -54,7 +56,7 @@ def main():
     # Create a pull request
     subprocess.check_call(["git", "push", "origin", branch_name])
     # pr = requests.post(
-    #     "https://api.github.com/repos/{owner}/{repo}/pulls",
+    #     f"https://api.github.com/repos/{owner}/{repo}/pulls",
     #     headers={"Authorization": f"token {GITHUB_TOKEN}"},
     #     json={
     #         "title": TITLE,
