@@ -70,18 +70,19 @@ def main():
 
     # Create a pull request
     subprocess.check_call(["git", "push", "origin", branch_name])
-    # pr = requests.post(
-    #     f"https://api.github.com/repos/{owner}/{repo}/pulls",
-    #     headers={"Authorization": f"token {GITHUB_TOKEN}"},
-    #     json={
-    #         "title": TITLE,
-    #         "head": branch_name,
-    #         "base": MLFLOW_3_BRANCH_NAME,
-    #         "body": "This PR was created automatically by the sync workflow.",
-    #     },
-    # )
-    # pr.raise_for_status()
-    # print(pr.json()["html_url"])
+    pr = requests.post(
+        f"https://api.github.com/repos/{owner}/{repo}/pulls",
+        headers={"Authorization": f"token {GITHUB_TOKEN}"},
+        json={
+            "title": TITLE,
+            "head": branch_name,
+            "base": MLFLOW_3_BRANCH_NAME,
+            "body": "This PR was created automatically by the sync workflow.",
+        },
+    )
+    pr.raise_for_status()
+    pr_data = pr.json()
+    print(f"PR created: {pr_data['html_url']}")
 
 
 if __name__ == "__main__":
