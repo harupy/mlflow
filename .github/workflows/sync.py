@@ -53,6 +53,10 @@ def main():
         sys.exit(0)
 
     # Fetch master and mlflow-3 branches
+    subprocess.check_call(["git", "config", "user.name", "mlflow-automation"])
+    subprocess.check_call(
+        ["git", "config", "user.email", "mlflow-automation@users.noreply.github.com"]
+    )
     subprocess.check_call(["git", "fetch", "origin", "master"])
     subprocess.check_call(["git", "fetch", "origin", MLFLOW_3_BRANCH_NAME])
 
