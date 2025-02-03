@@ -28,9 +28,6 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: |
-            .github
-            requirements/python-version.txt
           # Use a token for push
           token: ${{ steps.app-token.outputs.token }}
       - uses: ./.github/actions/setup-python
