@@ -1,7 +1,9 @@
 name: Sync
 
 on:
-  pull_request:
+  # Uncomment to test this workflow
+  # pull_request:
+  workflow_dispatch:
   schedule:
     # Run this workflow daily at 13:00 UTC
     - cron: "0 13 * * *"
@@ -18,8 +20,7 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    permissions:
-      pull-requests: write
+    permissions: {}
     steps:
       - uses: actions/create-github-app-token@v1
         id: app-token
@@ -28,12 +29,10 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
       - uses: actions/checkout@v4
         with:
-          # Use a token for push
           token: ${{ steps.app-token.outputs.token }}
       - uses: ./.github/actions/setup-python
       - name:
         env:
-          # Use a token for PR creation
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           uv run .github/workflows/sync.py
