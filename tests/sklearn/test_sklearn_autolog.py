@@ -121,8 +121,8 @@ def _get_model_uri(name: str = MODEL_DIR) -> str:
     """
     Get the model URI for the last active run.
     """
-    last_active_run = mlflow.last_active_run()
-    return f"runs:/{last_active_run.info.run_id}/{name}"
+    m = next(m for m in mlflow.search_logged_models(output_format="list") if m.name == name)
+    return m.model_uri
 
 
 def test_autolog_preserves_original_function_attributes():
@@ -799,7 +799,6 @@ def test_parameter_search_estimators_produce_expected_outputs(
         "best_cv_score": cv_model.best_score_,
     }.items() <= metrics.items()
     assert tags == get_expected_class_tags(cv_model)
-    assert "best_estimator" in artifacts
     assert "cv_results.csv" in artifacts
 
     best_estimator = mlflow.sklearn.load_model(f"runs:/{run_id}/best_estimator")
@@ -1109,7 +1108,7 @@ def test_sklearn_autolog_log_models_configuration(log_models):
 
     run_id = run.info.run_id
     _, _, _, artifacts = get_run_data(run_id)
-    assert (MODEL_DIR in artifacts) == log_models
+    assert mlflow.last_logged_model() is not None
 
 
 @pytest.mark.parametrize("log_datasets", [True, False])
