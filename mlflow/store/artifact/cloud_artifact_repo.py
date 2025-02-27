@@ -286,6 +286,15 @@ class CloudArtifactRepository(ArtifactRepository):
         # NB: FUSE mounts do not support file write from a non-0th index seek position.
         # Due to this limitation (writes must start at the beginning of a file),
         # offset writes are disabled if FUSE is the local_path destination.
+        print(  # noqa: T201
+            not MLFLOW_ENABLE_MULTIPART_DOWNLOAD.get(),
+            not file_size,
+            file_size < MLFLOW_MULTIPART_DOWNLOAD_MINIMUM_FILE_SIZE.get(),
+            is_fuse_or_uc_volumes_uri(local_path),
+            # DatabricksSDKModelsArtifactRepository can only download file via databricks sdk
+            # rather than presigned uri used in _parallelized_download_from_cloud.
+            type(self).__name__ == "DatabricksSDKModelsArtifactRepository",
+        )
         if (
             not MLFLOW_ENABLE_MULTIPART_DOWNLOAD.get()
             or not file_size
