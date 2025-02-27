@@ -287,6 +287,7 @@ class CloudArtifactRepository(ArtifactRepository):
         # Due to this limitation (writes must start at the beginning of a file),
         # offset writes are disabled if FUSE is the local_path destination.
         print(  # noqa: T201
+            "_download_file",
             file_size,
             remote_file_path,
             local_path,
