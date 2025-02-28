@@ -73,7 +73,7 @@ def augmented_raise_for_status(response):
 def download_chunk(*, range_start, range_end, headers, download_path, http_uri):
     combined_headers = {**headers, "Range": f"bytes={range_start}-{range_end}"}
 
-    print("Downloading chunk:", http_uri, headers)
+    print("Downloading chunk:", http_uri, combined_headers)
     with cloud_storage_http_request(
         "get",
         http_uri,
