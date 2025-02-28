@@ -759,11 +759,9 @@ def parallelized_download_file_using_http_uri(
                 timeout=MLFLOW_DOWNLOAD_CHUNK_TIMEOUT.get(),
                 env=env,
             )
-            print("Request", http_uri, headers)
             print(prc.stdout)
             print(prc.stderr)
         except (TimeoutExpired, CalledProcessError) as e:
-            print("Request", http_uri, headers)
             print(e.stdout)
             print(e.stderr)
             raise MlflowException(
