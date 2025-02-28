@@ -738,7 +738,7 @@ def parallelized_download_file_using_http_uri(
 
     def run_download(chunk: _Chunk):
         try:
-            subprocess.run(
+            prc = subprocess.run(
                 [
                     sys.executable,
                     download_cloud_file_chunk.__file__,
@@ -759,7 +759,11 @@ def parallelized_download_file_using_http_uri(
                 timeout=MLFLOW_DOWNLOAD_CHUNK_TIMEOUT.get(),
                 env=env,
             )
+            print(prc.stdout)
+            print(prc.stderr)
         except (TimeoutExpired, CalledProcessError) as e:
+            print(e.stdout)
+            print(e.stderr)
             raise MlflowException(
                 f"""
 ----- stdout -----
