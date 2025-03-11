@@ -5,4 +5,8 @@ cd $TMPDIR
 git sparse-checkout set --no-cone /mlflow /skinny /pyproject.toml
 git fetch origin pull/$1/merge
 git checkout FETCH_HEAD
-pip install --no-build-isolation --no-deps ./skinny
+if pip freeze | grep -q "mlflow.*dev"; then
+  pip install --no-build-isolation --no-deps --force-reinstall ./skinny
+else
+  pip install --no-build-isolation ./skinny
+fi
