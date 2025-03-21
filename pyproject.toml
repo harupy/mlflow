@@ -151,7 +151,7 @@ mlflow = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["mlflow", "mlflow.*"]
+include = ["mlflow", "mlflow.*", "another_mlflow"]
 exclude = ["tests", "tests.*"]
 
 # Package metadata: can't be updated manually, use dev/pyproject.py

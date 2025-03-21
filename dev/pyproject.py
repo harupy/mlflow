@@ -225,7 +225,7 @@ def build(package_type: PackageType) -> None:
                 "packages": {
                     "find": {
                         "where": ["."],
-                        "include": ["mlflow", "mlflow.*"],
+                        "include": ["mlflow", "mlflow.*", "another_mlflow"],
                         "exclude": ["tests", "tests.*"],
                     }
                 },
