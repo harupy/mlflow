@@ -284,7 +284,7 @@ def get_java_version(java: Optional[dict[str, str]], version: str) -> str:
     if java and (match := next(_find_matches(java, version), None)):
         return match
 
-    return "11"
+    return ""  # Default to no Java version specified
 
 
 @functools.lru_cache(maxsize=128)
