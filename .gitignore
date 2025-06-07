@@ -22,6 +22,9 @@ __pycache__
 build/
 develop-eggs/
 dist/
+# Exception: Allow compiled AI command handler
+!.github/scripts/ai/dist/
+!.github/scripts/ai/dist/index.js
 downloads/
 eggs/
 .eggs/

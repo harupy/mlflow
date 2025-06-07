@@ -1,0 +1,36 @@
+name: AI Command Handler
+
+on:
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai-command:
+    runs-on: ubuntu-latest
+    if: startsWith(github.event.comment.body, '/ai')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          sparse-checkout: |
+            .github/scripts/ai/
+
+      - name: Process AI command
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node .github/scripts/ai/index.js \
+            --comment-body "${{ github.event.comment.body }}" \
+            --file-path "${{ github.event.comment.path }}" \
+            --line-number "${{ github.event.comment.line || github.event.comment.original_line }}" \
+            --pr-number "${{ github.event.pull_request.number }}" \
+            --comment-id "${{ github.event.comment.id }}" \
+            --repo-owner "${{ github.repository_owner }}" \
+            --repo-name "${{ github.event.repository.name }}" \
+            --commit-sha "${{ github.event.pull_request.head.sha }}" \
+            --comment-user "${{ github.event.comment.user.login }}"
