@@ -347,7 +347,7 @@ async function main(): Promise<void> {
 
   const client = new OpenAI({
     apiKey: GITHUB_TOKEN,
-    baseURL: "https://models.github.ai",
+    baseURL: "https://models.github.ai/inference",
   });
 
   for (const { role, content } of messages) {
