@@ -27770,7 +27770,7 @@ async function main() {
         console.log(`[${role}]:\n${content}`);
     }
     const completion = await client.chat.completions.create({
-        model: "gpt-4.1",
+        model: "openai/gpt-4.1",
         messages: messages,
     });
     // 4. Post the AI response as a comment

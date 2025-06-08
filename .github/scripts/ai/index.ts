@@ -355,7 +355,7 @@ async function main(): Promise<void> {
   }
 
   const completion = await client.chat.completions.create({
-    model: "gpt-4.1",
+    model: "openai/gpt-4.1",
     messages: messages,
   });
 
