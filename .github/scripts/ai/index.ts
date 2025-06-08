@@ -365,7 +365,7 @@ async function main(): Promise<void> {
   const aiResponse =
     completion.choices[0].message.content?.trim() || "❌ No response generated";
 
-  const responseBody = `${commentUser} ${aiResponse}\n\n${AI_REPLY_MARKER}`;
+  const responseBody = `@${commentUser} ${aiResponse}\n\n${AI_REPLY_MARKER}`;
   await octokit.rest.pulls.createReviewComment({
     owner: repoOwner,
     repo: repoName,
