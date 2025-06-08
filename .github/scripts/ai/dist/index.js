@@ -27775,7 +27775,7 @@ async function main() {
     });
     // 4. Post the AI response as a comment
     const aiResponse = completion.choices[0].message.content?.trim() || "❌ No response generated";
-    const responseBody = `${aiResponse}\n\n${AI_REPLY_MARKER}`;
+    const responseBody = `${commentUser} ${aiResponse}\n\n${AI_REPLY_MARKER}`;
     await octokit.rest.pulls.createReviewComment({
         owner: repoOwner,
         repo: repoName,
