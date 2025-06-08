@@ -27551,7 +27551,7 @@ function extractDiff(diff, path) {
  * @param startLine - The start line number for multi-line comments
  * @param side - Which side of the diff the comment is on: "LEFT" (deletions) or "RIGHT" (additions)
  * @param startSide - Which side the multi-line comment starts on
- * @returns The annotated diff hunk with "← COMMENTED LINE" markers
+ * @returns The annotated diff hunk with ">>>" markers
  *
  * @example
  * // Single line comment on a new line (addition)
@@ -27563,10 +27563,10 @@ function extractDiff(diff, path) {
  * const result = annotateDiffHunk(diffHunk, 11, null, "RIGHT", null);
  * // Returns:
  * // @@ -10,3 +10,4 @@
- * //  function example() {
- * // +  console.log("new line"); ← COMMENTED LINE
- * //    return true;
- * //  }
+ * //     function example() {
+ * // >>> +  console.log("new line");
+ * //        return true;
+ * //     }
  *
  * @example
  * // Multi-line comment spanning lines 10-12 on the right side
@@ -27578,10 +27578,10 @@ function extractDiff(diff, path) {
  * const result = annotateDiffHunk(diffHunk, 12, 10, "RIGHT", "RIGHT");
  * // Returns:
  * // @@ -10,5 +10,5 @@
- * // +  const a = 1; ← COMMENTED LINE
- * // +  const b = 2; ← COMMENTED LINE
- * // +  const c = 3; ← COMMENTED LINE
- * //    return a + b + c;
+ * // >>> +  const a = 1;
+ * // >>> +  const b = 2;
+ * // >>> +  const c = 3;
+ * //        return a + b + c;
  *
  * @example
  * // Comment on a deleted line
@@ -27593,10 +27593,10 @@ function extractDiff(diff, path) {
  * const result = annotateDiffHunk(diffHunk, 16, null, "LEFT", null);
  * // Returns:
  * // @@ -15,4 +15,3 @@
- * //    function old() {
- * // -    console.log("old implementation"); ← COMMENTED LINE
- * //      return false;
- * //    }
+ * //        function old() {
+ * // >>> -    console.log("old implementation");
+ * //          return false;
+ * //        }
  */
 function annotateDiffHunk(diffHunk, line, startLine, side, startSide) {
     const lines = diffHunk.split("\n");
@@ -27611,7 +27611,7 @@ function annotateDiffHunk(diffHunk, line, startLine, side, startSide) {
     }
     for (let i = 0; i < lines.length; i++) {
         const currentLine = lines[i];
-        let annotation = "";
+        let shouldHighlight = false;
         // Skip the diff header
         if (i === 0 && currentLine.startsWith("@@")) {
             annotatedLines.push(currentLine);
@@ -27621,27 +27621,28 @@ function annotateDiffHunk(diffHunk, line, startLine, side, startSide) {
         if (currentLine.startsWith("-")) {
             leftLineNum++;
             // Check if this line should be highlighted
-            if (shouldHighlightLine(leftLineNum, line, startLine, "LEFT", side, startSide)) {
-                annotation = " ← COMMENTED LINE";
-            }
+            shouldHighlight = shouldHighlightLine(leftLineNum, line, startLine, "LEFT", side, startSide);
         }
         else if (currentLine.startsWith("+")) {
             rightLineNum++;
             // Check if this line should be highlighted
-            if (shouldHighlightLine(rightLineNum, line, startLine, "RIGHT", side, startSide)) {
-                annotation = " ← COMMENTED LINE";
-            }
+            shouldHighlight = shouldHighlightLine(rightLineNum, line, startLine, "RIGHT", side, startSide);
         }
         else if (currentLine.startsWith(" ")) {
             leftLineNum++;
             rightLineNum++;
             // For context lines, check both sides
-            if (shouldHighlightLine(leftLineNum, line, startLine, "LEFT", side, startSide) ||
-                shouldHighlightLine(rightLineNum, line, startLine, "RIGHT", side, startSide)) {
-                annotation = " ← COMMENTED LINE";
-            }
+            shouldHighlight =
+                shouldHighlightLine(leftLineNum, line, startLine, "LEFT", side, startSide) ||
+                    shouldHighlightLine(rightLineNum, line, startLine, "RIGHT", side, startSide);
         }
-        annotatedLines.push(currentLine + annotation);
+        // Add >>> prefix for highlighted lines, align others with spaces
+        if (shouldHighlight) {
+            annotatedLines.push(">>> " + currentLine);
+        }
+        else {
+            annotatedLines.push("    " + currentLine);
+        }
     }
     return annotatedLines.join("\n");
 }
