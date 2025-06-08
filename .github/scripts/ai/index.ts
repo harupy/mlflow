@@ -252,6 +252,9 @@ async function main(): Promise<void> {
     pull_request: { number: prNumber },
   } = github.context.payload as PullRequestReviewCommentCreatedEvent;
 
+  console.log(
+    ["owner", "member", "collaborator"].indexOf(authorAssociation.toLowerCase())
+  );
   if (
     ["owner", "member", "collaborator"].indexOf(
       authorAssociation.toLowerCase()
