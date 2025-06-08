@@ -266,6 +266,14 @@ async function main(): Promise<void> {
   // Initialize GitHub API
   const octokit = github.getOctokit(GITHUB_TOKEN);
 
+  // Respond to the comment with a reaction
+  await octokit.rest.reactions.createForIssueComment({
+    owner: repoOwner,
+    repo: repoName,
+    comment_id: commentId,
+    content: "eyes",
+  });
+
   // 1. Extract the code that the comment refers to
   let code = "";
   if (diffHunk === "") {
