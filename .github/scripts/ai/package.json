@@ -4,12 +4,16 @@
   "description": "GitHub AI Command Handler for Pull Request Reviews",
   "main": "index.js",
   "scripts": {
-    "build": "yarn tsc",
+    "build": "ncc build index.ts -o dist",
     "start": "node dist/index.js"
   },
-  "dependencies": {
-    "typescript": "^5.3.0",
-    "@types/node": "^20.10.0"
+  "devDependencies": {
+    "@actions/github": "^6.0.1",
+    "@octokit/webhooks-definitions": "^3.67.3",
+    "@types/node": "^20.10.0",
+    "@vercel/ncc": "^0.38.1",
+    "openai": "^5.1.1",
+    "typescript": "^5.3.0"
   },
   "engines": {
     "node": ">=18.0.0"
