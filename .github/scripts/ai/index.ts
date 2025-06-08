@@ -252,7 +252,11 @@ async function main(): Promise<void> {
     pull_request: { number: prNumber },
   } = github.context.payload as PullRequestReviewCommentCreatedEvent;
 
-  if (["owner", "member", "collaborator"].indexOf(authorAssociation) === -1) {
+  if (
+    ["owner", "member", "collaborator"].indexOf(
+      authorAssociation.toLowerCase()
+    ) === -1
+  ) {
     console.error(
       `❌ User ${commentUser} (${authorAssociation}) does not have permission to use the /ai command`
     );
