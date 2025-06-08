@@ -27685,7 +27685,8 @@ async function main() {
     // original_line: originalLine,
     // original_start_line: originalStartLine,
     commit_id: commitId, diff_hunk: diffHunk, side, start_side: startSide, }, pull_request: { number: prNumber }, } = github.context.payload;
-    if (["owner", "member", "collaborator"].indexOf(authorAssociation) === -1) {
+    console.log(["owner", "member", "collaborator"].indexOf(authorAssociation.toLowerCase()));
+    if (["owner", "member", "collaborator"].indexOf(authorAssociation.toLowerCase()) === -1) {
         console.error(`❌ User ${commentUser} (${authorAssociation}) does not have permission to use the /ai command`);
         process.exit(1);
     }
