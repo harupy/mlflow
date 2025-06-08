@@ -111,7 +111,7 @@ function annotateDiffHunk(
 
     // Skip the diff header
     if (i === 0 && currentLine.startsWith("@@")) {
-      annotatedLines.push(currentLine);
+      annotatedLines.push("    " + currentLine);
       continue;
     }
 
@@ -290,7 +290,7 @@ async function main(): Promise<void> {
     role: "system",
     content: [
       "You are an expert code reviewer helping with a GitHub pull request.",
-      `File: ${path}`,
+      "`>>> ` marks the lines that the user is commenting on.",
       "",
       "```",
       code,

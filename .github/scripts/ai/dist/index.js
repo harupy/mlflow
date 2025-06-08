@@ -27614,7 +27614,7 @@ function annotateDiffHunk(diffHunk, line, startLine, side, startSide) {
         let shouldHighlight = false;
         // Skip the diff header
         if (i === 0 && currentLine.startsWith("@@")) {
-            annotatedLines.push(currentLine);
+            annotatedLines.push("    " + currentLine);
             continue;
         }
         // Determine current line numbers based on diff markers
@@ -27721,7 +27721,7 @@ async function main() {
         role: "system",
         content: [
             "You are an expert code reviewer helping with a GitHub pull request.",
-            `File: ${path}`,
+            "`>>> ` marks the lines that the user is commenting on.",
             "",
             "```",
             code,
