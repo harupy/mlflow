@@ -261,7 +261,7 @@ async function main(): Promise<void> {
   const octokit = github.getOctokit(GITHUB_TOKEN);
 
   // Respond to the comment with a reaction
-  await octokit.rest.reactions.createForIssueComment({
+  await octokit.rest.reactions.createForPullRequestReviewComment({
     owner: repoOwner,
     repo: repoName,
     comment_id: commentId,
