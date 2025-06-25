@@ -229,7 +229,7 @@ const config: Config = {
       "@docusaurus/plugin-content-docs",
       {
         id: "classic-ml",
-        path: "docs/classic-ml",
+        path: "docs/ml",
         routeBasePath: "ml",
         sidebarPath: "./sidebarsClassicML.ts",
         async sidebarItemsGenerator({
