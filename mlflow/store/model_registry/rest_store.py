@@ -2,6 +2,7 @@ import logging
 from typing import Optional
 
 from mlflow.entities.model_registry import ModelVersion, RegisteredModel
+from mlflow.entities.model_registry.webhook import Webhook
 from mlflow.protos.model_registry_pb2 import (
     CreateModelVersion,
     CreateRegisteredModel,
@@ -26,17 +27,28 @@ from mlflow.protos.model_registry_pb2 import (
     UpdateModelVersion,
     UpdateRegisteredModel,
 )
+from mlflow.protos.webhooks_pb2 import (
+    CreateWebhook,
+    DeleteWebhook,
+    GetWebhook,
+    ListWebhooks,
+    TestWebhook,
+    UpdateWebhook,
+    WebhookService,
+)
 from mlflow.store.entities.paged_list import PagedList
 from mlflow.store.model_registry.base_rest_store import BaseRestStore
 from mlflow.utils.proto_json_utils import message_to_json
 from mlflow.utils.rest_utils import (
     _REST_API_PATH_PREFIX,
+    call_endpoint,
     extract_all_api_info_for_service,
     extract_api_info_for_service,
 )
 
 _METHOD_TO_INFO = extract_api_info_for_service(ModelRegistryService, _REST_API_PATH_PREFIX)
 _METHOD_TO_ALL_INFO = extract_all_api_info_for_service(ModelRegistryService, _REST_API_PATH_PREFIX)
+_WEBHOOK_METHOD_TO_INFO = extract_api_info_for_service(WebhookService, _REST_API_PATH_PREFIX)
 
 _logger = logging.getLogger(__name__)
 
@@ -59,6 +71,22 @@ class RestStore(BaseRestStore):
 
     def _get_all_endpoints_from_method(self, method):
         return _METHOD_TO_ALL_INFO[method]
+
+    def _get_webhook_endpoint_from_method(self, method):
+        return _WEBHOOK_METHOD_TO_INFO[method]
+
+    def _call_webhook_endpoint(
+        self,
+        api,
+        json_body: Optional[str] = None,
+        webhook_id: Optional[str] = None,
+    ):
+        """Helper method to call webhook endpoints."""
+        endpoint, method = self._get_webhook_endpoint_from_method(api)
+        if webhook_id:
+            endpoint = endpoint.format(webhook_id=webhook_id)
+        response_proto = self._get_response_from_method(api)
+        return call_endpoint(self.get_host_creds(), endpoint, method, json_body, response_proto)
 
     # CRUD API for RegisteredModel objects
 
@@ -479,3 +507,139 @@ class RestStore(BaseRestStore):
         req_body = message_to_json(GetModelVersionByAlias(name=name, alias=alias))
         response_proto = self._call_endpoint(GetModelVersionByAlias, req_body)
         return ModelVersion.from_proto(response_proto.model_version)
+
+    # CRUD API for Webhook objects
+    def create_webhook(
+        self,
+        name: str,
+        url: str,
+        events: list[str],
+        description: Optional[str] = None,
+        secret: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> Webhook:
+        """
+        Create a new webhook in the backend store.
+
+        Args:
+            name: Unique name for the webhook.
+            url: Webhook endpoint URL.
+            events: List of event types that trigger this webhook.
+            description: Optional description of the webhook.
+            secret: Optional secret for HMAC signature verification.
+            status: Webhook status (defaults to ACTIVE).
+
+        Returns:
+            A single :py:class:`mlflow.entities.model_registry.Webhook` object
+            created in the backend.
+        """
+        req_body = message_to_json(
+            CreateWebhook(
+                name=name,
+                url=url,
+                events=events,
+                description=description,
+                secret=secret,
+                status=status,
+            )
+        )
+        response_proto = self._call_webhook_endpoint(CreateWebhook, req_body)
+        return Webhook.from_proto(response_proto.webhook)
+
+    def get_webhook(self, webhook_id: str) -> Webhook:
+        """
+        Get webhook instance by ID.
+
+        Args:
+            webhook_id: Webhook ID.
+
+        Returns:
+            A single :py:class:`mlflow.entities.model_registry.Webhook` object.
+        """
+        response_proto = self._call_webhook_endpoint(GetWebhook, webhook_id=webhook_id)
+        return Webhook.from_proto(response_proto.webhook)
+
+    def list_webhooks(
+        self,
+        max_results: Optional[int] = None,
+        page_token: Optional[str] = None,
+    ) -> tuple[list[Webhook], Optional[str]]:
+        """
+        List webhooks in the backend store.
+
+        Args:
+            max_results: Maximum number of webhooks to return.
+            page_token: Token specifying the next page of results.
+
+        Returns:
+            A tuple of (list of Webhook objects, next_page_token).
+        """
+        req_body = message_to_json(ListWebhooks(max_results=max_results, page_token=page_token))
+        response_proto = self._call_webhook_endpoint(ListWebhooks, req_body)
+        webhooks = [Webhook.from_proto(webhook) for webhook in response_proto.webhooks]
+        return webhooks, response_proto.next_page_token
+
+    def update_webhook(
+        self,
+        webhook_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        url: Optional[str] = None,
+        events: Optional[list[str]] = None,
+        secret: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> Webhook:
+        """
+        Update an existing webhook.
+
+        Args:
+            webhook_id: Webhook ID.
+            name: New webhook name.
+            description: New webhook description.
+            url: New webhook URL.
+            events: New list of event types.
+            secret: New webhook secret.
+            status: New webhook status.
+
+        Returns:
+            A single updated :py:class:`mlflow.entities.model_registry.Webhook` object.
+        """
+        req_body = message_to_json(
+            UpdateWebhook(
+                name=name,
+                description=description,
+                url=url,
+                events=events,
+                secret=secret,
+                status=status,
+            )
+        )
+        response_proto = self._call_webhook_endpoint(UpdateWebhook, req_body, webhook_id=webhook_id)
+        return Webhook.from_proto(response_proto.webhook)
+
+    def delete_webhook(self, webhook_id: str) -> None:
+        """
+        Delete a webhook.
+
+        Args:
+            webhook_id: Webhook ID.
+
+        Returns:
+            None
+        """
+        self._call_webhook_endpoint(DeleteWebhook, webhook_id=webhook_id)
+
+    def test_webhook(self, webhook_id: str, test_payload: Optional[str] = None):
+        """
+        Test a webhook by sending a test payload.
+
+        Args:
+            webhook_id: Webhook ID.
+            test_payload: Optional custom test payload.
+
+        Returns:
+            A test result object with success status and response details.
+        """
+        req_body = message_to_json(TestWebhook(id=webhook_id, test_payload=test_payload))
+        response_proto = self._call_webhook_endpoint(TestWebhook, req_body)
+        return response_proto.result

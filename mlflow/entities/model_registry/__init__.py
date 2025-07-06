@@ -13,6 +13,7 @@ from mlflow.entities.model_registry.registered_model_deployment_job_state import
 )
 from mlflow.entities.model_registry.registered_model_search import RegisteredModelSearch
 from mlflow.entities.model_registry.registered_model_tag import RegisteredModelTag
+from mlflow.entities.model_registry.webhook import Webhook, WebhookStatus
 
 __all__ = [
     "Prompt",
@@ -26,4 +27,6 @@ __all__ = [
     "ModelVersionSearch",
     "ModelVersionDeploymentJobState",
     "RegisteredModelDeploymentJobState",
+    "Webhook",
+    "WebhookStatus",
 ]

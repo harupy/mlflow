@@ -859,3 +859,9 @@ MLFLOW_SERVER_GRAPHQL_MAX_ROOT_FIELDS = _EnvironmentVariable(
 MLFLOW_SERVER_GRAPHQL_MAX_ALIASES = _EnvironmentVariable(
     "MLFLOW_SERVER_GRAPHQL_MAX_ALIASES", int, 10
 )
+
+#: A comma-separated list of allowed schemes for MLflow webhooks.
+#: Should be used for testing purposes only.
+MLFLOW_WEBHOOKS_ALLOWED_SCHEMES = _EnvironmentVariable(
+    "MLFLOW_WEBHOOKS_ALLOWED_SCHEMES", lambda s: s.split(","), "https"
+)

@@ -1,3 +1,4 @@
+import os
 import re
 import sys
 
@@ -6,8 +7,11 @@ from string_utils import camel_to_snake, snake_to_pascal
 
 
 def get_git_root():
-    repo = git.Repo(".", search_parent_directories=True)
-    return repo.working_tree_dir + "/"
+    try:
+        repo = git.Repo(".", search_parent_directories=True)
+        return repo.working_tree_dir + "/"
+    except git.exc.InvalidGitRepositoryError:
+        return os.getcwd() + "/"
 
 
 INDENT = " " * 4

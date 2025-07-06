@@ -35,6 +35,7 @@ from mlflow.entities.logged_model_status import LoggedModelStatus
 from mlflow.entities.logged_model_tag import LoggedModelTag
 from mlflow.entities.model_registry import ModelVersionTag, RegisteredModelTag
 from mlflow.entities.model_registry.prompt_version import IS_PROMPT_TAG_KEY
+from mlflow.entities.model_registry.webhook import WebhookEventType
 from mlflow.entities.multipart_upload import MultipartUploadPart
 from mlflow.entities.trace_info import TraceInfo
 from mlflow.entities.trace_info_v2 import TraceInfoV2
@@ -136,6 +137,15 @@ from mlflow.protos.service_pb2 import (
     UpdateRun,
 )
 from mlflow.protos.service_pb2 import Trace as ProtoTrace
+from mlflow.protos.webhooks_pb2 import (
+    CreateWebhook,
+    DeleteWebhook,
+    GetWebhook,
+    ListWebhooks,
+    TestWebhook,
+    UpdateWebhook,
+    WebhookService,
+)
 from mlflow.server.validation import _validate_content_type
 from mlflow.store.artifact.artifact_repo import MultipartUploadMixin
 from mlflow.store.artifact.artifact_repository_registry import get_artifact_repository
@@ -160,6 +170,7 @@ from mlflow.utils.validation import (
     invalid_value,
     missing_value,
 )
+from mlflow.webhooks import get_webhook_dispatcher
 
 _logger = logging.getLogger(__name__)
 _tracking_store = None
@@ -1748,6 +1759,22 @@ def _create_registered_model():
         tags=request_message.tags,
         description=request_message.description,
     )
+
+    try:
+        webhook_dispatcher = get_webhook_dispatcher(_get_model_registry_store())
+        webhook_dispatcher.dispatch_webhook(
+            event_type=WebhookEventType.REGISTERED_MODEL_CREATED,
+            payload={
+                "name": registered_model.name,
+                "description": registered_model.description,
+                "creation_timestamp": registered_model.creation_timestamp,
+                "last_updated_timestamp": registered_model.last_updated_timestamp,
+                "tags": {tag.key: tag.value for tag in registered_model.tags},
+            },
+        )
+    except Exception as e:
+        _logger.warning(f"Failed to dispatch webhook for registered model creation: {e!s}")
+
     response_message = CreateRegisteredModel.Response(registered_model=registered_model.to_proto())
     return _wrap_response(response_message)
 
@@ -1778,6 +1805,7 @@ def _update_registered_model():
     registered_model = _get_model_registry_store().update_registered_model(
         name=name, description=new_description
     )
+
     response_message = UpdateRegisteredModel.Response(registered_model=registered_model.to_proto())
     return _wrap_response(response_message)
 
@@ -2026,6 +2054,27 @@ def _create_model_version():
             version=model_version.version,
             model_id=request_message.model_id,
         )
+
+    try:
+        webhook_dispatcher = get_webhook_dispatcher(_get_model_registry_store())
+        webhook_dispatcher.dispatch_webhook(
+            event_type=WebhookEventType.MODEL_VERSION_CREATED,
+            payload={
+                "name": model_version.name,
+                "version": model_version.version,
+                "creation_timestamp": model_version.creation_timestamp,
+                "last_updated_timestamp": model_version.last_updated_timestamp,
+                "description": model_version.description,
+                "source": model_version.source,
+                "run_id": model_version.run_id,
+                "run_link": model_version.run_link,
+                "status": model_version.status,
+                "tags": {tag.key: tag.value for tag in model_version.tags},
+            },
+        )
+    except Exception as e:
+        _logger.warning(f"Failed to dispatch webhook for model version creation: {e!s}")
+
     response_message = CreateModelVersion.Response(model_version=model_version.to_proto())
     return _wrap_response(response_message)
 
@@ -2195,6 +2244,21 @@ def _set_model_version_tag():
     _get_model_registry_store().set_model_version_tag(
         name=request_message.name, version=request_message.version, tag=tag
     )
+
+    try:
+        webhook_dispatcher = get_webhook_dispatcher(_get_model_registry_store())
+        webhook_dispatcher.dispatch_webhook(
+            event_type=WebhookEventType.MODEL_VERSION_TAG_SET,
+            payload={
+                "model_name": request_message.name,
+                "version": request_message.version,
+                "key": request_message.key,
+                "value": request_message.value,
+            },
+        )
+    except Exception as e:
+        _logger.warning(f"Failed to dispatch webhook for model version tag setting: {e!s}")
+
     return _wrap_response(SetModelVersionTag.Response())
 
 
@@ -2214,6 +2278,20 @@ def _delete_model_version_tag():
         version=request_message.version,
         key=request_message.key,
     )
+
+    try:
+        webhook_dispatcher = get_webhook_dispatcher(_get_model_registry_store())
+        webhook_dispatcher.dispatch_webhook(
+            event_type=WebhookEventType.MODEL_VERSION_TAG_DELETED,
+            payload={
+                "model_name": request_message.name,
+                "version": request_message.version,
+                "key": request_message.key,
+            },
+        )
+    except Exception as e:
+        _logger.warning(f"Failed to dispatch webhook for registered model update: {e!s}")
+
     return _wrap_response(DeleteModelVersionTag.Response())
 
 
@@ -2233,6 +2311,20 @@ def _set_registered_model_alias():
         alias=request_message.alias,
         version=request_message.version,
     )
+
+    try:
+        webhook_dispatcher = get_webhook_dispatcher(_get_model_registry_store())
+        webhook_dispatcher.dispatch_webhook(
+            event_type=WebhookEventType.MODEL_ALIAS_SET,
+            payload={
+                "model_name": request_message.name,
+                "version": request_message.version,
+                "alias": request_message.alias,
+            },
+        )
+    except Exception as e:
+        _logger.warning(f"Failed to dispatch webhook for model alias setting: {e!s}")
+
     return _wrap_response(SetRegisteredModelAlias.Response())
 
 
@@ -2249,6 +2341,19 @@ def _delete_registered_model_alias():
     _get_model_registry_store().delete_registered_model_alias(
         name=request_message.name, alias=request_message.alias
     )
+
+    try:
+        webhook_dispatcher = get_webhook_dispatcher(_get_model_registry_store())
+        webhook_dispatcher.dispatch_webhook(
+            event_type=WebhookEventType.MODEL_ALIAS_DELETED,
+            payload={
+                "model_name": request_message.name,
+                "alias": request_message.alias,
+            },
+        )
+    except Exception as e:
+        _logger.warning(f"Failed to dispatch webhook for model alias deletion: {e!s}")
+
     return _wrap_response(DeleteRegisteredModelAlias.Response())
 
 
@@ -2267,6 +2372,112 @@ def _get_model_version_by_alias():
     )
     response_proto = model_version.to_proto()
     response_message = GetModelVersionByAlias.Response(model_version=response_proto)
+    return _wrap_response(response_message)
+
+
+# Webhook APIs
+@catch_mlflow_exception
+@_disable_if_artifacts_only
+def _create_webhook():
+    request_message = _get_request_message(
+        CreateWebhook(),
+        schema={
+            "name": [_assert_string, _assert_required],
+            "url": [_assert_string, _assert_required],
+            "events": [_assert_array, _assert_required],
+            "description": [_assert_string],
+            "secret": [_assert_string],
+            "status": [_assert_string],
+        },
+    )
+    webhook = _get_model_registry_store().create_webhook(
+        name=request_message.name,
+        url=request_message.url,
+        events=[str(e) for e in request_message.events],
+        description=request_message.description,
+        secret=request_message.secret,
+        status=request_message.status,
+    )
+    response_message = CreateWebhook.Response(webhook=webhook.to_proto())
+    return _wrap_response(response_message)
+
+
+@catch_mlflow_exception
+@_disable_if_artifacts_only
+def _list_webhooks():
+    request_message = _get_request_message(
+        ListWebhooks(),
+        schema={
+            "max_results": [_assert_intlike],
+            "page_token": [_assert_string],
+        },
+    )
+    webhooks, next_page_token = _get_model_registry_store().list_webhooks(
+        max_results=request_message.max_results,
+        page_token=request_message.page_token,
+    )
+    response_message = ListWebhooks.Response(
+        webhooks=[w.to_proto() for w in webhooks],
+        next_page_token=next_page_token,
+    )
+    return _wrap_response(response_message)
+
+
+@catch_mlflow_exception
+@_disable_if_artifacts_only
+def _get_webhook(webhook_id: str):
+    webhook = _get_model_registry_store().get_webhook(webhook_id=webhook_id)
+    response_message = GetWebhook.Response(webhook=webhook.to_proto())
+    return _wrap_response(response_message)
+
+
+@catch_mlflow_exception
+@_disable_if_artifacts_only
+def _update_webhook(webhook_id: str):
+    request_message = _get_request_message(
+        UpdateWebhook(),
+        schema={
+            "name": [_assert_string],
+            "description": [_assert_string],
+            "url": [_assert_string],
+            "events": [_assert_array],
+            "secret": [_assert_string],
+            "status": [_assert_string],
+        },
+    )
+    webhook = _get_model_registry_store().update_webhook(
+        webhook_id=webhook_id,
+        name=request_message.name or None,
+        description=request_message.description or None,
+        url=request_message.url or None,
+        events=[str(e) for e in request_message.events] if request_message.events else None,
+        secret=request_message.secret or None,
+        status=request_message.status or None,
+    )
+    response_message = UpdateWebhook.Response(webhook=webhook.to_proto())
+    return _wrap_response(response_message)
+
+
+@catch_mlflow_exception
+@_disable_if_artifacts_only
+def _delete_webhook(webhook_id: str):
+    _get_model_registry_store().delete_webhook(webhook_id=webhook_id)
+    response_message = DeleteWebhook.Response()
+    return _wrap_response(response_message)
+
+
+@catch_mlflow_exception
+@_disable_if_artifacts_only
+def _test_webhook(webhook_id: str):
+    request_message = _get_request_message(
+        TestWebhook(),
+        schema={"test_payload": [_assert_string]},
+    )
+    test_result = _get_model_registry_store().test_webhook(
+        webhook_id=request_message.id,
+        test_payload=request_message.test_payload,
+    )
+    response_message = TestWebhook.Response(result=test_result)
     return _wrap_response(response_message)
 
 
@@ -3066,6 +3277,7 @@ def get_endpoints(get_handler=get_handler):
         get_service_endpoints(MlflowService, get_handler)
         + get_service_endpoints(ModelRegistryService, get_handler)
         + get_service_endpoints(MlflowArtifactsService, get_handler)
+        + get_service_endpoints(WebhookService, get_handler)
         + [(_add_static_prefix("/graphql"), _graphql, ["GET", "POST"])]
     )
 
@@ -3119,6 +3331,13 @@ HANDLERS = {
     SetRegisteredModelAlias: _set_registered_model_alias,
     DeleteRegisteredModelAlias: _delete_registered_model_alias,
     GetModelVersionByAlias: _get_model_version_by_alias,
+    # Webhook APIs
+    CreateWebhook: _create_webhook,
+    ListWebhooks: _list_webhooks,
+    GetWebhook: _get_webhook,
+    UpdateWebhook: _update_webhook,
+    DeleteWebhook: _delete_webhook,
+    TestWebhook: _test_webhook,
     # MLflow Artifacts APIs
     DownloadArtifact: _download_artifact,
     UploadArtifact: _upload_artifact,

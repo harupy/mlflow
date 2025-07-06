@@ -134,25 +134,26 @@ CREATE TABLE model_registry_webhooks (
     UNIQUE KEY unique_webhook_name (name)
 );
 
+-- NOT NEEDED YET
 -- Webhook delivery history (FAST FOLLOW - Phase 4)
 -- This table can be added in a later release
-CREATE TABLE webhook_deliveries (
-    id VARCHAR(36) PRIMARY KEY,
-    webhook_id VARCHAR(36) NOT NULL,
-    event_id VARCHAR(36) NOT NULL,
-    event_type VARCHAR(100) NOT NULL,
-    status VARCHAR(20) NOT NULL,  -- pending, success, failed
-    attempts INT DEFAULT 0,
-    request_payload TEXT NOT NULL,
-    response_status INT,
-    response_body TEXT,
-    delivered_at TIMESTAMP,
-    created_at TIMESTAMP NOT NULL,
-    FOREIGN KEY (webhook_id) REFERENCES model_registry_webhooks(id) ON DELETE CASCADE,
-    INDEX idx_webhook_deliveries_webhook_id (webhook_id),
-    INDEX idx_webhook_deliveries_event_id (event_id),
-    INDEX idx_webhook_deliveries_created_at (created_at)
-);
+-- CREATE TABLE webhook_deliveries (
+--     id VARCHAR(36) PRIMARY KEY,
+--     webhook_id VARCHAR(36) NOT NULL,
+--     event_id VARCHAR(36) NOT NULL,
+--     event_type VARCHAR(100) NOT NULL,
+--     status VARCHAR(20) NOT NULL,  -- pending, success, failed
+--     attempts INT DEFAULT 0,
+--     request_payload TEXT NOT NULL,
+--     response_status INT,
+--     response_body TEXT,
+--     delivered_at TIMESTAMP,
+--     created_at TIMESTAMP NOT NULL,
+--     FOREIGN KEY (webhook_id) REFERENCES model_registry_webhooks(id) ON DELETE CASCADE,
+--     INDEX idx_webhook_deliveries_webhook_id (webhook_id),
+--     INDEX idx_webhook_deliveries_event_id (event_id),
+--     INDEX idx_webhook_deliveries_created_at (created_at)
+-- );
 ```
 
 ### 3. Event Publisher Integration
@@ -883,6 +884,11 @@ def handle_mlflow_webhook(payload):
     elif event_type == "registered_model.alias_set" and data["alias"] == "production":
         trigger_deployment_pipeline(data["model_name"], data["model_version"])
 ```
+
+### References
+
+- https://docs.github.com/en/rest/repos/webhooks
+- https://docs.stripe.com/api/webhook_endpoints
 
 ## Files to Update
 

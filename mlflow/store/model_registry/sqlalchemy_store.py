@@ -1,5 +1,6 @@
 import logging
 import urllib
+import uuid
 from typing import Any, Optional, Union
 
 import sqlalchemy
@@ -14,6 +15,8 @@ from mlflow.entities.model_registry.model_version_stages import (
     get_canonical_stage,
 )
 from mlflow.entities.model_registry.prompt_version import IS_PROMPT_TAG_KEY
+from mlflow.entities.model_registry.webhook import Webhook
+from mlflow.environment_variables import MLFLOW_WEBHOOKS_ALLOWED_SCHEMES
 from mlflow.exceptions import MlflowException
 from mlflow.prompt.registry_utils import handle_resource_already_exist_error, has_prompt_tag
 from mlflow.protos.databricks_pb2 import (
@@ -38,6 +41,7 @@ from mlflow.store.model_registry.dbmodels.models import (
     SqlRegisteredModelAlias,
     SqlRegisteredModelTag,
 )
+from mlflow.store.webhooks.dbmodels.models import SqlModelRegistryWebhook
 from mlflow.tracking.client import MlflowClient
 from mlflow.utils.search_utils import SearchModelUtils, SearchModelVersionUtils, SearchUtils
 from mlflow.utils.time import get_current_time_millis
@@ -123,6 +127,7 @@ class SqlAlchemyStore(AbstractStore):
         expected_tables = [
             SqlRegisteredModel.__tablename__,
             SqlModelVersion.__tablename__,
+            SqlModelRegistryWebhook.__tablename__,
         ]
         if any(table not in inspected_tables for table in expected_tables):
             # TODO: Replace the MlflowException with the following line once it's possible to run
@@ -1284,3 +1289,280 @@ class SqlAlchemyStore(AbstractStore):
         Does not wait for the model version to become READY as a successful creation will
         immediately place the model version in a READY state.
         """
+
+    # CRUD API for Webhook objects
+
+    def create_webhook(
+        self,
+        name: str,
+        url: str,
+        events: list[str],
+        description: Optional[str] = None,
+        secret: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> Webhook:
+        """
+        Create a new webhook in the backend store.
+
+        Args:
+            name: Unique name for the webhook.
+            url: Webhook endpoint URL.
+            events: List of event types that trigger this webhook.
+            description: Optional description of the webhook.
+            secret: Optional secret for HMAC signature verification.
+            status: Webhook status (defaults to ACTIVE).
+
+        Returns:
+            A single :py:class:`mlflow.entities.model_registry.Webhook` object
+            created in the backend.
+        """
+        from mlflow.store.webhooks.dbmodels.models import WebhookStatus
+
+        if not name or not name.strip():
+            raise MlflowException("Webhook name cannot be empty", INVALID_PARAMETER_VALUE)
+        if not url or not url.strip():
+            raise MlflowException("Webhook URL cannot be empty", INVALID_PARAMETER_VALUE)
+        if not events:
+            raise MlflowException("Webhook events cannot be empty", INVALID_PARAMETER_VALUE)
+
+        if url and (schemes := MLFLOW_WEBHOOKS_ALLOWED_SCHEMES.get()):
+            scheme = urllib.parse.urlparse(url).scheme
+            if scheme not in schemes:
+                raise MlflowException(
+                    f"Invalid webhook URL scheme: '{scheme}', it must be one of {schemes}",
+                    INVALID_PARAMETER_VALUE,
+                )
+
+        webhook_status = status or WebhookStatus.ACTIVE.value
+        if webhook_status not in {s.value for s in WebhookStatus}:
+            raise MlflowException(
+                f"Invalid webhook status: {webhook_status}", INVALID_PARAMETER_VALUE
+            )
+
+        with self.ManagedSessionMaker() as session:
+            try:
+                current_time = get_current_time_millis()
+                webhook = SqlModelRegistryWebhook(
+                    id=str(uuid.uuid4()),
+                    name=name,
+                    description=description,
+                    url=url,
+                    secret=secret,
+                    status=webhook_status,
+                    created_at=current_time,
+                    updated_at=current_time,
+                )
+                webhook.set_events_list(events)
+                session.add(webhook)
+                session.flush()
+                return webhook.to_mlflow_entity()
+            except sqlalchemy.exc.IntegrityError as e:
+                if "unique_webhook_name" in str(e).lower() or "name" in str(e).lower():
+                    raise MlflowException(
+                        f"Webhook with name '{name}' already exists", RESOURCE_ALREADY_EXISTS
+                    )
+                raise MlflowException(f"Failed to create webhook: {e}", INVALID_STATE)
+
+    def get_webhook(self, webhook_id: str) -> Webhook:
+        """
+        Get webhook instance by ID.
+
+        Args:
+            webhook_id: Webhook ID.
+
+        Returns:
+            A single :py:class:`mlflow.entities.model_registry.Webhook` object.
+        """
+        if not webhook_id or not webhook_id.strip():
+            raise MlflowException("Webhook ID cannot be empty", INVALID_PARAMETER_VALUE)
+
+        with self.ManagedSessionMaker() as session:
+            webhook = (
+                session.query(SqlModelRegistryWebhook)
+                .filter(SqlModelRegistryWebhook.id == webhook_id)
+                .first()
+            )
+
+            if webhook is None:
+                raise MlflowException(
+                    f"Webhook with id '{webhook_id}' not found", RESOURCE_DOES_NOT_EXIST
+                )
+
+            return webhook.to_mlflow_entity()
+
+    def list_webhooks(
+        self,
+        max_results: Optional[int] = None,
+        page_token: Optional[str] = None,
+    ) -> tuple[list[Webhook], Optional[str]]:
+        """
+        List webhooks in the backend store.
+
+        Args:
+            max_results: Maximum number of webhooks to return.
+            page_token: Token specifying the next page of results.
+
+        Returns:
+            A tuple of (list of Webhook objects, next_page_token).
+        """
+        # Default and maximum limits
+        default_max_results = 100
+        max_max_results = 1000
+
+        if max_results is None:
+            max_results = default_max_results
+        elif max_results <= 0:
+            raise MlflowException("max_results must be a positive integer", INVALID_PARAMETER_VALUE)
+        elif max_results > max_max_results:
+            raise MlflowException(
+                f"max_results must be at most {max_max_results}", INVALID_PARAMETER_VALUE
+            )
+
+        offset = SearchUtils.parse_start_offset_from_page_token(page_token)
+        # Query for max_results + 1 to check if there are more results
+        max_results_for_query = max_results + 1
+
+        with self.ManagedSessionMaker() as session:
+            query = (
+                session.query(SqlModelRegistryWebhook)
+                .order_by(
+                    SqlModelRegistryWebhook.created_at.desc(), SqlModelRegistryWebhook.name.asc()
+                )
+                .limit(max_results_for_query)
+            )
+
+            if page_token:
+                query = query.offset(offset)
+
+            webhooks = query.all()
+
+            # Check if there are more results
+            next_page_token = self._compute_next_token(
+                max_results_for_query, len(webhooks), offset, max_results
+            )
+
+            # Return only the requested number of results
+            webhook_entities = [webhook.to_mlflow_entity() for webhook in webhooks[:max_results]]
+            return webhook_entities, next_page_token
+
+    def update_webhook(
+        self,
+        webhook_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        url: Optional[str] = None,
+        events: Optional[list[str]] = None,
+        secret: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> Webhook:
+        """
+        Update an existing webhook.
+
+        Args:
+            webhook_id: Webhook ID.
+            name: New webhook name.
+            description: New webhook description.
+            url: New webhook URL.
+            events: New list of event types.
+            secret: New webhook secret.
+            status: New webhook status.
+
+        Returns:
+            A single updated :py:class:`mlflow.entities.model_registry.Webhook` object.
+        """
+        from mlflow.store.webhooks.dbmodels.models import WebhookStatus
+
+        if not webhook_id or not webhook_id.strip():
+            raise MlflowException("Webhook ID cannot be empty", INVALID_PARAMETER_VALUE)
+
+        # Validate inputs if provided
+        if name is not None and (not name or not name.strip()):
+            raise MlflowException("Webhook name cannot be empty", INVALID_PARAMETER_VALUE)
+        if url is not None and (not url or not url.strip()):
+            raise MlflowException("Webhook URL cannot be empty", INVALID_PARAMETER_VALUE)
+        if url and (schemes := MLFLOW_WEBHOOKS_ALLOWED_SCHEMES.get()):
+            scheme = urllib.parse.urlparse(url).scheme
+            if scheme not in schemes:
+                raise MlflowException(
+                    f"Invalid webhook URL scheme: '{scheme}', it must be one of {schemes}",
+                    INVALID_PARAMETER_VALUE,
+                )
+        if events is not None and not events:
+            raise MlflowException("Webhook events cannot be empty", INVALID_PARAMETER_VALUE)
+        if status is not None and status not in {s.value for s in WebhookStatus}:
+            raise MlflowException(f"Invalid webhook status: {status}", INVALID_PARAMETER_VALUE)
+
+        with self.ManagedSessionMaker() as session:
+            try:
+                webhook = (
+                    session.query(SqlModelRegistryWebhook)
+                    .filter(SqlModelRegistryWebhook.id == webhook_id)
+                    .first()
+                )
+
+                if webhook is None:
+                    raise MlflowException(
+                        f"Webhook with id '{webhook_id}' not found", RESOURCE_DOES_NOT_EXIST
+                    )
+
+                # Update fields if provided
+                updated = False
+                if name is not None and name != webhook.name:
+                    webhook.name = name
+                    updated = True
+                if description is not None and description != webhook.description:
+                    webhook.description = description
+                    updated = True
+                if url is not None and url != webhook.url:
+                    webhook.url = url
+                    updated = True
+                if events is not None and events != webhook.get_events_list():
+                    webhook.set_events_list(events)
+                    updated = True
+                if secret is not None and secret != webhook.secret:
+                    webhook.secret = secret
+                    updated = True
+                if status is not None and status != webhook.status:
+                    webhook.status = status
+                    updated = True
+
+                if updated:
+                    webhook.updated_at = get_current_time_millis()
+
+                session.add(webhook)
+                session.flush()
+                return webhook.to_mlflow_entity()
+
+            except sqlalchemy.exc.IntegrityError as e:
+                if "unique_webhook_name" in str(e).lower() or "name" in str(e).lower():
+                    raise MlflowException(
+                        f"Webhook with name '{name}' already exists", RESOURCE_ALREADY_EXISTS
+                    )
+                raise MlflowException(f"Failed to update webhook: {e}", INVALID_STATE)
+
+    def delete_webhook(self, webhook_id: str) -> None:
+        """
+        Delete a webhook.
+
+        Args:
+            webhook_id: Webhook ID.
+
+        Returns:
+            None
+        """
+        if not webhook_id or not webhook_id.strip():
+            raise MlflowException("Webhook ID cannot be empty", INVALID_PARAMETER_VALUE)
+
+        with self.ManagedSessionMaker() as session:
+            webhook = (
+                session.query(SqlModelRegistryWebhook)
+                .filter(SqlModelRegistryWebhook.id == webhook_id)
+                .first()
+            )
+
+            if webhook is None:
+                raise MlflowException(
+                    f"Webhook with id '{webhook_id}' not found", RESOURCE_DOES_NOT_EXIST
+                )
+
+            session.delete(webhook)

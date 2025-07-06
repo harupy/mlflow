@@ -48,6 +48,7 @@ from mlflow.entities.assessment import (
 from mlflow.entities.assessment_source import AssessmentSource
 from mlflow.entities.model_registry import ModelVersion, Prompt, PromptVersion, RegisteredModel
 from mlflow.entities.model_registry.model_version_stages import ALL_STAGES
+from mlflow.entities.model_registry.webhook import Webhook
 from mlflow.entities.span import NO_OP_SPAN_TRACE_ID, NoOpSpan
 from mlflow.entities.trace_status import TraceStatus
 from mlflow.environment_variables import MLFLOW_ENABLE_ASYNC_LOGGING
@@ -5898,3 +5899,223 @@ class MlflowClient:
 
         # For non-Unity Catalog registries, or if version check passes, delete the prompt
         return registry_client.delete_prompt(name)
+
+    # CRUD API for Webhook objects
+
+    def create_webhook(
+        self,
+        name: str,
+        url: str,
+        events: list[str],
+        description: Optional[str] = None,
+        secret: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> Webhook:
+        """
+        Create a new webhook in the backend store.
+
+        Args:
+            name: Unique name for the webhook.
+            url: Webhook endpoint URL (must be HTTPS).
+            events: List of event types that trigger this webhook.
+            description: Optional description of the webhook.
+            secret: Optional secret for HMAC signature verification.
+            status: Webhook status (defaults to ACTIVE).
+
+        Returns:
+            A single :py:class:`mlflow.entities.model_registry.Webhook` object
+            created in the backend.
+
+        .. code-block:: python
+            :caption: Example
+
+            import mlflow
+            from mlflow import MlflowClient
+
+
+            def print_webhook_info(webhook):
+                print(f"id: {webhook.id}")
+                print(f"name: {webhook.name}")
+                print(f"url: {webhook.url}")
+                print(f"events: {webhook.events}")
+                print(f"status: {webhook.status}")
+
+
+            mlflow.set_tracking_uri("sqlite:///mlruns.db")
+            client = MlflowClient()
+            webhook = client.create_webhook(
+                name="ci-pipeline-trigger",
+                url="https://ci.example.com/mlflow/webhook",
+                events=["registered_model.created", "registered_model.updated"],
+                description="Triggers CI/CD pipeline on model changes",
+            )
+            print_webhook_info(webhook)
+
+        .. code-block:: text
+            :caption: Output
+
+            id: 550e8400-e29b-41d4-a716-446655440000
+            name: ci-pipeline-trigger
+            url: https://ci.example.com/mlflow/webhook
+            events: ['registered_model.created', 'registered_model.updated']
+            status: ACTIVE
+
+        """
+        return self._get_registry_client().create_webhook(
+            name, url, events, description, secret, status
+        )
+
+    def get_webhook(self, webhook_id: str) -> Webhook:
+        """
+        Get webhook instance by ID.
+
+        Args:
+            webhook_id: Webhook ID.
+
+        Returns:
+            A single :py:class:`mlflow.entities.model_registry.Webhook` object.
+
+        .. code-block:: python
+            :caption: Example
+
+            import mlflow
+            from mlflow import MlflowClient
+
+            mlflow.set_tracking_uri("sqlite:///mlruns.db")
+            client = MlflowClient()
+            webhook = client.get_webhook("550e8400-e29b-41d4-a716-446655440000")
+            print(f"Webhook name: {webhook.name}")
+
+        """
+        return self._get_registry_client().get_webhook(webhook_id)
+
+    def list_webhooks(
+        self,
+        max_results: Optional[int] = None,
+        page_token: Optional[str] = None,
+    ) -> PagedList[Webhook]:
+        """
+        List webhooks in the backend store.
+
+        Args:
+            max_results: Maximum number of webhooks to return.
+            page_token: Token specifying the next page of results.
+
+        Returns:
+            A :py:class:`mlflow.store.entities.PagedList` of
+            :py:class:`mlflow.entities.model_registry.Webhook` objects.
+
+        .. code-block:: python
+            :caption: Example
+
+            import mlflow
+            from mlflow import MlflowClient
+
+            mlflow.set_tracking_uri("sqlite:///mlruns.db")
+            client = MlflowClient()
+            webhooks = client.list_webhooks(max_results=10)
+            for webhook in webhooks:
+                print(f"Webhook: {webhook.name} -> {webhook.url}")
+        """
+        webhooks, next_page_token = self._get_registry_client().list_webhooks(
+            max_results, page_token
+        )
+        return PagedList(webhooks, next_page_token)
+
+    def update_webhook(
+        self,
+        webhook_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        url: Optional[str] = None,
+        events: Optional[list[str]] = None,
+        secret: Optional[str] = None,
+        status: Optional[str] = None,
+    ) -> Webhook:
+        """
+        Update an existing webhook.
+
+        Args:
+            webhook_id: Webhook ID.
+            name: New webhook name.
+            description: New webhook description.
+            url: New webhook URL (must be HTTPS).
+            events: New list of event types.
+            secret: New webhook secret.
+            status: New webhook status.
+
+        Returns:
+            A single updated :py:class:`mlflow.entities.model_registry.Webhook` object.
+
+        .. code-block:: python
+            :caption: Example
+
+            import mlflow
+            from mlflow import MlflowClient
+
+            mlflow.set_tracking_uri("sqlite:///mlruns.db")
+            client = MlflowClient()
+            webhook = client.update_webhook(
+                webhook_id="550e8400-e29b-41d4-a716-446655440000",
+                name="updated-webhook-name",
+                description="Updated description",
+                status="INACTIVE",
+            )
+            print(f"Updated webhook: {webhook.name} (status: {webhook.status})")
+
+        """
+        return self._get_registry_client().update_webhook(
+            webhook_id, name, description, url, events, secret, status
+        )
+
+    def delete_webhook(self, webhook_id: str) -> None:
+        """
+        Delete a webhook.
+
+        Args:
+            webhook_id: Webhook ID.
+
+        Returns:
+            None
+
+        .. code-block:: python
+            :caption: Example
+
+            import mlflow
+            from mlflow import MlflowClient
+
+            mlflow.set_tracking_uri("sqlite:///mlruns.db")
+            client = MlflowClient()
+            client.delete_webhook("550e8400-e29b-41d4-a716-446655440000")
+            print("Webhook deleted successfully")
+
+        """
+        self._get_registry_client().delete_webhook(webhook_id)
+
+    def test_webhook(self, webhook_id: str, test_payload: Optional[str] = None):
+        """
+        Test a webhook by sending a test payload.
+
+        Args:
+            webhook_id: Webhook ID.
+            test_payload: Optional custom test payload.
+
+        Returns:
+            A test result object with success status and response details.
+
+        .. code-block:: python
+            :caption: Example
+
+            import mlflow
+            from mlflow import MlflowClient
+
+            mlflow.set_tracking_uri("sqlite:///mlruns.db")
+            client = MlflowClient()
+            result = client.test_webhook("550e8400-e29b-41d4-a716-446655440000")
+            if result.success:
+                print(f"Webhook test successful: {result.response_status}")
+            else:
+                print(f"Webhook test failed: {result.error_message}")
+
+        """
+        return self._get_registry_client().test_webhook(webhook_id, test_payload)
