@@ -5409,6 +5409,20 @@ class MlflowClient:
         _validate_model_id_specified(model_id)
         return self._tracking_client.get_logged_model(model_id)
 
+    def _set_logged_model_source_run_id(self, model_id: str, source_run_id: str) -> None:
+        """
+        Set the source run ID for a logged model.
+
+        Args:
+            model_id: ID of the model to set the source run ID for.
+            source_run_id: ID of the run to associate with the model as its source run.
+
+        Returns:
+            None
+        """
+        _validate_model_id_specified(model_id)
+        return self._tracking_client._set_logged_model_source_run_id(model_id, source_run_id)
+
     @experimental(version="3.0.0")
     def delete_logged_model(self, model_id: str) -> None:
         """

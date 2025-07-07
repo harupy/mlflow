@@ -1987,6 +1987,18 @@ class FileStore(AbstractStore):
 
         return self.get_logged_model(model_id=model_id)
 
+    def _set_logged_model_source_run_id(self, model_id: str, source_run_id: str):
+        model = self.get_logged_model(model_id)
+        model_dict = self._make_persisted_model_dict(model)
+        model_dict["source_run_id"] = source_run_id
+        model_dir = self._get_model_dir(model.experiment_id, model.model_id)
+        write_yaml(
+            model_dir,
+            FileStore.META_DATA_FILE_NAME,
+            model_dict,
+            overwrite=True,
+        )
+
     def log_logged_model_params(self, model_id: str, params: list[LoggedModelParameter]):
         """
         Set parameters on the specified logged model.

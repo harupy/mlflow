@@ -1806,6 +1806,26 @@ class SqlAlchemyStore(AbstractStore):
             session.commit()
             return logged_model.to_mlflow_entity()
 
+    def _set_logged_model_source_run_id(self, model_id: str, source_run_id: str) -> None:
+        """
+        Set the source run ID for a logged model.
+
+        Args:
+            model_id: The ID of the logged model.
+            source_run_id: The ID of the source run.
+
+        Returns:
+            The updated LoggedModel entity.
+        """
+        with self.ManagedSessionMaker() as session:
+            logged_model = session.query(SqlLoggedModel).get(model_id)
+            if not logged_model:
+                self._raise_model_not_found(model_id)
+
+            logged_model.source_run_id = source_run_id
+            logged_model.last_updated_timestamp_ms = get_current_time_millis()
+            session.commit()
+
     def log_logged_model_params(self, model_id: str, params: list[LoggedModelParameter]):
         with self.ManagedSessionMaker() as session:
             logged_model = session.query(SqlLoggedModel).get(model_id)

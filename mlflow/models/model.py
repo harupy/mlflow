@@ -1156,6 +1156,11 @@ class Model:
 
             if model_id is not None:
                 model = client.get_logged_model(model_id)
+                if run_id:
+                    client._set_logged_model_source_run_id(
+                        model_id=model.model_id, source_run_id=run_id
+                    )
+
             else:
                 params = {
                     **(params or {}),

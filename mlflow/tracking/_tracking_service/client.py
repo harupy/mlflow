@@ -834,6 +834,9 @@ class TrackingServiceClient:
             model_type=model_type,
         )
 
+    def _set_logged_model_source_run_id(self, model_id: str, source_run_id: str) -> None:
+        self.store._set_logged_model_source_run_id(model_id=model_id, source_run_id=source_run_id)
+
     def log_model_params(self, model_id: str, params: dict[str, str]) -> None:
         return self.store.log_logged_model_params(
             model_id=model_id,

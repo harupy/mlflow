@@ -697,6 +697,17 @@ class AbstractStore:
         """
         raise NotImplementedError(self.__class__.__name__)
 
+    def _set_logged_model_source_run_id(self, model_id: str, source_run_id: str) -> None:
+        """
+        Set the source run ID for a logged model. This is used to associate the model with the
+        run that produced it.
+
+        Args:
+            model_id: ID of the model to update.
+            source_run_id: ID of the run that produced the model.
+        """
+        raise NotImplementedError(self.__class__.__name__)
+
     def search_logged_models(
         self,
         experiment_ids: list[str],

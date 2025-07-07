@@ -2342,3 +2342,19 @@ def test_clear_active_model():
 def test_set_logged_model_tags_error():
     with pytest.raises(MlflowException, match="You may not have access to the logged model"):
         mlflow.set_logged_model_tags("non-existing-model-id", {"tag": "value"})
+
+
+def test_log_model_with_model_id_with_active_run():
+    def python_model(model_input: list[str]) -> list[str]:
+        return model_input
+
+    with mlflow.set_active_model(name=f"test_{uuid.uuid4().hex}") as m:
+        with mlflow.start_run() as run:
+            mlflow.pyfunc.log_model(
+                python_model=python_model,
+                model_id=m.model_id,
+                input_example=["a", "b", "c"],
+            )
+
+    model = mlflow.get_logged_model(m.model_id)
+    assert model.source_run_id == run.info.run_id
