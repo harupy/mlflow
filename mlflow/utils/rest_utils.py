@@ -552,6 +552,8 @@ def call_endpoint(
 
     response = verify_rest_response(response, endpoint)
     response_to_parse = response.text
+    if "logged-models" in endpoint:
+        raise Exception(endpoint, method, json_body, response_to_parse)
     try:
         js_dict = json.loads(response_to_parse)
     except json.JSONDecodeError:
