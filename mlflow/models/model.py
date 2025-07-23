@@ -1186,6 +1186,7 @@ class Model:
                     )
                     eprint(f"🔗 View Logged Model at: {logged_model_url}")
 
+            raise Exception(f"{model_id!r} is not a valid model ID")
             with _use_logged_model(model=model):
                 if run_id is not None:
                     client.log_outputs(
