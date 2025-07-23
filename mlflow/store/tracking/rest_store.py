@@ -821,6 +821,7 @@ class RestStore(AbstractStore):
         )
 
         response_proto = self._call_endpoint(CreateLoggedModel, req_body)
+        raise Exception(response_proto)
         model = LoggedModel.from_proto(response_proto.model)
 
         # Log remaining params if there are any
