@@ -117,8 +117,7 @@ export async function uploadSnapshots({
 
   // Check if the release already exists
   const { owner, repo } = context.repo;
-  let release: GitHubRelease;
-  let releaseExists = false;
+  let release: GitHubRelease | undefined;
   try {
     const { data } = await github.rest.repos.getReleaseByTag({
       owner,
@@ -126,7 +125,6 @@ export async function uploadSnapshots({
       tag: RELEASE_TAG,
     });
     release = data;
-    releaseExists = true;
     console.log(`Found existing release: ${release.id}`);
   } catch (error: any) {
     if (error.status !== 404) {
@@ -166,11 +164,11 @@ export async function uploadSnapshots({
     // If tag update fails, we'll still proceed with release update/creation
   }
 
-  if (releaseExists) {
+  if (release) {
     console.log("Updating existing nightly release...");
     const { data: updatedRelease } = await github.rest.repos.updateRelease({
       ...releaseParams,
-      release_id: release!.id,
+      release_id: release.id,
     });
     release = updatedRelease;
     console.log(`Updated existing release: ${release.id}`);
