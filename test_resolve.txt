@@ -1,0 +1,7 @@
+This is a test file to create a PR for testing the /resolve command.
+
+The /resolve command should be able to:
+- Fetch PR review comments
+- Apply suggestion blocks
+- Make code changes
+- Create commits
