@@ -235,7 +235,11 @@ def add_pr_review_comment(
     ] = "line",
     in_reply_to: Annotated[
         int | None,
-        "The ID of the review comment to reply to. Use this to create a threaded reply",
+        (
+            "The ID of the top-level review comment to reply to. When specified, creates a "
+            "threaded reply and all other location parameters (path, line, side, etc.) are "
+            "ignored by the GitHub API. Note: replies to replies are not supported"
+        ),
     ] = None,
 ) -> str:
     """
