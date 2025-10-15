@@ -132,7 +132,7 @@ jobs:
 
       - name: Run Claude resolve command
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ steps.pr-info.outputs.pr_url }}
           PROMPT: ${{ steps.pr-info.outputs.prompt }}
