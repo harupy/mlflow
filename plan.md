@@ -50,7 +50,7 @@ cp -r ./mlruns ./mlruns_backup
 Then migrate your file-based backend data to SQLite using the MLflow CLI:
 
 ```bash
-mlflow <TBD> ./mlruns sqlite:///mlflow.db
+mlflow migrate-file-backend ./mlruns sqlite:///mlflow.db
 ```
 
 Then update your tracking URI in your code or environment:
