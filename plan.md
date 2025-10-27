@@ -2,23 +2,20 @@
 
 ## Terminology
 
-In this document, **"filesystem backend"** refers to both the file-based tracking backend (mlflow/store/tracking/file_store.py) and model registry backend (mlflow/store/model_registry/file_store.py). These store data as files instead of in a database and are the current defaults for quick local prototyping.
+In this document, **"filesystem backend"** refers to both the file-based tracking backend (`mlflow/store/tracking/file_store.py`) and model registry backend (`mlflow/store/model_registry/file_store.py`). These store data as files instead of in a database and are the current defaults for quick local prototyping.
 
-## What is being deprecated?
+## Deprecation Scope
 
-The filesystem backend is **currently the default** when you run MLflow without configuring a tracking URI or registry URI. In the future, the **database backend** (e.g., `sqlite:///mlruns.db`) will become the new default.
+- The filesystem backend (e.g., `tracking_uri='./mlruns'`) is deprecated and scheduled for removal. The database backend (`sqlite:///mlruns.db`) will be the new default.
+- Filesystem **artifact** storage remains fully supported and can continue to pair with a database-backed metadata store.
 
-**Important**: The filesystem backend is deprecated and will be removed. The File artifact repository (file-based artifact storage) will continue to be supported and is NOT deprecated.
+## Why deprecate and remove Filesystem Backend?
 
-**Current usage**: 42% of MLflow users (source: telemetry data) use the filesystem backend.
-
-## Why deprecate and remove the Filesystem Backend?
-
-The filesystem backend is being deprecated and removed due to:
+The filesystem backend is deprecated and scheduled for removal due to:
 
 - **Maintenance Burden**
 
-  - Every feature requires dual implementation (filesystem backend + SQLAlchemy), significantly increasing development and testing time
+  - Every feature requires dual implementation (filesystem + database), significantly increasing development and testing time
   - Supporting both filesystem and database storage backends slows down development and increases the risk of bugs
 
 - **Limited Features & Poor UX**
@@ -47,7 +44,7 @@ The filesystem backend is being deprecated and removed due to:
   - Degrades significantly with a high volume of runs/experiments/models
   - File system operations don't scale well compared to indexed database queries
 
-## How to Migrate
+## How to Migrate (not implemented yet)
 
 First, back up your existing data (recommended):
 
@@ -83,37 +80,33 @@ mlflow.set_tracking_uri("sqlite:///mlflow.db")
 
 ## Task breakdown
 
-| Task                            | Estimate | Notes                                                                        |
-| :------------------------------ | :------- | :--------------------------------------------------------------------------- |
-| Create a migration tool / guide | 1.5      | Tool to migrate filesystem backend data to SQLite                            |
-| Deprecation warning             | 0.125    | Add warning when filesystem backend is used                                  |
-| Communication plan execution    | 0.25     |                                                                              |
-| Migrate tests \- OSS            | 0.5      | Update tests to use SQLite by default                                        |
-| Migrate tests \- Universe       | 0.5      | Not urgent and can be delayed until we update mlflow version in MLR/DBR      |
-| Switch defaults to SQLite       | 0.5      | Change default tracking & registry URIs to SQLite                            |
-| Remove file backend             | 1.0      | Remove filesystem backend implementations, clean up code, final test updates |
+| Task                            | Estimate | Notes                                                           |
+| :------------------------------ | :------- | :-------------------------------------------------------------- |
+| Create a migration tool / guide | 1.5      | Tool to migrate filesystem backend data to SQLite               |
+| Deprecation warning             | 0.125    | Add warning when filesystem backend is used                     |
+| Migrate tests \- OSS            | 0.5      |                                                                 |
+| Migrate tests \- Databricks     | 0.5      | Not urgent and can be delayed until we update mlflow in MLR/DBR |
+| Switch default to sqlite        | 0.5      | Change default tracking & registry URIs to SQLite               |
+| Remove filesystem backend       | 1.0      | Remove filesystem backend implementations, clean up code/tests  |
 
 ## Timeline
 
-|                                                 | MLflow Version | ETA       |
-| :---------------------------------------------- | :------------- | :-------- |
-| Add a deprecation warning                       | 3.6            | 11/6/2025 |
-| Switch defaults to sqlite (tracking & registry) | 3.7            | 12/4/2025 |
-| Monitor telemetry & gather feedback             | 3.7 - 3.x      | TBD       |
-| Remove filesystem backend                       | 3.(x + 1)      | TBD       |
+| Event                                            | MLflow Version | ETA        |
+| :----------------------------------------------- | :------------- | :--------- |
+| Add a deprecation warning + migration tool/guide | 3.7            | 11/26/2025 |
+| Switch defaults to sqlite                        | 3.8            | <TBD>      |
+| Monitor telemetry & gather feedback              | 3.8 - 3.<TBD>  | -          |
+| Remove filesystem backend                        | 3.(<TBD> + 1)  | <TBD>      |
 
-## What's impacted if we change the default tracking and registry URIs to a database backend?
+## Feedback Tracker
 
-- OSS MLflow
-  - Tests
-    - Most tests use the SQLite backend already, so the impact should be minimal, but some tests may need to be updated.
-- Databricks
-  - Tests
-    - Some tests use the filesystem backend when Databricks backend is unsupported. They might fail.
-- Managed MLflow services (e.g. managed MLflow on Sagemaker)
-  - I believe managed mlflow services use a database backend.
+https://github.com/mlflow/mlflow/issues/18534
 
 ## FAQ
+
+- **How many users are affected?**
+
+  - According to telemetry data, approximately 42% of MLflow users currently use the filesystem backend.
 
 - **Does this change affect Databricks customers?**
 
