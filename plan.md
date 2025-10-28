@@ -7,7 +7,7 @@ In this document, **"filesystem backend"** refers to both the file-based trackin
 ## Deprecation Scope
 
 - The filesystem backend (e.g., `tracking_uri='./mlruns'`) is deprecated and scheduled for removal. The database backend (`sqlite:///mlruns.db`) will be the new default.
-- Filesystem **artifact** storage remains fully supported and can continue to pair with a database-backed metadata store.
+- Filesystem **artifact** storage remains fully supported and can continue to pair with a database backend.
 
 ## Why deprecate and remove Filesystem Backend?
 
@@ -22,17 +22,18 @@ The filesystem backend is deprecated and scheduled for removal due to:
 
   - Many new MLflow features are not supported in the filesystem backend. Since the filesystem backend is currently the default, these features are not available out-of-the-box, creating an inconvenient experience for users who need them
 
-    | Feature                                         | File Backend | Database Backend |
-    | ----------------------------------------------- | :----------: | :--------------: |
-    | Experiments / Tags                              |      ✅      |        ✅        |
-    | Runs (info, params, metrics, tags)              |      ✅      |        ✅        |
-    | Run inputs/outputs, logged models               |      ✅      |        ✅        |
-    | Traces (metadata, assessments)                  |      ✅      |        ✅        |
-    | Model registry (models, versions, tags/aliases) |      ✅      |        ✅        |
-    | Trace spans (OTel data)                         |      ➖      |        ✅        |
-    | Evaluation datasets / results                   |      ➖      |        ✅        |
-    | Model registry webhooks                         |      ➖      |        ✅        |
-    | Registered-model scorers                        |      ➖      |        ✅        |
+    | Feature                            | File Backend | Database Backend |
+    | ---------------------------------- | :----------: | :--------------: |
+    | Experiments / Tags                 |      ✅      |        ✅        |
+    | Runs (info, params, metrics, tags) |      ✅      |        ✅        |
+    | Run inputs/outputs                 |      ✅      |        ✅        |
+    | Logged models                      |      ✅      |        ✅        |
+    | Traces (metadata, assessments)     |      ✅      |        ✅        |
+    | Model registry                     |      ✅      |        ✅        |
+    | Trace spans (OTel data)            |      ➖      |        ✅        |
+    | Evaluation datasets / results      |      ➖      |        ✅        |
+    | Model registry webhooks            |      ➖      |        ✅        |
+    | Registered-model scorers           |      ➖      |        ✅        |
 
 - **Security Risks**
 
@@ -83,7 +84,7 @@ mlflow.set_tracking_uri("sqlite:///mlflow.db")
 | Task                            | Estimate | Notes                                                           |
 | :------------------------------ | :------- | :-------------------------------------------------------------- |
 | Create a migration tool / guide | 1.5      | Tool to migrate filesystem backend data to SQLite               |
-| Deprecation warning             | 0.125    | Add warning when filesystem backend is used                     |
+| Add deprecation warning         | 0.125    | Add warning when filesystem backend is used                     |
 | Migrate tests \- OSS            | 0.5      |                                                                 |
 | Migrate tests \- Databricks     | 0.5      | Not urgent and can be delayed until we update mlflow in MLR/DBR |
 | Switch default to sqlite        | 0.5      | Change default tracking & registry URIs to SQLite               |
@@ -91,12 +92,12 @@ mlflow.set_tracking_uri("sqlite:///mlflow.db")
 
 ## Timeline
 
-| Event                                            | MLflow Version | ETA        |
-| :----------------------------------------------- | :------------- | :--------- |
-| Add a deprecation warning + migration tool/guide | 3.7            | 11/26/2025 |
-| Switch defaults to sqlite                        | 3.8            | <TBD>      |
-| Monitor telemetry & gather feedback              | 3.8 - 3.<TBD>  | -          |
-| Remove filesystem backend                        | 3.(<TBD> + 1)  | <TBD>      |
+| Event                                            | MLflow Version | ETA       |
+| :----------------------------------------------- | :------------- | :-------- |
+| Add a deprecation warning & migration tool/guide | 3.6            | 11/6/2025 |
+| Switch defaults to sqlite                        | 3.7            | 12/4/2025 |
+| Monitor telemetry & gather feedback              | 3.7 - 3.<TBD>  | -         |
+| Remove filesystem backend                        | 3.(<TBD> + 1)  | <TBD>     |
 
 ## Feedback Tracker
 
@@ -113,4 +114,4 @@ https://github.com/mlflow/mlflow/issues/18534
   - Yes if they use the filesystem backend for some reason. On Databricks, the tracking URI and registry URI are automatically set to "databricks" by default. The number of affected users is expected to be very small.
 
 - **Can I continue using the filesystem backend after v3.7?**
-  - Yes, until v3.(x+1) (Q2 2026). You'll see deprecation warnings but the filesystem backend will continue to work. We recommend migrating to SQLite during this period.
+  - Yes, until v3.(x+1). You'll see deprecation warnings but the filesystem backend will continue to work. We recommend migrating to SQLite during this period.
