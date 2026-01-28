@@ -53,16 +53,15 @@ module.exports = async ({ github, context }) => {
   const uvLockOutput = execWithOutput("uv", ["lock", "--upgrade"]);
   console.log(`uv lock output:\n${uvLockOutput}`);
 
-  // Check if uv.lock has changes
-  const gitStatus = execWithOutput("git", ["status", "--porcelain", "uv.lock"]);
-  const hasChanges = gitStatus.trim() !== "";
-
   const isPr = context.eventName === "pull_request";
   if (isPr) {
     console.log("In pull request mode, exiting early");
     return;
   }
 
+  // Check if uv.lock has changes
+  const gitStatus = execWithOutput("git", ["status", "--porcelain", "uv.lock"]);
+  const hasChanges = gitStatus.trim() !== "";
   if (!hasChanges) {
     console.log("No changes to uv.lock, exiting early");
     return;
