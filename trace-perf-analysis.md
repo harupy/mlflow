@@ -53,7 +53,7 @@ Key observations:
 - **`by_span_name`** scales linearly: 4 ms -> 105 ms from 500 to 10K traces (~26x), because it uses RLIKE on the unindexed JSON `content` column.
 - **`deep_page`** grows steadily: 107 ms -> 186 ms (~74%), reflecting offset-based pagination overhead.
 - **`by_tag`** shows moderate degradation: 91 ms -> 144 ms (~58%), as tag filtering requires joining and scanning the tags table.
-- **`no_filter`**, **`by_status`**, **`timestamp_order`** remain relatively flat (~90–105 ms), dominated by the N+1 lazy loading cost rather than the query itself.
+- **`no_filter`**, **`by_status`**, **`timestamp_order`** remain relatively flat (~90–105 ms), which strongly suggests the N+1 lazy loading cost is dominating these queries more than the base search SQL itself.
 
 ### Resource Usage
 
@@ -102,6 +102,24 @@ Potential fix: add `joinedload()` / `subqueryload()` options to the [`search_tra
 ### 5. Search: offset-based pagination
 
 [Deep pagination](https://github.com/mlflow/mlflow/blob/eb00322351e9338d0535c6d64694616bf1ac2ce5/mlflow/store/tracking/sqlalchemy_store.py#L3369) (page 10+) degrades because the DB must scan and discard all preceding rows. `deep_page` went from **107 ms at 500 traces -> 115 ms -> 116 ms -> 144 ms -> 186 ms at 10K traces (~74%)**. Keyset pagination would be more efficient.
+
+## Validated Summary
+
+- The main conclusions above are supported by the current `SqlAlchemyStore` implementation.
+- The strongest confirmed issues are:
+  - per-span / per-metric `session.merge()` in `log_spans()`
+  - lazy loading of tags, metadata, and assessments in `search_traces()`
+  - regex / text matching over JSON-backed span content
+  - offset-based pagination for deeper pages
+- The one claim that should be phrased carefully is simple search latency being definitively "dominated" by lazy loading. The code and query-count benchmarks strongly support that explanation, but it is still an inference from measurement rather than a direct profiler attribution.
+
+## Recommended Next Actions
+
+1. Fix `search_traces()` N+1 loading by eager-loading tags, request metadata, and assessments.
+2. Fix the `log_spans()` write path by replacing per-row ORM `merge()` with a bulk / upsert-oriented approach.
+3. Collapse the redundant token usage, cost, and session-id metadata reads into a single query.
+4. Revisit JSON / regex-based span filtering if span-attribute search needs to scale beyond current bounds.
+5. Consider keyset pagination if deep trace browsing becomes a common workload.
 
 ## Should We Run Benchmarks in CI?
 
