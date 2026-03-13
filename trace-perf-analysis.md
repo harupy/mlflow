@@ -135,9 +135,9 @@ Key observations:
 
 - **Scaling is linear** with payload size across all steps. Every 10x increase in payload size yields roughly 10x increase in latency.
 - **`to_dict()` is essentially free** (~0.07 ms regardless of size) because it just reads pre-serialized JSON strings from OTel span attributes - no re-serialization.
-- **`proto_serialize`** is the single most expensive step (59 ms at 10MB) because it includes both `to_otel_proto()` conversion and final `SerializeToString()`.
+- **`proto_serialize`** is the single most expensive step (59 ms at 10MB). It builds the `ExportTraceServiceRequest` envelope from already-created proto spans and calls `SerializeToString()`. The cost comes from assembling the full request message and serializing it to bytes - distinct from `to_proto` which converts individual spans.
 - **`size_stats`** adds 33 ms at 10MB by re-serializing every span to JSON just to measure byte sizes - redundant work on the hot path.
-- **Data doubles in protobuf** - 10MB input + 10MB output → 19.7MB protobuf, because JSON string attributes are stored verbatim inside the proto envelope.
+- **Protobuf size roughly matches the combined payload** - 10MB input + 10MB output → 19.7MB protobuf. There is no significant compression or expansion; the JSON string attributes are stored verbatim inside the proto envelope, so wire size is approximately the sum of input + output.
 - **Total client-side overhead at 10MB: ~180 ms** (json_dumps + to_proto + proto_ser + size_stats), before any network I/O.
 
 ![Client serialization breakdown and scaling](plots/client_serialization.png)
@@ -186,7 +186,7 @@ while elapsed < 60:
 
 Key observations:
 
-- **Span count dominates throughput**, not payload size. 10 spans: ~66 QPS. 50 spans: ~19 QPS. 100 spans: ~11 QPS. This directly reflects the per-span `session.merge()` cost.
+- **Span count dominates throughput**, not payload size. 10 spans: ~66 QPS. 50 spans: ~19 QPS. 100 spans: ~11 QPS. This is consistent with the per-span `session.merge()` cost observed in the ingestion profile, though the sustained-load path was not independently profiled.
 - **Payload size barely matters** for the storage layer. 100KB payloads only reduce max QPS by ~12% at 10 spans (65.6 → 57.6) and have negligible impact at 50–100 spans. The ORM overhead dwarfs serialization cost.
 - **CPU is pegged at 94–96%** at max throughput regardless of configuration — the bottleneck is CPU-bound ORM work, not I/O.
 - **DB size scales with payload**: 100KB payloads produce ~17x larger DBs than small payloads at 10 spans (786 MB vs 46 MB for ~3.5K traces).
@@ -336,7 +336,7 @@ cProfile of 50 iterations at 10MB payload (9.4s total):
        50    0.001    1.635  add_size_stats_to_trace_metadata
 ```
 
-The recursive per-element conversion is inherently expensive for large nested payloads. Since span attributes are already JSON strings, a potential optimization is to store them as a single `string_value` in the proto rather than recursively decomposing the parsed JSON into nested `AnyValue` / `KeyValueList` structures.
+The recursive per-element conversion is inherently expensive for large nested payloads. Since span attributes are already JSON strings, one option is to store them as a single `string_value` in the proto rather than recursively decomposing the parsed JSON into nested `AnyValue` / `KeyValueList` structures. However, this is a **format/semantics tradeoff**, not a drop-in optimization: it changes the OTLP attribute shape from structured values to opaque strings, which can break downstream consumers that expect typed `AnyValue` fields (e.g., collectors, observability backends, search indexers). This would need to be evaluated against OTLP compatibility requirements before adopting.
 
 ```python
 # Current: recursively decompose parsed JSON into nested proto messages
@@ -353,19 +353,21 @@ def _set_otel_proto_anyvalue(value, proto_value):
     # ... 2.6M calls for 10MB payload
 
 
-# Proposed: store pre-serialized JSON as a single string
+# Option: store pre-serialized JSON as a single string (breaks structured attribute shape)
 def _set_otel_proto_anyvalue(value, proto_value):
     if isinstance(value, str) and is_json_attribute(value):
-        proto_value.string_value = value  # no recursion
+        proto_value.string_value = value  # no recursion, but opaque to consumers
     # ... 1 call per attribute
 ```
 
 ### 7. Client serialization: redundant re-serialization in size stats
 
-[`add_size_stats_to_trace_metadata()`](https://github.com/mlflow/mlflow/blob/eb00322351e9338d0535c6d64694616bf1ac2ce5/mlflow/tracing/utils/__init__.py#L614) calls `json.dumps(span.to_dict())` for every span to compute byte sizes, then serializes an empty `Trace` to measure metadata overhead. This duplicates work already done by `to_otel_proto()` / `SerializeToString()` in the export path and adds **33 ms at 10MB** on the hot path.
+[`add_size_stats_to_trace_metadata()`](https://github.com/mlflow/mlflow/blob/eb00322351e9338d0535c6d64694616bf1ac2ce5/mlflow/tracing/utils/__init__.py#L614) calls `json.dumps(span.to_dict())` for every span to compute byte sizes, then serializes an empty `Trace` to measure metadata overhead. This adds **33 ms at 10MB** on the hot path.
+
+Note: this function measures **JSON-serialized sizes**, not protobuf wire sizes. Any optimization must preserve JSON-size semantics if downstream consumers depend on them (e.g., for quota enforcement or billing). Simply substituting `len(proto_bytes)` would change the metric's meaning.
 
 ```python
-# Current: re-serialize every span just to measure sizes
+# Current: re-serialize every span to JSON just to measure JSON byte sizes
 def add_size_stats_to_trace_metadata(trace):
     for span in trace.spans:
         span_json = json.dumps(span.to_dict())  # redundant serialization
@@ -374,10 +376,15 @@ def add_size_stats_to_trace_metadata(trace):
     # total: 33 ms at 10MB
 
 
-# Proposed: compute from already-serialized proto bytes
-def add_size_stats_to_trace_metadata(trace, proto_bytes):
-    total_size = len(proto_bytes)  # already have this from SerializeToString()
-    # or: accumulate sizes during to_otel_proto() conversion
+# Option A: cache JSON bytes from earlier serialization steps
+# (preserves JSON-size semantics, avoids re-serialization)
+def add_size_stats_to_trace_metadata(trace, cached_json_bytes):
+    for span_bytes in cached_json_bytes:
+        span_sizes.append(len(span_bytes))
+
+
+# Option B: defer size computation off the hot path
+# (compute asynchronously or lazily on first access)
 ```
 
 ## Validated Summary
@@ -391,8 +398,9 @@ def add_size_stats_to_trace_metadata(trace, proto_bytes):
 - **Client-side** confirmed issues:
   - recursive `_set_otel_proto_anyvalue()` decomposition of JSON attributes into protobuf structures (2.6M calls for 10MB payload)
   - redundant re-serialization of all spans in `add_size_stats_to_trace_metadata()`
-  - 2x data expansion in protobuf format (JSON strings stored verbatim inside proto envelope)
-- The one claim that should be phrased carefully is simple search latency being definitively "dominated" by lazy loading. The code and query-count benchmarks strongly support that explanation, but it is still an inference from measurement rather than a direct profiler attribution.
+  - protobuf wire size roughly equals sum of input + output payloads (no compression; JSON strings stored verbatim inside proto envelope)
+- The sustained-load throughput scaling (10 spans: ~66 QPS, 100 spans: ~11 QPS) is consistent with the per-span `session.merge()` cost from the ingestion profile, but the sustained-load path was not independently profiled - this is an inference, not a direct attribution.
+- Similarly, simple search latency being "dominated" by lazy loading is strongly supported by query-count benchmarks but is still an inference rather than a direct profiler attribution.
 - Client-side overhead is only significant for large payloads (>100KB). For typical traces with small inputs/outputs, the client-side pipeline adds <1 ms - the server-side bottlenecks dominate.
 
 ## Recommended Next Actions
@@ -407,8 +415,8 @@ def add_size_stats_to_trace_metadata(trace, proto_bytes):
 
 ### Client-side
 
-6. Remove or defer `add_size_stats_to_trace_metadata()` from the hot export path - compute sizes from the already-serialized protobuf bytes instead of re-serializing every span to JSON.
-7. For large payloads, consider storing span attributes as a single JSON `string_value` in the protobuf rather than recursively decomposing into nested `AnyValue` structures. This would eliminate the 2.6M recursive calls for 10MB payloads.
+6. Remove or defer `add_size_stats_to_trace_metadata()` from the hot export path. The function measures JSON-serialized sizes, so any optimization must preserve that semantics (e.g., cache JSON bytes from earlier steps rather than substituting protobuf byte length, which measures something different).
+7. For large payloads, evaluate storing span attributes as a single JSON `string_value` in the protobuf rather than recursively decomposing into nested `AnyValue` structures. **Tradeoff:** this changes the OTLP attribute shape from structured values to opaque strings, which can break downstream consumers, searchability, and compatibility. Requires evaluation against OTLP compatibility requirements.
 
 ## Should We Run Benchmarks in CI?
 
