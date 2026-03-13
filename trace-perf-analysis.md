@@ -40,6 +40,14 @@
 
 ### Ingestion
 
+Each iteration measures one `start_trace()` + `log_spans()` round-trip through the ORM:
+
+```python
+trace_info = store.start_trace(experiment_id, timestamp, request_metadata, tags)
+store.log_spans(experiment_id, trace_id, spans)
+# internally per span: session.merge(SqlSpan(...))
+```
+
 | spans/trace | mean (ms) | p95 (ms) | traces/s | spans/s |
 | ----------- | --------- | -------- | -------- | ------- |
 | 10          | 33        | 42       | 30.0     | 300     |
@@ -55,6 +63,19 @@ Ingestion scales linearly with span count (~1.7 ms per span). Throughput ramps f
 ![Ingestion latency and throughput vs span count](plots/ingestion_latency.png)
 
 ### Search (p50 latency in ms)
+
+Each query calls `search_traces()` with `max_results=100`. The store executes the SQL query, then lazy-loads tags/metadata/assessments per result row:
+
+```python
+# no_filter      → search_traces(max_results=100)
+# by_status      → search_traces(filter_string="status = 'OK'", max_results=100)
+# by_tag         → search_traces(filter_string="tag.env = 'prod'", max_results=100)
+# timestamp_order→ search_traces(order_by=["timestamp DESC"], max_results=100)
+# by_span_name   → search_traces(filter_string="span.name = 'llm_0'", max_results=100)
+# deep_page      → paginate to page 10 with max_results=10 (9 page_token hops)
+```
+
+Internally each call executes 1 SQL query + 3 lazy-load queries per result row (tags, metadata, assessments) = 301 queries for 100 results.
 
 | query           | 500 traces | 1K traces | 2K traces | 5K traces | 10K traces |
 | --------------- | ---------- | --------- | --------- | --------- | ---------- |
@@ -81,6 +102,27 @@ Key observations:
 
 ### Client-side serialization (10 spans/trace)
 
+Each row measures the 5 steps a span list goes through before hitting the network:
+
+```python
+# 1. json_dumps: serialize span inputs/outputs to JSON strings
+for span in spans:
+    span.set_attribute("input", dump_span_attribute_value(payload))
+
+# 2. to_dict: convert Span objects to Python dicts
+dicts = [span.to_dict() for span in spans]
+
+# 3. to_proto: convert Span objects to OTel protobuf messages
+protos = [span.to_otel_proto() for span in spans]
+
+# 4. proto_serialize: build ExportTraceServiceRequest and serialize to bytes
+request = build_export_request(protos)
+raw_bytes = request.SerializeToString()
+
+# 5. size_stats: re-serialize spans to JSON to compute byte sizes (redundant)
+add_size_stats_to_trace_metadata(trace)
+```
+
 | payload | input KB | output KB | proto KB | json_dumps (ms) | to_dict (ms) | to_proto (ms) | proto_ser (ms) | size_stats (ms) |
 | ------- | -------: | --------: | -------: | --------------: | -----------: | ------------: | -------------: | --------------: |
 | 1KB     |      1.1 |       1.1 |      4.6 |            0.01 |         0.22 |          0.39 |           0.37 |            0.22 |
@@ -101,6 +143,18 @@ Key observations:
 ![Client serialization breakdown and scaling](plots/client_serialization.png)
 
 ### Sustained load (SQLite, single writer, 60s per config)
+
+Submits traces at a target rate for 60 seconds and measures achieved throughput, latency, CPU, and DB growth:
+
+```python
+while elapsed < 60:
+    t0 = time.perf_counter()
+    store.start_trace(...)
+    store.log_spans(..., spans)  # N spans per trace
+    latencies.append(time.perf_counter() - t0)
+    if target_qps:
+        time.sleep(1 / target_qps)  # rate-limit; omitted for max throughput
+```
 
 #### Max throughput
 
@@ -170,23 +224,101 @@ cProfile of 100 traces x 100 spans (12.8s total):
 
 Potential fix: bulk `session.bulk_save_objects()` or `INSERT ... ON CONFLICT` via core instead of ORM merge.
 
+```python
+# Current: O(N) merge calls per trace, each does SELECT + autoflush + INSERT
+for span in spans:
+    sql_span = SqlSpan(...)
+    session.merge(sql_span)  # SELECT by PK → autoflush → INSERT
+    for metric in span.metrics:
+        sql_metric = SqlSpanMetric(...)
+        session.merge(sql_metric)  # same cycle per metric
+
+# Proposed: single bulk INSERT
+span_rows = [SqlSpan(...) for span in spans]
+metric_rows = [SqlSpanMetric(...) for span in spans for metric in span.metrics]
+session.bulk_save_objects(span_rows + metric_rows)
+# or: INSERT ... ON CONFLICT DO UPDATE via core
+session.execute(
+    insert(SqlSpan).on_conflict_do_update(...),
+    [span.to_dict() for span in spans],
+)
+```
+
 ### 2. Ingestion: redundant metadata queries
 
 Three separate queries per [`log_spans()`](https://github.com/mlflow/mlflow/blob/eb00322351e9338d0535c6d64694616bf1ac2ce5/mlflow/store/tracking/sqlalchemy_store.py#L4489-L4554) call for token usage, cost, and session ID metadata - could be a single query with `IN` clause. Per cProfile, these add ~3 round-trips per trace on top of the merge overhead.
+
+```python
+# Current: 3 separate queries
+token_usage = session.query(metadata).filter(key == "token_usage", ...)
+cost = session.query(metadata).filter(key == "cost", ...)
+session_id = session.query(metadata).filter(key == "session_id", ...)
+
+# Proposed: single query with IN clause
+rows = session.query(metadata).filter(key.in_(["token_usage", "cost", "session_id"]), ...)
+token_usage, cost, session_id = partition_by_key(rows)
+```
 
 ### 3. Search: N+1 lazy loading
 
 [`SqlTraceInfo.to_mlflow_entity()`](https://github.com/mlflow/mlflow/blob/eb00322351e9338d0535c6d64694616bf1ac2ce5/mlflow/store/tracking/dbmodels/models.py#L755) lazy-loads tags, metadata, and assessments per trace. For N results this is 3N+1 queries. This is likely why even simple queries (`no_filter`, `by_status`) stay at **~90–105 ms regardless of trace count** (500 to 10K) - the cost is dominated by the 300+ lazy-load round-trips for `max_results=100`, not the actual search query.
 
-Potential fix: add `joinedload()` / `subqueryload()` options to the [`search_traces()`](https://github.com/mlflow/mlflow/blob/eb00322351e9338d0535c6d64694616bf1ac2ce5/mlflow/store/tracking/sqlalchemy_store.py#L3316) query.
+```python
+# Current: 3N+1 queries (N = max_results, typically 100)
+traces = session.query(SqlTraceInfo).limit(100).all()  # 1 query
+for trace in traces:
+    trace.tags  # SELECT ... WHERE trace_id = ?    ← N queries
+    trace.metadata  # SELECT ... WHERE trace_id = ?    ← N queries
+    trace.assessments  # SELECT ... WHERE trace_id = ?    ← N queries
+# Total: 301 queries for 100 traces
+
+# Proposed: 1 query (or 4 with subqueryload)
+traces = (
+    session
+    .query(SqlTraceInfo)
+    .options(
+        joinedload(SqlTraceInfo.tags),
+        joinedload(SqlTraceInfo.metadata),
+        joinedload(SqlTraceInfo.assessments),
+    )
+    .limit(100)
+    .all()
+)
+# Total: 1 query with JOINs, or 4 queries with subqueryload
+```
 
 ### 4. Search: RLIKE on JSON blobs
 
 [Span attribute filtering](https://github.com/mlflow/mlflow/blob/eb00322351e9338d0535c6d64694616bf1ac2ce5/mlflow/store/tracking/sqlalchemy_store.py#L6317) uses regex on the raw `content` column (LONGTEXT JSON). No index can accelerate this - it's a full scan of the spans table within the experiment. `by_span_name` went from **4 ms at 500 traces -> 10 ms -> 20 ms -> 50 ms -> 105 ms at 10K traces (~26x)**, growing linearly with trace count - the worst degradation of any query type.
 
+```sql
+-- Current: regex on unindexed JSON blob - full table scan
+WHERE content RLIKE '"name":\s*"llm_0"'
+
+-- Possible alternatives:
+-- (a) Extract span name into an indexed column
+WHERE span_name = 'llm_0'  -- indexed lookup, O(log N)
+
+-- (b) Use DB-native JSON functions (PostgreSQL / MySQL 8+)
+WHERE JSON_EXTRACT(content, '$.name') = 'llm_0'
+-- with a generated column + index on JSON_EXTRACT(content, '$.name')
+```
+
 ### 5. Search: offset-based pagination
 
 [Deep pagination](https://github.com/mlflow/mlflow/blob/eb00322351e9338d0535c6d64694616bf1ac2ce5/mlflow/store/tracking/sqlalchemy_store.py#L3369) (page 10+) degrades because the DB must scan and discard all preceding rows. `deep_page` went from **107 ms at 500 traces -> 115 ms -> 116 ms -> 144 ms -> 186 ms at 10K traces (~74%)**. Keyset pagination would be more efficient.
+
+```sql
+-- Current: offset-based - DB scans and discards N * page_size rows
+SELECT * FROM traces ORDER BY timestamp DESC
+LIMIT 10 OFFSET 90  -- page 10: scans 100 rows, returns 10
+
+-- Proposed: keyset pagination - seeks directly via index
+SELECT * FROM traces
+WHERE timestamp < :last_seen_timestamp  -- cursor from previous page
+ORDER BY timestamp DESC
+LIMIT 10  -- no rows discarded
+```
 
 ### 6. Client serialization: recursive protobuf attribute conversion
 
@@ -206,11 +338,47 @@ cProfile of 50 iterations at 10MB payload (9.4s total):
 
 The recursive per-element conversion is inherently expensive for large nested payloads. Since span attributes are already JSON strings, a potential optimization is to store them as a single `string_value` in the proto rather than recursively decomposing the parsed JSON into nested `AnyValue` / `KeyValueList` structures.
 
+```python
+# Current: recursively decompose parsed JSON into nested proto messages
+def _set_otel_proto_anyvalue(value, proto_value):
+    if isinstance(value, dict):
+        kv_list = proto_value.kvlist_value
+        for k, v in value.items():
+            kv = kv_list.values.add()
+            kv.key = k
+            _set_otel_proto_anyvalue(v, kv.value)  # recurse
+    elif isinstance(value, list):
+        for item in value:
+            _set_otel_proto_anyvalue(item, ...)  # recurse
+    # ... 2.6M calls for 10MB payload
+
+
+# Proposed: store pre-serialized JSON as a single string
+def _set_otel_proto_anyvalue(value, proto_value):
+    if isinstance(value, str) and is_json_attribute(value):
+        proto_value.string_value = value  # no recursion
+    # ... 1 call per attribute
+```
+
 ### 7. Client serialization: redundant re-serialization in size stats
 
 [`add_size_stats_to_trace_metadata()`](https://github.com/mlflow/mlflow/blob/eb00322351e9338d0535c6d64694616bf1ac2ce5/mlflow/tracing/utils/__init__.py#L614) calls `json.dumps(span.to_dict())` for every span to compute byte sizes, then serializes an empty `Trace` to measure metadata overhead. This duplicates work already done by `to_otel_proto()` / `SerializeToString()` in the export path and adds **33 ms at 10MB** on the hot path.
 
-Potential fix: compute sizes from the already-serialized protobuf bytes, or track sizes incrementally during attribute serialization rather than re-serializing.
+```python
+# Current: re-serialize every span just to measure sizes
+def add_size_stats_to_trace_metadata(trace):
+    for span in trace.spans:
+        span_json = json.dumps(span.to_dict())  # redundant serialization
+        span_sizes.append(len(span_json.encode()))
+    metadata_json = json.dumps(Trace(info, []).to_dict())  # another serialization
+    # total: 33 ms at 10MB
+
+
+# Proposed: compute from already-serialized proto bytes
+def add_size_stats_to_trace_metadata(trace, proto_bytes):
+    total_size = len(proto_bytes)  # already have this from SerializeToString()
+    # or: accumulate sizes during to_otel_proto() conversion
+```
 
 ## Validated Summary
 
