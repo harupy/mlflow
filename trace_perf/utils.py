@@ -16,6 +16,8 @@ from opentelemetry.sdk.resources import Resource as _OTelResource
 from opentelemetry.sdk.trace import ReadableSpan as OTelReadableSpan
 from sqlalchemy import event, text
 
+from mlflow.entities.assessment import Feedback
+from mlflow.entities.assessment_source import AssessmentSource, AssessmentSourceType
 from mlflow.entities.span import Span, SpanType, create_mlflow_span
 from mlflow.entities.trace_info import TraceInfo
 from mlflow.entities.trace_location import TraceLocation
@@ -224,3 +226,172 @@ def count_queries(
         yield queries
     finally:
         event.remove(engine, "before_cursor_execute", _listener)
+
+
+# ---------------------------------------------------------------------------
+# Statistics
+# ---------------------------------------------------------------------------
+
+
+def percentile(data: list[float], pct: float) -> float:
+    if not data:
+        return 0.0
+    s = sorted(data)
+    k = (len(s) - 1) * pct / 100
+    f = int(k)
+    return s[f] + (k - f) * (s[min(f + 1, len(s) - 1)] - s[f])
+
+
+# ---------------------------------------------------------------------------
+# Payload generation
+# ---------------------------------------------------------------------------
+
+WORDS = [
+    "the",
+    "machine",
+    "learning",
+    "model",
+    "processes",
+    "input",
+    "data",
+    "neural",
+    "network",
+    "training",
+    "inference",
+    "transformer",
+    "attention",
+    "embedding",
+    "gradient",
+    "optimization",
+    "loss",
+    "function",
+    "parameter",
+]
+
+
+def generate_large_payload(target_bytes: int, rng: random.Random) -> dict[str, object]:
+    messages = []
+    current_size = 0
+    roles = ["user", "assistant"]
+    idx = 0
+    while current_size < target_bytes:
+        remaining = target_bytes - current_size
+        content_len = min(remaining, rng.randint(200, 2000))
+        content = " ".join(rng.choices(WORDS, k=content_len // 6))[:content_len]
+        msg = {"role": roles[idx % 2], "content": content}
+        messages.append(msg)
+        current_size += len(json.dumps(msg))
+        idx += 1
+    return {"messages": messages, "model": "gpt-4", "temperature": 0.7}
+
+
+def make_spans_with_payload(
+    trace_id: str,
+    num_spans: int,
+    input_payload: dict[str, object] | None,
+    output_payload: dict[str, object] | None,
+    rng: random.Random,
+) -> list[Span]:
+    spans = generate_spans(trace_id, num_spans, rng)
+    if input_payload is None and output_payload is None:
+        return spans
+
+    root = spans[0]
+    attrs = dict(root._span.attributes)
+    if input_payload is not None:
+        attrs[SpanAttributeKey.INPUTS] = json.dumps(input_payload, cls=TraceJSONEncoder)
+    if output_payload is not None:
+        attrs[SpanAttributeKey.OUTPUTS] = json.dumps(output_payload, cls=TraceJSONEncoder)
+
+    otel_span = OTelReadableSpan(
+        name=root.name,
+        context=root._span.context,
+        parent=root._span.parent,
+        attributes=attrs,
+        start_time=root.start_time_ns,
+        end_time=root.end_time_ns,
+        status=root._span.status,
+        resource=_OTelResource.get_empty(),
+    )
+    spans[0] = create_mlflow_span(otel_span, trace_id, SpanType.AGENT)
+    return spans
+
+
+# ---------------------------------------------------------------------------
+# Assessment generation
+# ---------------------------------------------------------------------------
+
+ASSESSMENT_NAMES = ["correctness", "relevance", "fluency"]
+
+
+def generate_assessment(
+    trace_id: str,
+    name: str | None = None,
+    value: float | None = None,
+    rng: random.Random | None = None,
+) -> Feedback:
+    rng = rng or random.Random()
+    return Feedback(
+        name=name or rng.choice(ASSESSMENT_NAMES),
+        value=value if value is not None else round(rng.uniform(0.0, 1.0), 2),
+        source=AssessmentSource(
+            source_type=AssessmentSourceType.LLM_JUDGE,
+            source_id="bench-evaluator",
+        ),
+        trace_id=trace_id,
+        rationale="benchmark assessment",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Populate with trace IDs returned
+# ---------------------------------------------------------------------------
+
+
+def populate_corpus_with_ids(
+    store: SqlAlchemyStore,
+    experiment_id: str,
+    num_traces: int,
+    spans_per_trace: int = 10,
+    seed: int = 123,
+    verbose: bool = True,
+) -> list[tuple[str, int]]:
+    """Like populate_corpus but returns (trace_id, timestamp_ms) pairs."""
+    rng = random.Random(seed)
+    base_time_ms = 1_700_000_000_000
+    results: list[tuple[str, int]] = []
+    for i in range(num_traces):
+        tid = f"tr-{uuid.uuid4().hex}"
+        ts = base_time_ms + i * 1000
+        ti = generate_trace_info(tid, experiment_id, ts, rng)
+        spans = generate_spans(tid, spans_per_trace, rng)
+        store.start_trace(ti)
+        store.log_spans(experiment_id, spans)
+        results.append((tid, ts))
+        if verbose and (i + 1) % 100 == 0:
+            pct = (i + 1) / num_traces * 100
+            print(f"\r  {i + 1}/{num_traces} ({pct:.0f}%)", end="", flush=True)
+    if verbose and num_traces >= 100:
+        print()
+    return results
+
+
+# ---------------------------------------------------------------------------
+# OTLP protobuf helpers
+# ---------------------------------------------------------------------------
+
+
+def build_otlp_request(spans: list[Span]) -> bytes:
+    from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
+        ExportTraceServiceRequest,
+    )
+
+    from mlflow.tracing.utils.otlp import resource_to_otel_proto
+
+    request = ExportTraceServiceRequest()
+    resource_spans = request.resource_spans.add()
+    resource = getattr(spans[0]._span, "resource", None)
+    resource_spans.resource.CopyFrom(resource_to_otel_proto(resource))
+    scope_spans = resource_spans.scope_spans.add()
+    scope_spans.spans.extend(s.to_otel_proto() for s in spans)
+    return request.SerializeToString()

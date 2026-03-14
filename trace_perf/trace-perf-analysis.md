@@ -60,7 +60,7 @@ store.log_spans(experiment_id, trace_id, spans)
 
 Ingestion scales linearly with span count (~1.7 ms per span). Throughput ramps from ~300 spans/s at small traces to a plateau around 550–600 spans/s at 100+ spans/trace.
 
-![Ingestion latency and throughput vs span count](plots/ingestion_latency.png)
+![Ingestion latency and throughput vs span count](../plots/ingestion_latency.png)
 
 ### Search (p50 latency in ms)
 
@@ -93,7 +93,7 @@ Key observations:
 - **`by_tag`** shows moderate degradation: 91 ms -> 144 ms (~58%), as tag filtering requires joining and scanning the tags table.
 - **`no_filter`**, **`by_status`**, **`timestamp_order`** remain relatively flat (~90–105 ms), which strongly suggests the N+1 lazy loading cost is dominating these queries more than the base search SQL itself.
 
-![Search latency by query type](plots/search_latency.png)
+![Search latency by query type](../plots/search_latency.png)
 
 ### Resource Usage
 
@@ -141,7 +141,7 @@ Key observations:
 - **Protobuf size roughly matches the combined payload** - 10MB input + 10MB output → 19.7MB protobuf. There is no significant compression or expansion; the JSON string attributes are stored verbatim inside the proto envelope, so wire size is approximately the sum of input + output.
 - **Total client-side overhead at 10MB: ~120 ms** (json_dumps 39 ms + to_proto 45 ms + SerializeToString ~4 ms + size_stats 33 ms), before any network I/O. The table shows proto_serialize at 59 ms but this double-counts to_proto work (see above).
 
-![Client serialization breakdown and scaling](plots/client_serialization.png)
+![Client serialization breakdown and scaling](../plots/client_serialization.png)
 
 ### Sustained load (SQLite, single writer, 60s per config)
 
@@ -168,7 +168,7 @@ while elapsed < 60:
 |         100 |   small |    10.6 |   1,063 |       93 |      110 |   94% |   2,258 |
 |         100 |   100KB |    10.4 |   1,036 |       96 |      110 |   95% |   2,604 |
 
-![Max ingestion throughput by configuration](plots/sustained_throughput.png)
+![Max ingestion throughput by configuration](../plots/sustained_throughput.png)
 
 #### Latency and CPU at target rates
 
@@ -194,9 +194,9 @@ Key observations:
 - **Saturation is sharp**: at 100 spans, 10 QPS uses 88% CPU with only 6% headroom. Target 20 QPS is fully saturated (achieved only 11.8–11.9).
 - **Latency stays flat below saturation**: p50 is consistent regardless of target rate until the system saturates, confirming the bottleneck is throughput-limited, not latency-limited.
 
-![CPU utilization vs ingestion rate](plots/sustained_cpu.png)
+![CPU utilization vs ingestion rate](../plots/sustained_cpu.png)
 
-![DB size after sustained load](plots/db_size.png)
+![DB size after sustained load](../plots/db_size.png)
 
 ## Benchmark Results (PostgreSQL 16, Docker, local)
 
@@ -277,7 +277,7 @@ cProfile of 100 traces x 100 spans (12.8s total):
 
 `session.merge()` accounts for **79% of wall time** (10.1s of 12.8s). Each of the 19,459 merge calls does: PK identity load (SELECT) -> autoflush -> INSERT. This directly explains why throughput plateaus at ~550–600 spans/s and scales linearly (33 ms for 10 spans -> 178 ms for 100 -> 1,686 ms for 1,000 spans).
 
-![Ingestion CPU time breakdown](plots/profile_breakdown.png)
+![Ingestion CPU time breakdown](../plots/profile_breakdown.png)
 
 Potential fix: bulk `session.bulk_save_objects()` or `INSERT ... ON CONFLICT` via core instead of ORM merge.
 
