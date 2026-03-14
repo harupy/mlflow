@@ -26,6 +26,7 @@ See [trace-perf-analysis.md](trace-perf-analysis.md) for results and analysis.
 | `bench_deletion.py`           | Trace deletion with CASCADE across related tables                 |
 | `bench_assessments.py`        | Assessment CRUD and search filtering overhead                     |
 | `bench_large_content.py`      | Ingestion and search with multi-MB span content (1MB-10MB)        |
+| `bench_text_search.py`        | Full-text search (trace.text ILIKE) on span content               |
 | `bench_explain_queries.py`    | SQL EXPLAIN analysis to verify index usage                        |
 | `bench_concurrent_writers.py` | Multi-threaded write contention and scaling                       |
 
@@ -65,6 +66,7 @@ uv run python trace_perf/bench_offset_pagination.py
 uv run python trace_perf/bench_deletion.py
 uv run python trace_perf/bench_assessments.py
 uv run python trace_perf/bench_large_content.py
+uv run python trace_perf/bench_text_search.py
 uv run python trace_perf/bench_explain_queries.py
 uv run python trace_perf/bench_concurrent_writers.py
 

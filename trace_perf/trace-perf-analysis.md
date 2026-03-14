@@ -170,7 +170,7 @@ The MLflow UI calls `search_traces()` on every page load with these defaults:
   - `attributes.status = 'ERROR'` — finding failed traces
   - `tags.{key} = '{value}'` — filtering by environment, model, etc.
   - `attributes.name = '{value}'` — filtering by trace name
-  - `trace.text ILIKE '%query%'` — full-text search
+  - `trace.text ILIKE '%query%'` — full-text search on span content (see below)
   - `attributes.execution_time_ms > {value}` — finding slow traces
 - **Less common filters:**
   - `span.name ILIKE '{value}'` — triggers the RLIKE-on-JSON scan
@@ -196,6 +196,21 @@ The default `max_results=500` means the N+1 lazy loading pattern fires **1501 qu
 - `deep_page` reflects offset-pagination overhead. The UI uses cursor-based page tokens, which map to the same offset pattern internally.
 
 ![Search latency by query type](../plots/search_latency.png)
+
+### Full-text search (trace.text ILIKE)
+
+The UI search bar sends `trace.text ILIKE '%query%'`, which maps internally to `span.content ILIKE '%query%'` — an unindexed ILIKE scan over the full JSON `content` column of every span in the experiment.
+
+| traces | text ILIKE p50 (ms) | status p50 (ms) | span.name p50 (ms) | text vs status |
+| -----: | ------------------: | --------------: | -----------------: | -------------: |
+|    500 |                53.7 |            44.8 |                3.1 |           1.2x |
+|  1,000 |                71.3 |            43.4 |                8.8 |           1.6x |
+|  2,000 |               109.4 |            46.0 |               18.2 |           2.4x |
+|  5,000 |               204.8 |            48.3 |               43.6 |           4.2x |
+
+- Text search degrades linearly with corpus size, reaching 205 ms at 5K traces — over 4x slower than an indexed status filter.
+- This is a common user action (typing in the search bar) that scales poorly. At larger corpus sizes the degradation will continue linearly.
+- The pattern is the same root cause as `by_span_name` (scanning unindexed JSON content), but text search scans for arbitrary substrings rather than a specific field name.
 
 ### SQL behavior
 
