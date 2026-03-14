@@ -1,51 +1,82 @@
 # Trace Performance Analysis
 
-**Problem:** Users report noticeable overhead from tracing and slow trace search. We lack benchmarks to quantify performance or identify bottlenecks, which is a growing risk as products like Gateway depend more on tracing.
+## Key Takeaways
 
-**Why now:** No existing performance baselines exist. We're flying blind on regressions.
+This document benchmarks MLflow tracing across ingestion, search, client-side serialization, runtime overhead, and backend choice. The goal is to identify the dominant bottlenecks, quantify their impact, and prioritize fixes.
 
-## Methodology
+### Top findings
 
-### Server-side (storage layer)
+1. **Ingestion is bottlenecked by ORM write amplification.**
+   `log_spans()` uses `session.merge()` per span and per span metric. This dominates CPU time, scales linearly with span count, and caps SQLite throughput around 550-600 spans/s.
+2. **Search is bottlenecked by N+1 relationship loading.**
+   `search_traces()` executes one base query, then lazy-loads tags, metadata, and assessments per result row. For 100 results this becomes 301 queries, which dominates simple search latency and hurts PostgreSQL even more.
+3. **A few specialized paths have isolated bottlenecks.**
+   Span-name filtering scans JSON blobs, assessment-filtered search is much slower than baseline search, disabled tracing is not zero-cost, and streaming tracing adds measurable per-chunk overhead.
 
-- **What's measured:** `SqlAlchemyStore` Python methods directly - no HTTP server, no network overhead. This isolates the storage layer.
-- **Database:** SQLite in a temporary directory, fresh per run. Results may differ on PostgreSQL / MySQL.
-- **Test data:** Synthetic traces with realistic span distributions (30% LLM, 20% retriever, 15% tool, etc.). LLM spans include token usage, cost, and model attributes. Each trace has tags (`env`, `model`) for filter benchmarks.
-- **Ingestion:** Each iteration calls `start_trace()` + `log_spans()` for one trace. Data is pre-generated before measurement so timing reflects only the store path.
-- **Search queries:**
-  - `no_filter` - `search_traces()` with `max_results=100`, no filter
-  - `by_status` - filter `status = 'OK'` (indexed column)
-  - `by_tag` - filter `tag.env = 'prod'` (tag table join)
-  - `timestamp_order` - order by `timestamp DESC`
-  - `by_span_name` - filter `span.name = 'llm_0'` (RLIKE on JSON `content`)
-  - `deep_page` - paginate to page 10 with `max_results=10`
-- **Timing:** `time.perf_counter()` per iteration. GC disabled during measurement. 3 warmup iterations, then 10 measured iterations (ingestion) or 30 measured iterations (search).
-- **Memory:** `tracemalloc` for Python allocations, `resource.getrusage` for peak RSS delta.
-- **Profiling:** cProfile on 100 traces x 100 spans ingestion, analyzed with `snakeviz`.
+### Recommended actions
 
-### Client-side (serialization pipeline)
+1. **Bulk insert spans and span metrics in `log_spans()`.**
+2. **Eager-load trace relationships in `search_traces()`.**
+3. **Add an early disabled fast path in `@mlflow.trace`.**
+4. **Replace JSON-regex span-name filtering with indexed lookup.**
+5. **Address assessment-search indexing and span-processor lock contention.**
 
-- **What's measured:** The full client-side serialization path that spans travel through before hitting the network - from `dump_span_attribute_value()` through protobuf encoding. No HTTP calls, no server involvement.
-- **Test data:** Synthetic LLM-style chat payloads (lists of `{"role": ..., "content": ...}` messages) at 1KB, 10KB, 100KB, 1MB, and 10MB per input/output. 10 spans per trace with the root span carrying the large payload.
-- **Pipeline steps measured independently:**
-  1. `dump_span_attribute_value()` - JSON serialization via `TraceJSONEncoder`
-  2. `Span.to_dict()` - span to Python dict conversion
-  3. `Span.to_otel_proto()` - span to OTel protobuf message
-  4. `ExportTraceServiceRequest.SerializeToString()` - full protobuf request build + byte serialization
-  5. `add_size_stats_to_trace_metadata()` - re-serializes all spans to JSON to compute byte sizes
-- **Timing:** `time.perf_counter()` per iteration. GC disabled. 2 warmup, 10 measured iterations.
-- **Profiling:** cProfile on 50 iterations of the full pipeline at 10MB payload size.
+### What is not the bottleneck
 
-## Benchmark Results (SQLite, local)
+- HTTP transport overhead is negligible relative to store-layer work.
+- The async export queue is not a bottleneck.
+- Trace deletion with CASCADE is efficient.
+- Large span payloads mainly affect ingestion and storage size, not baseline search latency.
 
-### Ingestion
+## Scope And Methodology
 
-Each iteration measures one `start_trace()` + `log_spans()` round-trip through the ORM:
+### Workloads covered
+
+- Ingestion latency and throughput
+- Search latency across common query patterns
+- Sustained write load
+- Client-side serialization cost
+- Concurrent writers
+- Assessment CRUD and filtered search
+- Large-content traces
+- Runtime overhead of tracing decorators and streaming
+- Span-processor lock contention
+- Async export batching
+- End-to-end OTLP HTTP path
+- SQLite vs PostgreSQL comparison
+
+### Test setup
+
+- Store: `SqlAlchemyStore` directly unless otherwise noted
+- Primary backend: SQLite in a temporary local directory
+- Secondary backend: PostgreSQL 16 in local Docker
+- Data: synthetic traces with realistic span distributions
+- Search default: `max_results=100`
+- Sustained load duration:
+  - SQLite: 60s per config
+  - PostgreSQL: 30s per config
+
+### Caveats
+
+- The sustained-load explanation is partly inferred from profiling of the ingestion path rather than independently profiled end-to-end.
+- The attribution of simple search latency to lazy loading is strongly supported by query-count behavior, but is still an inference rather than a profiler-backed call tree.
+- Client-side serialization costs matter primarily for large payloads; for typical small traces, server-side bottlenecks dominate.
+
+## Findings By Area
+
+## Ingestion
+
+### Takeaway
+
+Ingestion scales roughly linearly with span count because the hot path performs ORM work per span. Payload size matters much less than span count for the storage layer.
+
+### SQLite ingestion
+
+Each iteration measures one `start_trace()` plus one `log_spans()` round-trip:
 
 ```python
 trace_info = store.start_trace(experiment_id, timestamp, request_metadata, tags)
 store.log_spans(experiment_id, trace_id, spans)
-# internally per span: session.merge(SqlSpan(...))
 ```
 
 | spans/trace | mean (ms) | p95 (ms) | traces/s | spans/s |
@@ -58,104 +89,16 @@ store.log_spans(experiment_id, trace_id, spans)
 | 500         | 826       | 874      | 1.2      | 606     |
 | 1,000       | 1,686     | 1,784    | 0.6      | 593     |
 
-Ingestion scales linearly with span count (~1.7 ms per span). Throughput ramps from ~300 spans/s at small traces to a plateau around 550–600 spans/s at 100+ spans/trace.
+- Latency is approximately linear in span count.
+- Throughput plateaus around 550-600 spans/s once per-trace fixed costs are amortized.
 
 ![Ingestion latency and throughput vs span count](../plots/ingestion_latency.png)
 
-### Search (p50 latency in ms)
+### Sustained load
 
-Each query calls `search_traces()` with `max_results=100`. The store executes the SQL query, then lazy-loads tags/metadata/assessments per result row:
+### Takeaway
 
-```python
-# no_filter      → search_traces(max_results=100)
-# by_status      → search_traces(filter_string="status = 'OK'", max_results=100)
-# by_tag         → search_traces(filter_string="tag.env = 'prod'", max_results=100)
-# timestamp_order→ search_traces(order_by=["timestamp DESC"], max_results=100)
-# by_span_name   → search_traces(filter_string="span.name = 'llm_0'", max_results=100)
-# deep_page      → paginate to page 10 with max_results=10 (9 page_token hops)
-```
-
-Internally each call executes 1 SQL query + 3 lazy-load queries per result row (tags, metadata, assessments) = 301 queries for 100 results.
-
-| query           | 500 traces | 1K traces | 2K traces | 5K traces | 10K traces |
-| --------------- | ---------- | --------- | --------- | --------- | ---------- |
-| no_filter       | 93         | 94        | 93        | 101       | 105        |
-| by_status       | 91         | 101       | 93        | 95        | 104        |
-| by_tag          | 91         | 94        | 98        | 116       | 144        |
-| timestamp_order | 93         | 99        | 96        | 100       | 95         |
-| by_span_name    | 4          | 10        | 20        | 50        | 105        |
-| deep_page       | 107        | 115       | 116       | 144       | 186        |
-
-Key observations:
-
-- **`by_span_name`** scales linearly: 4 ms -> 105 ms from 500 to 10K traces (~26x), because it uses RLIKE on the unindexed JSON `content` column.
-- **`deep_page`** grows steadily: 107 ms -> 186 ms (~74%), reflecting offset-based pagination overhead.
-- **`by_tag`** shows moderate degradation: 91 ms -> 144 ms (~58%), as tag filtering requires joining and scanning the tags table.
-- **`no_filter`**, **`by_status`**, **`timestamp_order`** remain relatively flat (~90–105 ms), which strongly suggests the N+1 lazy loading cost is dominating these queries more than the base search SQL itself.
-
-![Search latency by query type](../plots/search_latency.png)
-
-### Resource Usage
-
-- **DB size:** 217 MB for ~18.5K traces (~12 KB/trace average)
-- **Memory:** Peak RSS delta ~1.7 MB, tracemalloc peak ~2 MB - memory is not a concern
-
-### Client-side serialization (10 spans/trace)
-
-Each row measures the 5 steps a span list goes through before hitting the network:
-
-```python
-# 1. json_dumps: serialize span inputs/outputs to JSON strings
-for span in spans:
-    span.set_attribute("input", dump_span_attribute_value(payload))
-
-# 2. to_dict: convert Span objects to Python dicts
-dicts = [span.to_dict() for span in spans]
-
-# 3. to_proto: convert Span objects to OTel protobuf messages
-protos = [span.to_otel_proto() for span in spans]
-
-# 4. proto_serialize: build ExportTraceServiceRequest and serialize to bytes
-request = build_export_request(protos)
-raw_bytes = request.SerializeToString()
-
-# 5. size_stats: re-serialize spans to JSON to compute byte sizes (redundant)
-add_size_stats_to_trace_metadata(trace)
-```
-
-| payload | input KB | output KB | proto KB | json_dumps (ms) | to_dict (ms) | to_proto (ms) | proto_ser (ms) | size_stats (ms) |
-| ------- | -------: | --------: | -------: | --------------: | -----------: | ------------: | -------------: | --------------: |
-| 1KB     |      1.1 |       1.1 |      4.6 |            0.01 |         0.22 |          0.39 |           0.37 |            0.22 |
-| 10KB    |      9.9 |       9.9 |     22.3 |            0.04 |         0.08 |          0.15 |           0.17 |            0.18 |
-| 100KB   |     97.9 |      97.9 |    199.5 |            0.39 |         0.07 |          0.52 |           0.67 |            0.52 |
-| 1MB     |    978.4 |     978.4 |   1971.4 |            3.77 |         0.07 |          4.56 |           5.61 |            3.40 |
-| 10MB    |   9782.9 |    9783.0 |  19689.1 |           39.34 |         0.07 |         45.17 |          59.24 |           32.53 |
-
-Key observations:
-
-- **Scaling is linear** with payload size across all steps. Every 10x increase in payload size yields roughly 10x increase in latency.
-- **`to_dict()` is essentially free** (~0.07 ms regardless of size) because it just reads pre-serialized JSON strings from OTel span attributes - no re-serialization.
-- **`to_proto`** is the most CPU-intensive conversion (45 ms at 10MB). cProfile confirms this is dominated by `_set_otel_proto_anyvalue()` - 2.6M recursive calls to decompose JSON attributes into nested protobuf `AnyValue` structures.
-- **`proto_serialize`** shows 59 ms at 10MB, but this is overstated: the benchmark re-calls `to_otel_proto()` inside `build_and_serialize()`, so it includes redundant proto conversion. cProfile shows `SerializeToString()` alone is ~4 ms - the real cost is in `to_proto`, not final byte serialization.
-- **`size_stats`** adds 33 ms at 10MB by re-serializing every span to JSON just to measure byte sizes - redundant work on the hot path.
-- **Protobuf size roughly matches the combined payload** - 10MB input + 10MB output → 19.7MB protobuf. There is no significant compression or expansion; the JSON string attributes are stored verbatim inside the proto envelope, so wire size is approximately the sum of input + output.
-- **Total client-side overhead at 10MB: ~120 ms** (json_dumps 39 ms + to_proto 45 ms + SerializeToString ~4 ms + size_stats 33 ms), before any network I/O. The table shows proto_serialize at 59 ms but this double-counts to_proto work (see above).
-
-![Client serialization breakdown and scaling](../plots/client_serialization.png)
-
-### Sustained load (SQLite, single writer, 60s per config)
-
-Submits traces at a target rate for 60 seconds and measures achieved throughput, latency, CPU, and DB growth:
-
-```python
-while elapsed < 60:
-    t0 = time.perf_counter()
-    store.start_trace(...)
-    store.log_spans(..., spans)  # N spans per trace
-    latencies.append(time.perf_counter() - t0)
-    if target_qps:
-        time.sleep(1 / target_qps)  # rate-limit; omitted for max throughput
-```
+Under sustained write load, the system saturates sharply. Span count dominates throughput; payload size has only a modest effect.
 
 #### Max throughput
 
@@ -168,9 +111,7 @@ while elapsed < 60:
 |         100 |   small |    10.6 |   1,063 |       93 |      110 |   94% |   2,258 |
 |         100 |   100KB |    10.4 |   1,036 |       96 |      110 |   95% |   2,604 |
 
-![Max ingestion throughput by configuration](../plots/sustained_throughput.png)
-
-#### Latency and CPU at target rates
+#### Target rates
 
 | spans | payload | target | achieved QPS | p50 (ms) | p99 (ms) | CPU % | headroom |
 | ----: | ------: | -----: | -----------: | -------: | -------: | ----: | -------: |
@@ -185,22 +126,193 @@ while elapsed < 60:
 |   100 |   small |     20 |         11.8 |       84 |      107 |   95% |  **SAT** |
 |   100 |   100KB |     20 |         11.9 |       83 |      102 |   96% |  **SAT** |
 
-Key observations:
+- Span count dominates throughput.
+- Payload size has modest impact on throughput but large impact on DB growth.
+- SQLite saturation is CPU-bound and sharp.
 
-- **Span count dominates throughput**, not payload size. 10 spans: ~66 QPS. 50 spans: ~19 QPS. 100 spans: ~11 QPS. This is consistent with the per-span `session.merge()` cost observed in the ingestion profile, though the sustained-load path was not independently profiled.
-- **Payload size barely matters** for the storage layer. 100KB payloads only reduce max QPS by ~12% at 10 spans (65.6 → 57.6) and have negligible impact at 50–100 spans. The ORM overhead dwarfs serialization cost.
-- **CPU is pegged at 94–96%** at max throughput regardless of configuration — the bottleneck is CPU-bound ORM work, not I/O.
-- **DB size scales with payload**: 100KB payloads produce ~17x larger DBs than small payloads at 10 spans (786 MB vs 46 MB for ~3.5K traces).
-- **Saturation is sharp**: at 100 spans, 10 QPS uses 88% CPU with only 6% headroom. Target 20 QPS is fully saturated (achieved only 11.8–11.9).
-- **Latency stays flat below saturation**: p50 is consistent regardless of target rate until the system saturates, confirming the bottleneck is throughput-limited, not latency-limited.
-
+![Max ingestion throughput by configuration](../plots/sustained_throughput.png)
 ![CPU utilization vs ingestion rate](../plots/sustained_cpu.png)
-
 ![DB size after sustained load](../plots/db_size.png)
 
-## Benchmark Results (PostgreSQL 16, Docker, local)
+### Large span content
 
-Same benchmark scripts with `--db-uri "postgresql://..."`. PostgreSQL 16 running in Docker on the same machine. This adds network round-trip overhead (localhost TCP) on every ORM call compared to SQLite's in-process access.
+### Takeaway
+
+Large payloads increase ingestion latency and storage footprint linearly, but do not materially affect baseline search latency.
+
+| payload | p50 ingest (ms) | p95 ingest (ms) | DB/trace (MB) |
+| :------ | --------------: | --------------: | ------------: |
+| small   |            15.3 |            25.6 |         0.062 |
+| 1MB     |            30.5 |            33.7 |         1.993 |
+| 5MB     |            87.6 |            95.2 |         9.695 |
+| 10MB    |           147.8 |           159.0 |        19.327 |
+
+| payload | search p50 (ms) | vs small |
+| :------ | --------------: | -------: |
+| small   |             8.5 |     1.0x |
+| 1MB     |             8.5 |     1.0x |
+| 5MB     |             8.6 |     1.0x |
+| 10MB    |             8.6 |     1.0x |
+
+## Search
+
+### Takeaway
+
+Simple search latency is dominated by result hydration rather than the base SQL query. Specialized filters show their own bottlenecks: span-name filtering degrades linearly, assessment filters are much slower, and deep pagination adds predictable overhead.
+
+### How the UI queries traces
+
+The MLflow UI calls `search_traces()` on every page load with these defaults:
+
+- **Default view:** `max_results=500`, `order_by=["timestamp DESC"]`, no filter — this is what every user sees when they open the Traces tab.
+- **Pagination:** cursor-based via `page_token`, fetching up to 1000 traces total across pages.
+- **Common user-applied filters** (from the filter bar):
+  - `attributes.status = 'ERROR'` — finding failed traces
+  - `tags.{key} = '{value}'` — filtering by environment, model, etc.
+  - `attributes.name = '{value}'` — filtering by trace name
+  - `trace.text ILIKE '%query%'` — full-text search
+  - `attributes.execution_time_ms > {value}` — finding slow traces
+- **Less common filters:**
+  - `span.name ILIKE '{value}'` — triggers the RLIKE-on-JSON scan
+  - `feedback.{name} = '{value}'` — assessment filter (6.2x slower)
+  - `span.content ILIKE '%{value}%'` — heavy JSON content scan
+
+The default `max_results=500` means the N+1 lazy loading pattern fires **1501 queries** (3×500+1) on every page load — making #2 (eager loading) the highest-impact fix for real user experience.
+
+### Baseline search (benchmarked with max_results=100)
+
+| query           | 500 traces | 1K traces | 2K traces | 5K traces | 10K traces |
+| --------------- | ---------- | --------- | --------- | --------- | ---------- |
+| no_filter       | 93         | 94        | 93        | 101       | 105        |
+| by_status       | 91         | 101       | 93        | 95        | 104        |
+| by_tag          | 91         | 94        | 98        | 116       | 144        |
+| timestamp_order | 93         | 99        | 96        | 100       | 95         |
+| by_span_name    | 4          | 10        | 20        | 50        | 105        |
+| deep_page       | 107        | 115       | 116       | 144       | 186        |
+
+- `no_filter`, `by_status`, and `timestamp_order` stay mostly flat because the fixed cost of 301 queries dominates. The UI's default `max_results=500` would make this ~5x worse.
+- `by_tag` degrades moderately — this is a common user filter.
+- `by_span_name` degrades the most (26x from 500→10K traces) because it scans JSON content. Used less frequently but degrades the most.
+- `deep_page` reflects offset-pagination overhead. The UI uses cursor-based page tokens, which map to the same offset pattern internally.
+
+![Search latency by query type](../plots/search_latency.png)
+
+### SQL behavior
+
+`EXPLAIN QUERY PLAN` on SQLite shows:
+
+| query           | scan type      | index   | plan detail                                       |
+| :-------------- | :------------- | :------ | :------------------------------------------------ |
+| no_filter       | SEARCH (index) | Yes     | `trace_info` uses composite index                 |
+| by_status       | SEARCH (index) | Yes     | `trace_info` uses composite index                 |
+| by_tag          | SEARCH (index) | Yes     | `trace_tags` uses autoindex                       |
+| timestamp_order | SEARCH (index) | Yes     | `trace_info` uses composite index                 |
+| by_span_name    | SCAN (index)   | Partial | `spans` table scanned for regex over JSON content |
+
+### Assessment-filtered search
+
+### Takeaway
+
+Assessment filtering is substantially slower than baseline search even at the same result size and query count. This filter is available in the UI under feedback/expectation filters and is used in evaluation workflows.
+
+Creation benchmark: 3000 assessments in 2.7s, about 0.9 ms per assessment and about 1100 assessments/s.
+
+| filter                           | p50 (ms) | p95 (ms) | queries | vs no_filter |
+| :------------------------------- | -------: | -------: | ------: | -----------: |
+| no_filter                        |     54.6 |    104.9 |     304 |         1.0x |
+| feedback.correctness IS NOT NULL |    339.0 |    393.5 |     304 |         6.2x |
+| feedback.relevance IS NOT NULL   |    342.1 |    483.2 |     304 |         6.3x |
+
+## Client-Side Serialization And Runtime Overhead
+
+### Serialization
+
+### Takeaway
+
+Serialization cost is linear in payload size. For large payloads, recursive OTLP conversion and redundant size-stat computation dominate client overhead.
+
+#### Serialization breakdown, 10 spans/trace
+
+| payload | input KB | output KB | proto KB | json_dumps (ms) | to_dict (ms) | to_proto (ms) | proto_ser (ms) | size_stats (ms) |
+| ------- | -------: | --------: | -------: | --------------: | -----------: | ------------: | -------------: | --------------: |
+| 1KB     |      1.1 |       1.1 |      4.6 |            0.01 |         0.22 |          0.39 |           0.37 |            0.22 |
+| 10KB    |      9.9 |       9.9 |     22.3 |            0.04 |         0.08 |          0.15 |           0.17 |            0.18 |
+| 100KB   |     97.9 |      97.9 |    199.5 |            0.39 |         0.07 |          0.52 |           0.67 |            0.52 |
+| 1MB     |    978.4 |     978.4 |   1971.4 |            3.77 |         0.07 |          4.56 |           5.61 |            3.40 |
+| 10MB    |   9782.9 |    9783.0 |  19689.1 |           39.34 |         0.07 |         45.17 |          59.24 |           32.53 |
+
+- `to_dict()` is effectively free because it reads already serialized JSON strings.
+- `to_proto()` is the main CPU cost for large payloads.
+- The measured `proto_serialize` number overstates true serialization cost because the benchmark redoes proto conversion inside that step.
+- `add_size_stats_to_trace_metadata()` adds a second expensive pass over span data.
+
+![Client serialization breakdown and scaling](../plots/client_serialization.png)
+
+### Decorator overhead
+
+### Takeaway
+
+Disabled tracing is not free, and enabled tracing is dominated by span creation and export.
+
+| scenario           | p50 (us) | p95 (us) | mean (us) |  vs raw |
+| :----------------- | -------: | -------: | --------: | ------: |
+| raw (no decorator) |     0.08 |     0.13 |      0.10 |    1.0x |
+| tracing disabled   |    16.38 |    17.38 |     16.64 |  195.0x |
+| tracing enabled    |    12056 |    14700 |     12392 | 143534x |
+
+### Streaming overhead
+
+### Takeaway
+
+Tracing a generator adds about 10 us per yielded chunk, which becomes visible for token-by-token streaming.
+
+| chunks | untraced (ms) | traced (ms) | overhead (ms) | per-chunk (us) |
+| -----: | ------------: | ----------: | ------------: | -------------: |
+|    100 |          0.01 |        1.77 |          1.76 |          17.56 |
+|  1,000 |          0.11 |       10.36 |         10.26 |          10.26 |
+| 10,000 |          1.16 |       95.35 |         94.19 |           9.42 |
+
+### Span processor contention
+
+### Takeaway
+
+The span processor introduces a meaningful serialization point under concurrency.
+
+| threads | spans | total p50 (ms) | per-span (us) | p95 (ms) | vs 1-thread |
+| ------: | ----: | -------------: | ------------: | -------: | ----------: |
+|       1 |    10 |           1.89 |         188.6 |     2.30 |        1.0x |
+|       1 |    50 |           7.61 |         152.2 |     8.27 |        1.0x |
+|       1 |   100 |          13.14 |         131.4 |    13.75 |        1.0x |
+|       4 |    10 |           7.28 |         728.1 |    14.09 |        4.2x |
+|       4 |    50 |          28.77 |         575.4 |    74.71 |        4.2x |
+|       4 |   100 |          58.98 |         589.8 |   114.03 |        4.5x |
+
+### Async export batching
+
+### Takeaway
+
+The queue is not the bottleneck. Batching helps, but returns diminish above roughly 50 spans per batch.
+
+- Queue `put()` throughput: about 837K tasks/s
+- `flush()` for 1000 pending tasks: 10.8 ms
+
+| batch_size | total (ms) | per-span (us) |
+| ---------: | ---------: | ------------: |
+|          1 |       10.9 |          10.9 |
+|         10 |        3.7 |           3.7 |
+|         50 |        2.6 |           2.6 |
+|        128 |        2.6 |           2.6 |
+
+## Backend Comparison: SQLite Vs PostgreSQL
+
+### Takeaway
+
+Both backends suffer from the same per-span ORM pattern, but they fail differently:
+
+- SQLite becomes CPU-bound.
+- PostgreSQL becomes round-trip-bound.
+
+That makes the same architectural fix, bulk inserts instead of per-row ORM merge, even more valuable on PostgreSQL.
 
 ### Ingestion
 
@@ -210,9 +322,7 @@ Same benchmark scripts with `--db-uri "postgresql://..."`. PostgreSQL 16 running
 |          50 |          227 |              101 |         4.4 |             9.9 |     2.2x |
 |         100 |          383 |              178 |         2.6 |             5.6 |     2.2x |
 
-PostgreSQL ingestion is consistently **~2.2x slower** than SQLite. The per-span `session.merge()` pattern is amplified by network round-trips: each SELECT + INSERT now crosses a TCP socket instead of hitting an in-process file. The slowdown is uniform across span counts, confirming the overhead is per-call, not per-byte.
-
-### Search (p50 latency in ms)
+### Search
 
 | query           | PG 500 | PG 1K | PG 5K | PG 10K | SQLite 10K |
 | --------------- | -----: | ----: | ----: | -----: | ---------: |
@@ -223,13 +333,10 @@ PostgreSQL ingestion is consistently **~2.2x slower** than SQLite. The per-span 
 | by_span_name    |      4 |     8 |    16 |     19 |        105 |
 | deep_page       |    203 |   209 |   262 |    225 |        186 |
 
-Key differences from SQLite:
+- PostgreSQL handles regex-over-content better than SQLite for this workload.
+- PostgreSQL is much more sensitive to the N+1 hydration pattern because each lazy-load query incurs network round-trip overhead.
 
-- **`by_span_name` is dramatically faster on PostgreSQL**: 19 ms vs 105 ms at 10K traces. PostgreSQL's regex engine handles the JSON content scan much more efficiently than SQLite's RLIKE.
-- **N+1 lazy loading hurts more on PostgreSQL**: `no_filter` at 10K is 295 ms vs 105 ms. Each of the 301 lazy-load queries now has TCP round-trip overhead, making the N+1 pattern ~3x more expensive.
-- **`by_tag` scales better on PostgreSQL**: 227 ms at 10K vs 144 ms on SQLite - comparable despite the network overhead, suggesting PostgreSQL's query planner handles the tag join more efficiently at scale.
-
-### Sustained load (PostgreSQL, single writer, 30s per config)
+### Sustained load
 
 | spans/trace | payload | target | achieved QPS | p50 (ms) | p95 (ms) | CPU % | DB (MB) |
 | ----------: | ------: | -----: | -----------: | -------: | -------: | ----: | ------: |
@@ -238,250 +345,200 @@ Key differences from SQLite:
 |         100 |   small |    max |          5.0 |      200 |      231 |   58% |      66 |
 |         100 |   small |     10 |          4.6 |      201 |      331 |   58% |      94 |
 
-Key differences from SQLite:
+## Root Causes
 
-- **Max throughput is ~2x lower**: 10 spans: 36 QPS (PG) vs 66 QPS (SQLite). 100 spans: 5 QPS (PG) vs 11 QPS (SQLite).
-- **CPU is NOT the bottleneck on PostgreSQL**: 58-60% at max throughput vs 94-96% on SQLite. The bottleneck shifts from CPU-bound ORM work to **network I/O** (waiting on TCP round-trips to the DB).
-- **100 spans at target 10 QPS is saturated**: achieved only 4.6 QPS with p95 already at 331 ms. On SQLite the same config achieved 10 QPS with 88% CPU.
-- **Latency is higher even below saturation**: p50 of 33 ms at 10 QPS (PG) vs 22 ms (SQLite) for 10 spans - the per-query network overhead adds ~10 ms baseline.
+## 1. Ingestion write amplification in `log_spans()`
 
-### PostgreSQL vs SQLite summary
+`session.merge()` is called per span and per metric. Profiling 100 traces with 100 spans shows `session.merge()` accounting for 79% of wall time.
 
-The same `session.merge()`-per-span bottleneck drives both backends, but the failure mode differs:
-
-- **SQLite**: CPU-bound. Saturates at 94-96% CPU. Limited by ORM Python overhead.
-- **PostgreSQL**: I/O-bound. Saturates at ~60% CPU. Limited by network round-trips per ORM call.
-
-This means fixing the `session.merge()` N+1 pattern (bulk inserts) would benefit PostgreSQL even more than SQLite, since it would eliminate hundreds of network round-trips per trace in addition to the ORM overhead.
-
-## Bottlenecks Identified
-
-### 1. Ingestion: `session.merge()` per span (top bottleneck)
-
-[`log_spans()`](https://github.com/mlflow/mlflow/blob/eb00322351e9338d0535c6d64694616bf1ac2ce5/mlflow/store/tracking/sqlalchemy_store.py#L4315) calls `session.merge()` individually for every span and every span metric. A 100-span trace triggers **19K+ merge calls** for 100 ingestions - each one does a PK identity load + autoflush + INSERT.
-
-cProfile of 100 traces x 100 spans (12.8s total):
-
-```
-         ncalls  tottime  cumtime  function
-            100    0.120   12.681  sqlalchemy_store.py:log_spans
-          19459    0.034   10.102  session.py:merge            ← 79% of total
-          19459    0.134    5.620  session.py:_merge
-          19459    0.146    4.698  session.py:_get_impl        ← PK lookup per merge
-          39518    0.012    4.482  session.py:_autoflush       ← flush before every get
-          19459    0.134    4.267  loading.py:load_on_pk_identity
-          19559    0.035    3.529  unitofwork.py:execute
-          19659    0.084    2.429  persistence.py:save_obj     ← INSERT per span
-          19659    0.111    1.966  persistence.py:_emit_insert_statements
+```text
+ncalls  cumtime  function
+19459   10.102   session.py:merge
+19459    5.620   session.py:_merge
+19459    4.698   session.py:_get_impl
+39518    4.482   session.py:_autoflush
+19659    2.429   persistence.py:save_obj
 ```
 
-`session.merge()` accounts for **79% of wall time** (10.1s of 12.8s). Each of the 19,459 merge calls does: PK identity load (SELECT) -> autoflush -> INSERT. This directly explains why throughput plateaus at ~550–600 spans/s and scales linearly (33 ms for 10 spans -> 178 ms for 100 -> 1,686 ms for 1,000 spans).
+Potential fix direction:
+
+```python
+session.bulk_save_objects(span_rows + metric_rows)
+# or SQLAlchemy core INSERT ... ON CONFLICT
+```
 
 ![Ingestion CPU time breakdown](../plots/profile_breakdown.png)
 
-Potential fix: bulk `session.bulk_save_objects()` or `INSERT ... ON CONFLICT` via core instead of ORM merge.
+## 2. N+1 relationship loading in `search_traces()`
+
+For `max_results=100`, the current pattern is effectively:
 
 ```python
-# Current: O(N) merge calls per trace, each does SELECT + autoflush + INSERT
-for span in spans:
-    sql_span = SqlSpan(...)
-    session.merge(sql_span)  # SELECT by PK → autoflush → INSERT
-    for metric in span.metrics:
-        sql_metric = SqlSpanMetric(...)
-        session.merge(sql_metric)  # same cycle per metric
-
-# Proposed: single bulk INSERT
-span_rows = [SqlSpan(...) for span in spans]
-metric_rows = [SqlSpanMetric(...) for span in spans for metric in span.metrics]
-session.bulk_save_objects(span_rows + metric_rows)
-# or: INSERT ... ON CONFLICT DO UPDATE via core
-session.execute(
-    insert(SqlSpan).on_conflict_do_update(...),
-    [span.to_dict() for span in spans],
-)
-```
-
-### 2. Ingestion: redundant metadata queries
-
-Three separate queries per [`log_spans()`](https://github.com/mlflow/mlflow/blob/eb00322351e9338d0535c6d64694616bf1ac2ce5/mlflow/store/tracking/sqlalchemy_store.py#L4489-L4554) call for token usage, cost, and session ID metadata - could be a single query with `IN` clause. Per cProfile, these add ~3 round-trips per trace on top of the merge overhead.
-
-```python
-# Current: 3 separate queries
-token_usage = session.query(metadata).filter(key == "token_usage", ...)
-cost = session.query(metadata).filter(key == "cost", ...)
-session_id = session.query(metadata).filter(key == "session_id", ...)
-
-# Proposed: single query with IN clause
-rows = session.query(metadata).filter(key.in_(["token_usage", "cost", "session_id"]), ...)
-token_usage, cost, session_id = partition_by_key(rows)
-```
-
-### 3. Search: N+1 lazy loading
-
-[`SqlTraceInfo.to_mlflow_entity()`](https://github.com/mlflow/mlflow/blob/eb00322351e9338d0535c6d64694616bf1ac2ce5/mlflow/store/tracking/dbmodels/models.py#L755) lazy-loads tags, metadata, and assessments per trace. For N results this is 3N+1 queries. This is likely why even simple queries (`no_filter`, `by_status`) stay at **~90–105 ms regardless of trace count** (500 to 10K) - the cost is dominated by the 300+ lazy-load round-trips for `max_results=100`, not the actual search query.
-
-```python
-# Current: 3N+1 queries (N = max_results, typically 100)
-traces = session.query(SqlTraceInfo).limit(100).all()  # 1 query
+traces = session.query(SqlTraceInfo).limit(100).all()
 for trace in traces:
-    trace.tags  # SELECT ... WHERE trace_id = ?    ← N queries
-    trace.metadata  # SELECT ... WHERE trace_id = ?    ← N queries
-    trace.assessments  # SELECT ... WHERE trace_id = ?    ← N queries
-# Total: 301 queries for 100 traces
+    trace.tags
+    trace.metadata
+    trace.assessments
+```
 
-# Proposed: 1 query (or 4 with subqueryload)
-traces = (
-    session
-    .query(SqlTraceInfo)
-    .options(
-        joinedload(SqlTraceInfo.tags),
-        joinedload(SqlTraceInfo.metadata),
-        joinedload(SqlTraceInfo.assessments),
-    )
-    .limit(100)
-    .all()
+That is 301 queries for 100 traces. This explains why simple search stays near a fixed baseline and why PostgreSQL suffers disproportionately.
+
+Potential fix direction:
+
+```python
+session.query(SqlTraceInfo).options(
+    joinedload(SqlTraceInfo.tags),
+    joinedload(SqlTraceInfo.metadata),
+    joinedload(SqlTraceInfo.assessments),
 )
-# Total: 1 query with JOINs, or 4 queries with subqueryload
 ```
 
-### 4. Search: RLIKE on JSON blobs
+## 3. Span-name filtering scans JSON blobs
 
-[Span attribute filtering](https://github.com/mlflow/mlflow/blob/eb00322351e9338d0535c6d64694616bf1ac2ce5/mlflow/store/tracking/sqlalchemy_store.py#L6317) uses regex on the raw `content` column (LONGTEXT JSON). No index can accelerate this - it's a full scan of the spans table within the experiment. `by_span_name` went from **4 ms at 500 traces -> 10 ms -> 20 ms -> 50 ms -> 105 ms at 10K traces (~26x)**, growing linearly with trace count - the worst degradation of any query type.
+Current behavior is equivalent to filtering with regex over the raw JSON `content` column:
 
 ```sql
--- Current: regex on unindexed JSON blob - full table scan
 WHERE content RLIKE '"name":\s*"llm_0"'
-
--- Possible alternatives:
--- (a) Extract span name into an indexed column
-WHERE span_name = 'llm_0'  -- indexed lookup, O(log N)
-
--- (b) Use DB-native JSON functions (PostgreSQL / MySQL 8+)
-WHERE JSON_EXTRACT(content, '$.name') = 'llm_0'
--- with a generated column + index on JSON_EXTRACT(content, '$.name')
 ```
 
-### 5. Search: offset-based pagination
+This cannot use a useful lookup index and degrades linearly with corpus size.
 
-[Deep pagination](https://github.com/mlflow/mlflow/blob/eb00322351e9338d0535c6d64694616bf1ac2ce5/mlflow/store/tracking/sqlalchemy_store.py#L3369) (page 10+) degrades because the DB must scan and discard all preceding rows. `deep_page` went from **107 ms at 500 traces -> 115 ms -> 116 ms -> 144 ms -> 186 ms at 10K traces (~74%)**. Keyset pagination would be more efficient.
+Potential fix direction:
+
+- Extract span name into an indexed column
+- Or use generated columns / native JSON extraction where supported
+
+## 4. Offset-based pagination adds avoidable cost
+
+Deep pagination requires the database to scan and discard prior rows:
 
 ```sql
--- Current: offset-based - DB scans and discards N * page_size rows
-SELECT * FROM traces ORDER BY timestamp DESC
-LIMIT 10 OFFSET 90  -- page 10: scans 100 rows, returns 10
-
--- Proposed: keyset pagination - seeks directly via index
-SELECT * FROM traces
-WHERE timestamp < :last_seen_timestamp  -- cursor from previous page
 ORDER BY timestamp DESC
-LIMIT 10  -- no rows discarded
+LIMIT 10 OFFSET 90
 ```
 
-### 6. Client serialization: recursive protobuf attribute conversion
+Potential fix direction:
 
-[`_set_otel_proto_anyvalue()`](https://github.com/mlflow/mlflow/blob/eb00322351e9338d0535c6d64694616bf1ac2ce5/mlflow/tracing/utils/otlp.py#L158) recursively walks every key and value in JSON-deserialized span attributes to build protobuf `AnyValue` objects. For a 10MB payload, this generates **2.6 million recursive calls** and accounts for the majority of `to_otel_proto()` time.
-
-cProfile of 50 iterations at 10MB payload (9.4s total):
-
-```
-         ncalls  tottime  cumtime  function
-      700    0.001    5.326  json.dumps                           ← JSON serialization
-2654300    2.305    3.333  otlp.py:_set_otel_proto_anyvalue      ← 35% of total, recursive
-   884750    0.559    0.559  CopyFrom (protobuf message copy)
-      500    0.006    3.347  span.py:to_otel_proto
-       50    0.219    0.219  SerializeToString
-       50    0.001    1.635  add_size_stats_to_trace_metadata
+```sql
+WHERE timestamp < :last_seen_timestamp
+ORDER BY timestamp DESC
+LIMIT 10
 ```
 
-The recursive per-element conversion is inherently expensive for large nested payloads. Since span attributes are already JSON strings, one option is to store them as a single `string_value` in the proto rather than recursively decomposing the parsed JSON into nested `AnyValue` / `KeyValueList` structures. However, this is a **format/semantics tradeoff**, not a drop-in optimization: it changes the OTLP attribute shape from structured values to opaque strings, which can break downstream consumers that expect typed `AnyValue` fields (e.g., collectors, observability backends, search indexers). This would need to be evaluated against OTLP compatibility requirements before adopting.
+## 5. Recursive OTLP attribute conversion is expensive for large payloads
 
-```python
-# Current: recursively decompose parsed JSON into nested proto messages
-def _set_otel_proto_anyvalue(value, proto_value):
-    if isinstance(value, dict):
-        kv_list = proto_value.kvlist_value
-        for k, v in value.items():
-            kv = kv_list.values.add()
-            kv.key = k
-            _set_otel_proto_anyvalue(v, kv.value)  # recurse
-    elif isinstance(value, list):
-        for item in value:
-            _set_otel_proto_anyvalue(item, ...)  # recurse
-    # ... 2.6M calls for 10MB payload
+`_set_otel_proto_anyvalue()` recursively decomposes JSON structures into nested protobuf objects. At 10MB payloads this generates about 2.6M recursive calls.
 
+Potential fix direction:
 
-# Option: store pre-serialized JSON as a single string (breaks structured attribute shape)
-def _set_otel_proto_anyvalue(value, proto_value):
-    if isinstance(value, str) and is_json_attribute(value):
-        proto_value.string_value = value  # no recursion, but opaque to consumers
-    # ... 1 call per attribute
-```
+- Preserve current structure but reduce repeated conversion work
+- Consider opaque string storage only if OTLP compatibility tradeoffs are acceptable
 
-### 7. Client serialization: redundant re-serialization in size stats
+## 6. Size stats recompute JSON unnecessarily
 
-[`add_size_stats_to_trace_metadata()`](https://github.com/mlflow/mlflow/blob/eb00322351e9338d0535c6d64694616bf1ac2ce5/mlflow/tracing/utils/__init__.py#L614) calls `json.dumps(span.to_dict())` for every span to compute byte sizes, then serializes an empty `Trace` to measure metadata overhead. This adds **33 ms at 10MB** on the hot path.
+`add_size_stats_to_trace_metadata()` serializes span data again purely to measure JSON byte size. This adds about 33 ms at 10MB.
 
-Note: this function measures **JSON-serialized sizes**, not protobuf wire sizes. Any optimization must preserve JSON-size semantics if downstream consumers depend on them (e.g., for quota enforcement or billing). Simply substituting `len(proto_bytes)` would change the metric's meaning.
+Potential fix direction:
 
-```python
-# Current: re-serialize every span to JSON just to measure JSON byte sizes
-def add_size_stats_to_trace_metadata(trace):
-    for span in trace.spans:
-        span_json = json.dumps(span.to_dict())  # redundant serialization
-        span_sizes.append(len(span_json.encode()))
-    metadata_json = json.dumps(Trace(info, []).to_dict())  # another serialization
-    # total: 33 ms at 10MB
+- Reuse cached JSON bytes
+- Or move size computation off the hot path
 
+## 7. Disabled tracing and concurrent span completion have avoidable overhead
 
-# Option A: cache JSON bytes from earlier serialization steps
-# (preserves JSON-size semantics, avoids re-serialization)
-def add_size_stats_to_trace_metadata(trace, cached_json_bytes):
-    for span_bytes in cached_json_bytes:
-        span_sizes.append(len(span_bytes))
+- The tracing decorator still enters wrapper and context-manager machinery when disabled.
+- The span processor uses a shared lock that serializes `on_end()` under contention.
 
+## Prioritized Recommendations
 
-# Option B: defer size computation off the hot path
-# (compute asynchronously or lazily on first access)
-```
+## High impact
 
-## Validated Summary
+### 1. Bulk insert in `log_spans()`
 
-- The main conclusions above are supported by the current `SqlAlchemyStore` implementation and client-side profiling.
-- **Server-side** confirmed issues:
-  - per-span / per-metric `session.merge()` in `log_spans()`
-  - lazy loading of tags, metadata, and assessments in `search_traces()`
-  - regex / text matching over JSON-backed span content
-  - offset-based pagination for deeper pages
-- **Client-side** confirmed issues:
-  - recursive `_set_otel_proto_anyvalue()` decomposition of JSON attributes into protobuf structures (2.6M calls for 10MB payload)
-  - redundant re-serialization of all spans in `add_size_stats_to_trace_metadata()`
-  - protobuf wire size roughly equals sum of input + output payloads (no compression; JSON strings stored verbatim inside proto envelope)
-- The sustained-load throughput scaling (10 spans: ~66 QPS, 100 spans: ~11 QPS) is consistent with the per-span `session.merge()` cost from the ingestion profile, but the sustained-load path was not independently profiled - this is an inference, not a direct attribution.
-- Similarly, simple search latency being "dominated" by lazy loading is strongly supported by query-count benchmarks but is still an inference rather than a direct profiler attribution.
-- Client-side overhead is only significant for large payloads (>100KB). For typical traces with small inputs/outputs, the client-side pipeline adds <1 ms - the server-side bottlenecks dominate.
+- Expected impact: largest ingestion win, likely 5-10x in the hot path
+- Why first: it addresses the dominant bottleneck on both SQLite and PostgreSQL
 
-## Recommended Next Actions
+### 2. Eager-load relationships in `search_traces()`
 
-### Server-side
+- Expected impact: cut search query count from 301 to roughly 1-4
+- Why second: it directly reduces baseline search latency and has especially high value on PostgreSQL
 
-1. Fix `search_traces()` N+1 loading by eager-loading tags, request metadata, and assessments.
-2. Fix the `log_spans()` write path by replacing per-row ORM `merge()` with a bulk / upsert-oriented approach.
-3. Collapse the redundant token usage, cost, and session-id metadata reads into a single query.
-4. Revisit JSON / regex-based span filtering if span-attribute search needs to scale beyond current bounds.
-5. Consider keyset pagination if deep trace browsing becomes a common workload.
+### 3. Early `is_tracing_enabled()` fast path in `@mlflow.trace`
 
-### Client-side
+- Expected impact: reduce disabled overhead from about 16 us toward near-zero
+- Why third: low effort and immediately useful for hot paths
 
-6. Remove or defer `add_size_stats_to_trace_metadata()` from the hot export path. The function measures JSON-serialized sizes, so any optimization must preserve that semantics (e.g., cache JSON bytes from earlier steps rather than substituting protobuf byte length, which measures something different).
-7. For large payloads, evaluate storing span attributes as a single JSON `string_value` in the protobuf rather than recursively decomposing into nested `AnyValue` structures. **Tradeoff:** this changes the OTLP attribute shape from structured values to opaque strings, which can break downstream consumers, searchability, and compatibility. Requires evaluation against OTLP compatibility requirements.
+## Medium impact
 
-## Should We Run Benchmarks in CI?
+### 4. Indexed span-name filtering
 
-- **CI runners are noisy.** GitHub Actions uses shared hardware with variable load. A 20% swing from runner noise is indistinguishable from a real regression at the latencies we're measuring (~10–100 ms).
-- **The bottlenecks are structural, not marginal.** `session.merge()` at 79% of wall time and 3N+1 lazy-load queries are algorithmic problems - they won't silently regress.
-- **Per-bottleneck scripts give clearer signal.** Running `bench_n_plus_one.py` before and after a fix gives a definitive answer (e.g., 301 queries -> 4 queries) that no amount of CI variance can obscure.
+- Expected impact: remove linear scan behavior for `by_span_name`
 
-Revisit once the major bottlenecks are fixed and we need to protect against regressions from low baselines - at that point a dedicated runner with stable hardware would make sense.
+### 5. Assessment-search indexing / query rewrite
+
+- Expected impact: materially reduce the 6.2x penalty for assessment-filtered search
+
+### 6. Reduce span-processor lock contention
+
+- Expected impact: better scaling for concurrent tracing workloads
+
+### 7. Batch or sample streaming events
+
+- Expected impact: reduce generator tracing overhead for high-chunk-count streams
+
+## Lower impact
+
+### 8. Collapse redundant metadata queries
+
+- Current pattern: separate queries for token usage, cost, and session ID
+
+### 9. Defer or cache size-stat computation
+
+- Important mainly for large payloads
+
+### 10. Switch deep pagination to keyset pagination
+
+- Helpful for deeper search navigation, not the first-page experience
+
+### 11. Consider opaque JSON strings in OTLP only with compatibility review
+
+- High upside for large payload serialization
+- High semantic and compatibility risk
+
+## What We Validated
+
+### Confirmed server-side issues
+
+- Per-span and per-metric `session.merge()` in `log_spans()`
+- Lazy loading of tags, metadata, and assessments in search result hydration
+- Regex or text matching over JSON-backed span content
+- Offset-based deep pagination
+- Much slower assessment-filtered search
+- Poor scaling of concurrent SQLite writes
+
+### Confirmed client-side issues
+
+- Recursive OTLP conversion for large JSON attributes
+- Redundant size-stat serialization
+- Non-zero disabled tracing overhead
+- Measurable streaming chunk overhead
+- Span-processor lock contention under concurrency
+
+### Explicit non-bottlenecks
+
+- HTTP transport
+- Async export queue throughput
+- Trace deletion with CASCADE
+- Baseline search sensitivity to large content size
+
+## CI Guidance
+
+These benchmarks are not good candidates for standard CI on noisy shared runners:
+
+- The main bottlenecks are structural, not marginal.
+- Shared CI hardware introduces enough variance to obscure moderate regressions.
+- Targeted benchmark scripts around a specific fix provide much clearer signal.
+
+Revisit CI-based perf protection after the major algorithmic issues are fixed and a quieter benchmark environment is available.
 
 ## Reproducing
 
@@ -489,23 +546,31 @@ Revisit once the major bottlenecks are fixed and we need to protect against regr
 # Full server-side benchmark
 uv run python trace_perf/trace_benchmark.py
 
-# Ingestion only with cProfile
+# Ingestion with cProfile
 uv run python trace_perf/trace_benchmark.py --benchmarks ingest --profile
 
 # Client-side serialization benchmark
 uv run python trace_perf/bench_client_serialization.py
-
-# Client-side with cProfile (profiles 10MB case)
 uv run python trace_perf/bench_client_serialization.py --profile
-
-# Client-side with more spans
 uv run python trace_perf/bench_client_serialization.py --spans 50
 
-# Sustained load benchmark (24 configs x 60s each, ~25 min)
+# Sustained load benchmark
 uv run python trace_perf/bench_sustained_load.py
-
-# Sustained load with custom parameters
 uv run python trace_perf/bench_sustained_load.py --spans 10,50 --payloads small --qps max,10 --duration 30
+
+# Extended store-layer benchmarks
+uv run python trace_perf/bench_deletion.py
+uv run python trace_perf/bench_assessments.py
+uv run python trace_perf/bench_large_content.py
+uv run python trace_perf/bench_explain_queries.py
+uv run python trace_perf/bench_concurrent_writers.py
+
+# Client runtime benchmarks
+uv run python trace_perf/bench_tracing_disabled.py
+uv run python trace_perf/bench_streaming_overhead.py
+uv run python trace_perf/bench_span_processor.py
+uv run python trace_perf/bench_async_export.py
+uv run python trace_perf/bench_e2e_http.py
 
 # Generate plots
 uv run python trace_perf/generate_plots.py
@@ -514,17 +579,54 @@ uv run python trace_perf/generate_plots.py
 uvx snakeviz trace_benchmark.prof
 uvx snakeviz client_serialization.prof
 
-# --- PostgreSQL (via Docker) ---
-# Start a PostgreSQL container
+# PostgreSQL
 docker run -d --name mlflow-bench-pg \
   -e POSTGRES_USER=mlflow -e POSTGRES_PASSWORD=mlflow -e POSTGRES_DB=mlflow_bench \
   -p 5432:5432 postgres:16
 
-# Run benchmarks against PostgreSQL (--with installs the driver)
 export PG_URI="postgresql://mlflow:mlflow@localhost:5432/mlflow_bench"
 uv run --with psycopg2-binary python trace_perf/trace_benchmark.py --db-uri "$PG_URI"
 uv run --with psycopg2-binary python trace_perf/bench_sustained_load.py --db-uri "$PG_URI" --spans 10,100 --qps max,10 --duration 30
+uv run --with psycopg2-binary python trace_perf/bench_concurrent_writers.py --db-uri "$PG_URI"
+uv run --with psycopg2-binary python trace_perf/bench_explain_queries.py --db-uri "$PG_URI"
 
-# Cleanup
 docker rm -f mlflow-bench-pg
 ```
+
+## Appendix: Secondary Supporting Results
+
+### Resource usage
+
+- DB size: 217 MB for about 18.5K traces, roughly 12 KB/trace on average
+- Memory: peak RSS delta about 1.7 MB, tracemalloc peak about 2 MB
+
+### Concurrent writers on SQLite
+
+| threads | traces/s | spans/s | p50 (ms) | p95 (ms) | p99 (ms) | scaling |
+| ------: | -------: | ------: | -------: | -------: | -------: | ------: |
+|       1 |     64.4 |     644 |     15.2 |     18.3 |     24.4 |    100% |
+|       2 |     67.3 |     673 |     14.4 |     35.6 |    244.3 |     52% |
+|       4 |     68.3 |     683 |     15.0 |    181.0 |   1048.6 |     27% |
+|       8 |     65.6 |     656 |     16.6 |    682.4 |   1418.5 |     13% |
+
+### Trace deletion with CASCADE
+
+| corpus | mode              | p50 (ms) | p95 (ms) | queries |
+| -----: | :---------------- | -------: | -------: | ------: |
+|    500 | single            |      1.6 |      2.1 |       4 |
+|    500 | batch(100)        |     24.4 |     25.9 |       4 |
+|    500 | by_timestamp(100) |     22.5 |     27.2 |       4 |
+|   2000 | single            |      2.5 |      3.7 |       4 |
+|   2000 | batch(100)        |     47.0 |     53.8 |       4 |
+|   2000 | by_timestamp(100) |     60.9 |    104.7 |       4 |
+|   5000 | single            |      3.4 |      4.4 |       4 |
+|   5000 | batch(100)        |     60.4 |     61.0 |       4 |
+|   5000 | by_timestamp(100) |     63.1 |     70.5 |       4 |
+
+### End-to-end HTTP path
+
+| spans | direct p50 (ms) | HTTP p50 (ms) | serialize (ms) | overhead |
+| ----: | --------------: | ------------: | -------------: | -------: |
+|    10 |            14.4 |          13.5 |            0.2 |     0.9x |
+|    50 |            42.2 |          44.0 |            1.0 |     1.0x |
+|   100 |            79.4 |          80.5 |            1.6 |     1.0x |
