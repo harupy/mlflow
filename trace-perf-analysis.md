@@ -135,10 +135,11 @@ Key observations:
 
 - **Scaling is linear** with payload size across all steps. Every 10x increase in payload size yields roughly 10x increase in latency.
 - **`to_dict()` is essentially free** (~0.07 ms regardless of size) because it just reads pre-serialized JSON strings from OTel span attributes - no re-serialization.
-- **`proto_serialize`** is the single most expensive step (59 ms at 10MB). It builds the `ExportTraceServiceRequest` envelope from already-created proto spans and calls `SerializeToString()`. The cost comes from assembling the full request message and serializing it to bytes - distinct from `to_proto` which converts individual spans.
+- **`to_proto`** is the most CPU-intensive conversion (45 ms at 10MB). cProfile confirms this is dominated by `_set_otel_proto_anyvalue()` - 2.6M recursive calls to decompose JSON attributes into nested protobuf `AnyValue` structures.
+- **`proto_serialize`** shows 59 ms at 10MB, but this is overstated: the benchmark re-calls `to_otel_proto()` inside `build_and_serialize()`, so it includes redundant proto conversion. cProfile shows `SerializeToString()` alone is ~4 ms - the real cost is in `to_proto`, not final byte serialization.
 - **`size_stats`** adds 33 ms at 10MB by re-serializing every span to JSON just to measure byte sizes - redundant work on the hot path.
 - **Protobuf size roughly matches the combined payload** - 10MB input + 10MB output → 19.7MB protobuf. There is no significant compression or expansion; the JSON string attributes are stored verbatim inside the proto envelope, so wire size is approximately the sum of input + output.
-- **Total client-side overhead at 10MB: ~180 ms** (json_dumps + to_proto + proto_ser + size_stats), before any network I/O.
+- **Total client-side overhead at 10MB: ~120 ms** (json_dumps 39 ms + to_proto 45 ms + SerializeToString ~4 ms + size_stats 33 ms), before any network I/O. The table shows proto_serialize at 59 ms but this double-counts to_proto work (see above).
 
 ![Client serialization breakdown and scaling](plots/client_serialization.png)
 
@@ -196,6 +197,62 @@ Key observations:
 ![CPU utilization vs ingestion rate](plots/sustained_cpu.png)
 
 ![DB size after sustained load](plots/db_size.png)
+
+## Benchmark Results (PostgreSQL 16, Docker, local)
+
+Same benchmark scripts with `--db-uri "postgresql://..."`. PostgreSQL 16 running in Docker on the same machine. This adds network round-trip overhead (localhost TCP) on every ORM call compared to SQLite's in-process access.
+
+### Ingestion
+
+| spans/trace | PG mean (ms) | SQLite mean (ms) | PG traces/s | SQLite traces/s | slowdown |
+| ----------: | -----------: | ---------------: | ----------: | --------------: | -------: |
+|          10 |           74 |               33 |        13.4 |            30.0 |     2.2x |
+|          50 |          227 |              101 |         4.4 |             9.9 |     2.2x |
+|         100 |          383 |              178 |         2.6 |             5.6 |     2.2x |
+
+PostgreSQL ingestion is consistently **~2.2x slower** than SQLite. The per-span `session.merge()` pattern is amplified by network round-trips: each SELECT + INSERT now crosses a TCP socket instead of hitting an in-process file. The slowdown is uniform across span counts, confirming the overhead is per-call, not per-byte.
+
+### Search (p50 latency in ms)
+
+| query           | PG 500 | PG 1K | PG 5K | PG 10K | SQLite 10K |
+| --------------- | -----: | ----: | ----: | -----: | ---------: |
+| no_filter       |    179 |   245 |   239 |    295 |        105 |
+| by_status       |    183 |   244 |   256 |    314 |        104 |
+| by_tag          |    178 |   190 |   235 |    227 |        144 |
+| timestamp_order |    187 |   193 |   261 |    272 |         95 |
+| by_span_name    |      4 |     8 |    16 |     19 |        105 |
+| deep_page       |    203 |   209 |   262 |    225 |        186 |
+
+Key differences from SQLite:
+
+- **`by_span_name` is dramatically faster on PostgreSQL**: 19 ms vs 105 ms at 10K traces. PostgreSQL's regex engine handles the JSON content scan much more efficiently than SQLite's RLIKE.
+- **N+1 lazy loading hurts more on PostgreSQL**: `no_filter` at 10K is 295 ms vs 105 ms. Each of the 301 lazy-load queries now has TCP round-trip overhead, making the N+1 pattern ~3x more expensive.
+- **`by_tag` scales better on PostgreSQL**: 227 ms at 10K vs 144 ms on SQLite - comparable despite the network overhead, suggesting PostgreSQL's query planner handles the tag join more efficiently at scale.
+
+### Sustained load (PostgreSQL, single writer, 30s per config)
+
+| spans/trace | payload | target | achieved QPS | p50 (ms) | p95 (ms) | CPU % | DB (MB) |
+| ----------: | ------: | -----: | -----------: | -------: | -------: | ----: | ------: |
+|          10 |   small |    max |         35.8 |       28 |       36 |   60% |      32 |
+|          10 |   small |     10 |         10.0 |       33 |       41 |   18% |      36 |
+|         100 |   small |    max |          5.0 |      200 |      231 |   58% |      66 |
+|         100 |   small |     10 |          4.6 |      201 |      331 |   58% |      94 |
+
+Key differences from SQLite:
+
+- **Max throughput is ~2x lower**: 10 spans: 36 QPS (PG) vs 66 QPS (SQLite). 100 spans: 5 QPS (PG) vs 11 QPS (SQLite).
+- **CPU is NOT the bottleneck on PostgreSQL**: 58-60% at max throughput vs 94-96% on SQLite. The bottleneck shifts from CPU-bound ORM work to **network I/O** (waiting on TCP round-trips to the DB).
+- **100 spans at target 10 QPS is saturated**: achieved only 4.6 QPS with p95 already at 331 ms. On SQLite the same config achieved 10 QPS with 88% CPU.
+- **Latency is higher even below saturation**: p50 of 33 ms at 10 QPS (PG) vs 22 ms (SQLite) for 10 spans - the per-query network overhead adds ~10 ms baseline.
+
+### PostgreSQL vs SQLite summary
+
+The same `session.merge()`-per-span bottleneck drives both backends, but the failure mode differs:
+
+- **SQLite**: CPU-bound. Saturates at 94-96% CPU. Limited by ORM Python overhead.
+- **PostgreSQL**: I/O-bound. Saturates at ~60% CPU. Limited by network round-trips per ORM call.
+
+This means fixing the `session.merge()` N+1 pattern (bulk inserts) would benefit PostgreSQL even more than SQLite, since it would eliminate hundreds of network round-trips per trace in addition to the ORM overhead.
 
 ## Bottlenecks Identified
 
@@ -456,4 +513,18 @@ uv run python trace_perf/generate_plots.py
 # Visualize profiles
 uvx snakeviz trace_benchmark.prof
 uvx snakeviz client_serialization.prof
+
+# --- PostgreSQL (via Docker) ---
+# Start a PostgreSQL container
+docker run -d --name mlflow-bench-pg \
+  -e POSTGRES_USER=mlflow -e POSTGRES_PASSWORD=mlflow -e POSTGRES_DB=mlflow_bench \
+  -p 5432:5432 postgres:16
+
+# Run benchmarks against PostgreSQL (--with installs the driver)
+export PG_URI="postgresql://mlflow:mlflow@localhost:5432/mlflow_bench"
+uv run --with psycopg2-binary python trace_perf/trace_benchmark.py --db-uri "$PG_URI"
+uv run --with psycopg2-binary python trace_perf/bench_sustained_load.py --db-uri "$PG_URI" --spans 10,100 --qps max,10 --duration 30
+
+# Cleanup
+docker rm -f mlflow-bench-pg
 ```

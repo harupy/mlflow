@@ -28,7 +28,7 @@ import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from utils import generate_spans, generate_trace_info, populate_corpus
+from utils import generate_spans, generate_trace_info, get_db_size_mb, populate_corpus
 
 from mlflow.entities.span import Span
 from mlflow.entities.trace_info import TraceInfo
@@ -461,14 +461,13 @@ def main() -> None:
         print_results(ingest_results, search_results, db_uri)
 
         # --- DB size ---
-        if "sqlite" in db_uri:
-            db_path = Path(db_uri.replace("sqlite:///", ""))
-            if db_path.exists():
-                size_mb = db_path.stat().st_size / (1024 * 1024)
-                print(f"\n{'DB SIZE':^70}")
-                print(DASH)
-                print(f"  {size_mb:.1f} MB")
-                print(SEP)
+        db_path = tmpdir_path / "mlflow.db" if "sqlite" in db_uri else None
+        size_mb = get_db_size_mb(store, db_path)
+        if size_mb is not None:
+            print(f"\n{'DB SIZE':^70}")
+            print(DASH)
+            print(f"  {size_mb:.1f} MB")
+            print(SEP)
 
 
 if __name__ == "__main__":

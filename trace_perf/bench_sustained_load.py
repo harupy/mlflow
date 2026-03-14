@@ -29,7 +29,7 @@ from pathlib import Path
 
 from opentelemetry.sdk.resources import Resource as OTelResource
 from opentelemetry.sdk.trace import ReadableSpan as OTelReadableSpan
-from utils import generate_spans, generate_trace_info
+from utils import generate_spans, generate_trace_info, get_db_size_mb
 
 from mlflow.entities.span import Span, SpanType, create_mlflow_span
 from mlflow.store.tracking.sqlalchemy_store import SqlAlchemyStore
@@ -233,9 +233,7 @@ def run_load_test(
     cpu_total = cpu_user + cpu_sys
     cpu_util = cpu_total / wall_elapsed if wall_elapsed > 0 else 0.0
 
-    db_size_mb = 0.0
-    if db_path and db_path.exists():
-        db_size_mb = db_path.stat().st_size / (1024 * 1024)
+    db_size_mb = get_db_size_mb(store, db_path) or 0.0
 
     return LoadTestResult(
         spans_per_trace=spans_per_trace,

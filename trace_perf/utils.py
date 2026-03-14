@@ -14,7 +14,7 @@ from unittest import mock
 from opentelemetry import trace as trace_api
 from opentelemetry.sdk.resources import Resource as _OTelResource
 from opentelemetry.sdk.trace import ReadableSpan as OTelReadableSpan
-from sqlalchemy import event
+from sqlalchemy import event, text
 
 from mlflow.entities.span import Span, SpanType, create_mlflow_span
 from mlflow.entities.trace_info import TraceInfo
@@ -185,6 +185,20 @@ def populate_corpus(
 # ---------------------------------------------------------------------------
 # SQL query counter
 # ---------------------------------------------------------------------------
+
+
+def get_db_size_mb(store: SqlAlchemyStore, db_path: Path | None = None) -> float | None:
+    url = str(store.engine.url)
+    if "sqlite" in url:
+        if db_path and db_path.exists():
+            return db_path.stat().st_size / (1024 * 1024)
+        return None
+    if "postgresql" in url:
+        db_name = store.engine.url.database
+        with store.engine.connect() as conn:
+            row = conn.execute(text("SELECT pg_database_size(:db)"), {"db": db_name}).fetchone()
+            return row[0] / (1024 * 1024) if row else None
+    return None
 
 
 @contextmanager
