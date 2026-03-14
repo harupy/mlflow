@@ -158,28 +158,25 @@ Large payloads increase ingestion latency and storage footprint linearly, but do
 
 ### Takeaway
 
-Simple search latency is dominated by result hydration rather than the base SQL query. Specialized filters show their own bottlenecks: span-name filtering degrades linearly, assessment filters are much slower, and deep pagination adds predictable overhead.
+Search latency is dominated by N+1 relationship loading, not the SQL query itself. The UI's default page load fires 1501 queries. On top of that, full-text search and assessment filters each add their own scaling problems.
 
 ### How the UI queries traces
 
-The MLflow UI calls `search_traces()` on every page load with these defaults:
+The MLflow UI calls `search_traces()` on every page load:
 
-- **Default view:** `max_results=500`, `order_by=["timestamp DESC"]`, no filter — this is what every user sees when they open the Traces tab.
-- **Pagination:** cursor-based via `page_token`, fetching up to 1000 traces total across pages.
-- **Common user-applied filters** (from the filter bar):
+- **Default view:** `max_results=500`, `order_by=["timestamp DESC"]`, no filter — every user hits this when opening the Traces tab.
+- **Pagination:** cursor-based via `page_token`, fetching up to 1000 traces total.
+- **Common filters** (from the filter bar):
   - `attributes.status = 'ERROR'` — finding failed traces
   - `tags.{key} = '{value}'` — filtering by environment, model, etc.
   - `attributes.name = '{value}'` — filtering by trace name
-  - `trace.text ILIKE '%query%'` — full-text search on span content (see below)
+  - `trace.text ILIKE '%query%'` — search bar full-text search
   - `attributes.execution_time_ms > {value}` — finding slow traces
-- **Less common filters:**
-  - `span.name ILIKE '{value}'` — triggers the RLIKE-on-JSON scan
-  - `feedback.{name} = '{value}'` — assessment filter (6.2x slower)
-  - `span.content ILIKE '%{value}%'` — heavy JSON content scan
+  - `feedback.{name} = '{value}'` — assessment filter (evaluation workflows)
 
-The default `max_results=500` means the N+1 lazy loading pattern fires **1501 queries** (3×500+1) on every page load — making #2 (eager loading) the highest-impact fix for real user experience.
+With `max_results=500`, the N+1 lazy loading fires **1501 queries** (3x500+1) on every page load.
 
-### Baseline search (benchmarked with max_results=100)
+### Baseline search (p50 latency in ms, max_results=100)
 
 | query           | 500 traces | 1K traces | 2K traces | 5K traces | 10K traces |
 | --------------- | ---------- | --------- | --------- | --------- | ---------- |
@@ -190,31 +187,43 @@ The default `max_results=500` means the N+1 lazy loading pattern fires **1501 qu
 | by_span_name    | 4          | 10        | 20        | 50        | 105        |
 | deep_page       | 107        | 115       | 116       | 144       | 186        |
 
-- `no_filter`, `by_status`, and `timestamp_order` stay mostly flat because the fixed cost of 301 queries dominates. The UI's default `max_results=500` would make this ~5x worse.
-- `by_tag` degrades moderately — this is a common user filter.
-- `by_span_name` degrades the most (26x from 500→10K traces) because it scans JSON content. Used less frequently but degrades the most.
-- `deep_page` reflects offset-pagination overhead. The UI uses cursor-based page tokens, which map to the same offset pattern internally.
+- **Flat baseline (~90-105 ms):** `no_filter`, `by_status`, and `timestamp_order` barely change with corpus size because the 301 lazy-load queries dominate. The UI's `max_results=500` makes this ~5x worse.
+- **Tag filter degrades moderately:** 91 ms → 144 ms at 10K. Common user filter.
+- **Span name degrades the most:** 4 ms → 105 ms (26x) due to JSON content scan.
+- **Deep pagination:** 107 ms → 186 ms, reflecting offset-based row discard.
 
 ![Search latency by query type](../plots/search_latency.png)
 
 ### Full-text search (trace.text ILIKE)
 
-The UI search bar sends `trace.text ILIKE '%query%'`, which maps internally to `span.content ILIKE '%query%'` — an unindexed ILIKE scan over the full JSON `content` column of every span in the experiment.
+The UI search bar sends `trace.text ILIKE '%query%'`, which maps to `span.content ILIKE '%query%'` — an unindexed ILIKE over the full JSON `content` column of every span.
 
-| traces | text ILIKE p50 (ms) | status p50 (ms) | span.name p50 (ms) | text vs status |
-| -----: | ------------------: | --------------: | -----------------: | -------------: |
-|    500 |                53.7 |            44.8 |                3.1 |           1.2x |
-|  1,000 |                71.3 |            43.4 |                8.8 |           1.6x |
-|  2,000 |               109.4 |            46.0 |               18.2 |           2.4x |
-|  5,000 |               204.8 |            48.3 |               43.6 |           4.2x |
+| traces | text ILIKE p50 (ms) | status p50 (ms) | text vs status |
+| -----: | ------------------: | --------------: | -------------: |
+|    500 |                53.7 |            44.8 |           1.2x |
+|  1,000 |                71.3 |            43.4 |           1.6x |
+|  2,000 |               109.4 |            46.0 |           2.4x |
+|  5,000 |               204.8 |            48.3 |           4.2x |
 
-- Text search degrades linearly with corpus size, reaching 205 ms at 5K traces — over 4x slower than an indexed status filter.
-- This is a common user action (typing in the search bar) that scales poorly. At larger corpus sizes the degradation will continue linearly.
-- The pattern is the same root cause as `by_span_name` (scanning unindexed JSON content), but text search scans for arbitrary substrings rather than a specific field name.
+- Degrades linearly, reaching 205 ms at 5K traces — 4.2x slower than indexed status filter.
+- This is a common user action (typing in the search bar) that will continue to degrade with corpus size.
+- Same root cause as span name filtering: scanning unindexed JSON content.
 
-### SQL behavior
+### Assessment-filtered search
 
-`EXPLAIN QUERY PLAN` on SQLite shows:
+Assessment filters (`feedback.{name}`) are available in the UI for evaluation workflows. They are substantially slower than baseline search even at the same query count.
+
+| filter                           | p50 (ms) | p95 (ms) | queries | vs no_filter |
+| :------------------------------- | -------: | -------: | ------: | -----------: |
+| no_filter                        |     54.6 |    104.9 |     304 |         1.0x |
+| feedback.correctness IS NOT NULL |    339.0 |    393.5 |     304 |         6.2x |
+| feedback.relevance IS NOT NULL   |    342.1 |    483.2 |     304 |         6.3x |
+
+The overhead comes from a DISTINCT subquery on the unindexed assessments table joined into the main search.
+
+### SQL query plan
+
+`EXPLAIN QUERY PLAN` on SQLite confirms index usage for most queries, but span content filters fall back to table scans:
 
 | query           | scan type      | index   | plan detail                                       |
 | :-------------- | :------------- | :------ | :------------------------------------------------ |
@@ -223,20 +232,6 @@ The UI search bar sends `trace.text ILIKE '%query%'`, which maps internally to `
 | by_tag          | SEARCH (index) | Yes     | `trace_tags` uses autoindex                       |
 | timestamp_order | SEARCH (index) | Yes     | `trace_info` uses composite index                 |
 | by_span_name    | SCAN (index)   | Partial | `spans` table scanned for regex over JSON content |
-
-### Assessment-filtered search
-
-### Takeaway
-
-Assessment filtering is substantially slower than baseline search even at the same result size and query count. This filter is available in the UI under feedback/expectation filters and is used in evaluation workflows.
-
-Creation benchmark: 3000 assessments in 2.7s, about 0.9 ms per assessment and about 1100 assessments/s.
-
-| filter                           | p50 (ms) | p95 (ms) | queries | vs no_filter |
-| :------------------------------- | -------: | -------: | ------: | -----------: |
-| no_filter                        |     54.6 |    104.9 |     304 |         1.0x |
-| feedback.correctness IS NOT NULL |    339.0 |    393.5 |     304 |         6.2x |
-| feedback.relevance IS NOT NULL   |    342.1 |    483.2 |     304 |         6.3x |
 
 ## Client-Side Serialization And Runtime Overhead
 
