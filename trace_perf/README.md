@@ -27,6 +27,8 @@ See [trace-perf-analysis.md](trace-perf-analysis.md) for results and analysis.
 | `bench_assessments.py`        | Assessment CRUD and search filtering overhead                     |
 | `bench_large_content.py`      | Ingestion and search with multi-MB span content (1MB-10MB)        |
 | `bench_text_search.py`        | Full-text search (trace.text ILIKE) on span content               |
+| `bench_trace_loading.py`      | get_trace() deserialization cost by span count and payload size   |
+| `bench_span_size.py`          | How serialized span size (attribute count) affects performance    |
 | `bench_explain_queries.py`    | SQL EXPLAIN analysis to verify index usage                        |
 | `bench_concurrent_writers.py` | Multi-threaded write contention and scaling                       |
 
@@ -67,6 +69,8 @@ uv run python trace_perf/bench_deletion.py
 uv run python trace_perf/bench_assessments.py
 uv run python trace_perf/bench_large_content.py
 uv run python trace_perf/bench_text_search.py
+uv run python trace_perf/bench_trace_loading.py
+uv run python trace_perf/bench_span_size.py
 uv run python trace_perf/bench_explain_queries.py
 uv run python trace_perf/bench_concurrent_writers.py
 

@@ -21,6 +21,7 @@ import argparse
 import json
 import random
 import resource
+import sys
 import tempfile
 import time
 import uuid
@@ -116,6 +117,14 @@ def _make_spans_with_payload(
 # ---------------------------------------------------------------------------
 
 
+def _get_rss_mb() -> float:
+    usage = resource.getrusage(resource.RUSAGE_SELF)
+    # ru_maxrss is in bytes on Linux, kilobytes on macOS
+    if sys.platform == "darwin":
+        return usage.ru_maxrss / (1024 * 1024)
+    return usage.ru_maxrss / 1024
+
+
 @dataclass
 class LoadTestResult:
     spans_per_trace: int
@@ -132,6 +141,8 @@ class LoadTestResult:
     cpu_sys_s: float
     cpu_utilization: float
     db_size_mb: float
+    rss_before_mb: float
+    rss_after_mb: float
 
 
 def _percentile(data: list[float], pct: float) -> float:
@@ -186,6 +197,7 @@ def run_load_test(
         store.log_spans(experiment_id, sp)
 
     # Measured run
+    rss_before = _get_rss_mb()
     cpu_before = _get_cpu_times()
     wall_start = time.perf_counter()
     deadline = wall_start + duration_s
@@ -234,6 +246,7 @@ def run_load_test(
     cpu_util = cpu_total / wall_elapsed if wall_elapsed > 0 else 0.0
 
     db_size_mb = get_db_size_mb(store, db_path) or 0.0
+    rss_after = _get_rss_mb()
 
     return LoadTestResult(
         spans_per_trace=spans_per_trace,
@@ -250,6 +263,8 @@ def run_load_test(
         cpu_sys_s=cpu_sys,
         cpu_utilization=cpu_util,
         db_size_mb=db_size_mb,
+        rss_before_mb=rss_before,
+        rss_after_mb=rss_after,
     )
 
 
@@ -257,8 +272,8 @@ def run_load_test(
 # Output
 # ---------------------------------------------------------------------------
 
-SEP = "=" * 110
-DASH = "-" * 110
+SEP = "=" * 125
+DASH = "-" * 125
 
 
 def print_results(results: list[LoadTestResult]) -> None:
@@ -271,18 +286,21 @@ def print_results(results: list[LoadTestResult]) -> None:
         f"{'traces':>6} {'QPS':>7} | "
         f"{'p50(ms)':>8} {'p95(ms)':>8} {'p99(ms)':>8} | "
         f"{'CPU usr':>7} {'CPU sys':>7} {'CPU %':>6} | "
-        f"{'DB (MB)':>8}"
+        f"{'DB (MB)':>8} | "
+        f"{'RSS Δ(MB)':>9}"
     )
     print(header)
     print(DASH)
 
     for r in results:
+        rss_delta = r.rss_after_mb - r.rss_before_mb
         print(
             f"{r.spans_per_trace:>5} {r.payload_label:>10} {r.target_qps:>7} | "
             f"{r.traces_submitted:>6} {r.achieved_qps:>7.1f} | "
             f"{r.p50_ms:>8.1f} {r.p95_ms:>8.1f} {r.p99_ms:>8.1f} | "
             f"{r.cpu_user_s:>7.2f} {r.cpu_sys_s:>7.2f} {r.cpu_utilization * 100:>5.1f}% | "
-            f"{r.db_size_mb:>8.1f}"
+            f"{r.db_size_mb:>8.1f} | "
+            f"{rss_delta:>9.1f}"
         )
 
     print(SEP)

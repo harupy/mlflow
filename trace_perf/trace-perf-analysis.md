@@ -18,7 +18,7 @@ This document benchmarks MLflow tracing across ingestion, search, client-side se
 1. **Bulk insert spans and span metrics in `log_spans()`.**
 2. **Eager-load trace relationships in `search_traces()`.**
 3. **Add an early disabled fast path in `@mlflow.trace`.**
-4. **Replace JSON-regex span-name filtering with indexed lookup.**
+4. **Replace unindexed span content scanning with indexed lookup** (affects both UI search bar and span-name filters).
 5. **Address assessment-search indexing and span-processor lock contention.**
 
 ### What is not the bottleneck
@@ -153,6 +153,64 @@ Large payloads increase ingestion latency and storage footprint linearly, but do
 | 1MB     |             8.5 |     1.0x |
 | 5MB     |             8.6 |     1.0x |
 | 10MB    |             8.6 |     1.0x |
+
+### Span size (attribute count)
+
+Span size is controlled by the number of attributes per span. Each attribute adds ~50-200 bytes of serialized JSON.
+
+| attrs/span | avg span size | ingestion p50 (ms) | get_trace p50 (ms) | search p50 (ms) |
+| ---------: | ------------: | -----------------: | -----------------: | --------------: |
+|          5 |        1.2 KB |               10.1 |               1.14 |            39.6 |
+|         20 |        3.6 KB |               11.9 |               1.24 |            39.2 |
+|         50 |        8.6 KB |               12.0 |               1.44 |            38.8 |
+|        100 |       17.0 KB |               14.9 |               1.59 |            45.5 |
+|        200 |       33.9 KB |               19.4 |               2.87 |            43.1 |
+
+- Ingestion scales modestly: 1.9x slower at 200 attrs (34 KB/span) vs 5 attrs (1.2 KB/span). The ORM merge overhead still dominates over content size.
+- Deserialization (`get_trace`) scales similarly: 2.5x at 200 attrs.
+- Search is unaffected by span size — it doesn't load span content.
+
+## Trace Loading (Deserialization)
+
+### Takeaway
+
+When a user clicks a trace in the UI, `get_trace()` deserializes every span via `json.loads(content)` + `Span.from_dict()`. This cost scales with both span count and payload size.
+
+### By span count (small payload)
+
+| spans | p50 (ms) | p95 (ms) | per-span (us) |
+| ----: | -------: | -------: | ------------: |
+|    10 |     1.16 |     1.26 |         116.0 |
+|    50 |     2.23 |     2.39 |          44.6 |
+|   100 |     3.66 |     4.21 |          36.6 |
+|   250 |     7.16 |    10.23 |          28.7 |
+
+- Per-span cost amortizes from ~116 us at 10 spans to ~29 us at 250 spans.
+- A 100-span trace loads in under 4 ms — fast for single-trace views.
+
+### By payload size (10 spans)
+
+| payload | p50 (ms) | p95 (ms) | vs small |
+| :------ | -------: | -------: | -------: |
+| small   |     1.17 |     1.46 |     1.0x |
+| 100KB   |     1.41 |     1.82 |     1.2x |
+| 1MB     |     3.74 |     4.38 |     3.2x |
+| 10MB    |    28.82 |    29.94 |    24.5x |
+
+- Payload size dominates: 10MB traces take 29 ms to deserialize (24.5x vs small).
+- The cost is `json.loads()` on the content column — linear in content size.
+
+### Batch loading
+
+| traces | p50 (ms) | p95 (ms) | per-trace (ms) |
+| -----: | -------: | -------: | -------------: |
+|      1 |     1.27 |     1.69 |           1.27 |
+|     10 |     8.61 |    14.06 |           0.86 |
+|     50 |    40.41 |    82.30 |           0.81 |
+|    100 |    82.36 |   128.26 |           0.82 |
+
+- `batch_get_traces()` scales linearly. 100 traces at 10 spans each takes ~82 ms.
+- Per-trace cost is slightly lower in batch mode (~0.8 ms vs 1.3 ms) due to amortized query overhead.
 
 ## Search
 
@@ -403,20 +461,25 @@ session.query(SqlTraceInfo).options(
 )
 ```
 
-## 3. Span-name filtering scans JSON blobs
+## 3. Span content scanning is unindexed
 
-Current behavior is equivalent to filtering with regex over the raw JSON `content` column:
+Both span-name filtering and UI full-text search scan the raw JSON `content` column:
 
 ```sql
+-- span.name filter (RLIKE):
 WHERE content RLIKE '"name":\s*"llm_0"'
+
+-- UI search bar (ILIKE):
+WHERE content ILIKE '%query%'
 ```
 
-This cannot use a useful lookup index and degrades linearly with corpus size.
+Neither can use an index. `span.name` degrades 26x from 500 to 10K traces. `trace.text ILIKE` degrades 4.2x from 500 to 5K traces. The UI search bar hits the ILIKE path, making this a common user-facing problem.
 
 Potential fix direction:
 
-- Extract span name into an indexed column
-- Or use generated columns / native JSON extraction where supported
+- Extract commonly filtered span attributes (name, type) into indexed columns
+- Use generated columns / native JSON extraction where supported
+- For full-text search, consider a dedicated search index or pre-extracted text column
 
 ## 4. Offset-based pagination adds avoidable cost
 
@@ -479,9 +542,10 @@ Potential fix direction:
 
 ## Medium impact
 
-### 4. Indexed span-name filtering
+### 4. Indexed span content filtering
 
-- Expected impact: remove linear scan behavior for `by_span_name`
+- Expected impact: remove linear scan behavior for both `span.name` and `trace.text ILIKE` (UI search bar)
+- Affects the most common user-facing search path
 
 ### 5. Assessment-search indexing / query rewrite
 
