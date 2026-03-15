@@ -86,4 +86,7 @@ uv run python trace_perf/bench_e2e_http.py
 # PostgreSQL variants (where supported)
 uv run --with psycopg2-binary python trace_perf/bench_concurrent_writers.py --db-uri "$PG_URI"
 uv run --with psycopg2-binary python trace_perf/bench_explain_queries.py --db-uri "$PG_URI"
+
+# Regenerate the PDF from the analysis markdown
+npx md-to-pdf trace_perf/trace-perf-analysis.md
 ```
