@@ -32,6 +32,7 @@ See [trace-perf-analysis.md](trace-perf-analysis.md) for results and analysis.
 | `bench_explain_queries.py`    | SQL EXPLAIN analysis to verify index usage                        |
 | `bench_concurrent_writers.py` | Multi-threaded write contention and scaling                       |
 | `bench_server_resources.py`   | CPU, RSS, DB size over time at varying QPS and span counts        |
+| `hf_bench.py` + `hf_run.sh`   | Hyperfine targets for before/after comparison across versions     |
 
 ### Client-side runtime benchmarks
 
@@ -82,6 +83,10 @@ uv run python trace_perf/bench_streaming_overhead.py
 uv run python trace_perf/bench_span_processor.py
 uv run python trace_perf/bench_async_export.py
 uv run python trace_perf/bench_e2e_http.py
+
+# Hyperfine before/after comparison
+bash trace_perf/hf_run.sh
+bash trace_perf/hf_run.sh --before "mlflow==2.20.0" --after "."
 
 # PostgreSQL variants (where supported)
 uv run --with psycopg2-binary python trace_perf/bench_concurrent_writers.py --db-uri "$PG_URI"

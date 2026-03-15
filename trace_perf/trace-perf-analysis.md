@@ -618,13 +618,46 @@ Potential fix direction:
 
 ## CI Guidance
 
-These benchmarks are not good candidates for standard CI on noisy shared runners:
+### Why not run benchmarks in CI today
 
-- The main bottlenecks are structural, not marginal.
-- Shared CI hardware introduces enough variance to obscure moderate regressions.
-- Targeted benchmark scripts around a specific fix provide much clearer signal.
+- **Shared runners are noisy.** GitHub Actions uses shared hardware with variable load. A 10-20% swing from runner noise is indistinguishable from a real regression at the latencies we measure (~10-100 ms). This makes it hard to set meaningful pass/fail thresholds.
+- **The current bottlenecks are structural.** `session.merge()` at 79% of wall time and 301 lazy-load queries per search are algorithmic problems — they won't silently regress by 5% from a code change. They either exist or they don't.
 
-Revisit CI-based perf protection after the major algorithmic issues are fixed and a quieter benchmark environment is available.
+### Why benchmarks alone are not enough
+
+Even with stable hardware, wall-clock benchmarks struggle to catch **small incremental performance degradation** — the kind that accumulates over months of PRs until someone notices the system is 2x slower. Each individual PR might add 3-5% overhead that falls within measurement noise.
+
+Better complementary approaches:
+
+- **Query count assertions.** A test that asserts `search_traces(max_results=100)` executes exactly N SQL queries will catch any change that adds a lazy-load or an extra SELECT — regardless of hardware noise. This is the approach `bench_n_plus_one.py` uses.
+- **Merge call counting.** A test that asserts `log_spans()` with 100 spans makes exactly N `session.merge()` calls will catch any regression in the ingestion path.
+- **Algorithmic complexity checks.** Assert that latency scales sub-linearly with corpus size for indexed queries, or that ingestion time is proportional to span count within a tolerance.
+
+These are deterministic, noise-free, and can run on any CI runner.
+
+### Hyperfine for before/after comparison
+
+`hf_bench.py` provides single-operation subcommands (`ingest`, `search`, `get-trace`, `text-search`) designed for [hyperfine](https://github.com/sharkdp/hyperfine). The `setup` subcommand creates a shared SQLite DB, and each operation subcommand runs one operation against it.
+
+```bash
+# Benchmark current code
+bash trace_perf/hf_run.sh
+
+# Compare a fix branch against main
+bash trace_perf/hf_run.sh \
+  --before "mlflow @ git+https://github.com/mlflow/mlflow@main" \
+  --after  "mlflow @ git+https://github.com/harupy/mlflow@fix-n-plus-one"
+
+# Compare against a released version
+bash trace_perf/hf_run.sh --before "mlflow==2.20.0" --after "."
+```
+
+This leverages `uv run --with` to install different MLflow versions into isolated environments, so you can compare before/after without switching branches. Hyperfine handles warmup, statistical analysis, and reports mean/stddev/min/max automatically.
+
+### When to revisit
+
+- After the major bottlenecks (#1 bulk insert, #2 eager loading) are fixed, the remaining performance budget will be tighter, and marginal regressions will matter more.
+- At that point, consider: (a) query-count regression tests in CI now, and (b) wall-clock benchmarks on dedicated stable hardware later.
 
 ## Reproducing
 
