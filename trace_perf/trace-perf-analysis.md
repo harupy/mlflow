@@ -134,6 +134,18 @@ Under sustained write load, the system saturates sharply. Span count dominates t
 ![CPU utilization vs ingestion rate](../plots/sustained_cpu.png)
 ![DB size after sustained load](../plots/db_size.png)
 
+### Resource usage over time
+
+Monitoring CPU, RSS, throughput, and DB size per second at varying QPS and span counts shows:
+
+- **CPU scales linearly with QPS** until saturation. At 10 spans: 5 QPS uses ~14%, 20 QPS uses ~35%, 50 QPS uses ~78%, 100 QPS saturates at ~95%.
+- **RSS stays flat over time** within each run — no memory leaks or accumulation. The differences between QPS levels are from the pre-generated trace pool, not runtime growth.
+- **Throughput is stable** below saturation. Above saturation (e.g., 100 QPS target at 10 spans, or >20 QPS at 50 spans), achieved QPS flattens regardless of target.
+- **DB size grows linearly** with throughput. At 50 QPS with 10 spans, the DB grows at ~0.7 MB/s.
+- **At 50 spans/trace**, 50 and 100 QPS targets both saturate at ~20 QPS. At **100 spans/trace**, everything above 10 QPS saturates at ~11 QPS.
+
+![Server resources over time — 10 spans/trace](../plots/server_resources_10sp.png)
+
 ### Large span content
 
 ### Takeaway

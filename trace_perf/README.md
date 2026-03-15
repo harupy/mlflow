@@ -31,6 +31,7 @@ See [trace-perf-analysis.md](trace-perf-analysis.md) for results and analysis.
 | `bench_span_size.py`          | How serialized span size (attribute count) affects performance    |
 | `bench_explain_queries.py`    | SQL EXPLAIN analysis to verify index usage                        |
 | `bench_concurrent_writers.py` | Multi-threaded write contention and scaling                       |
+| `bench_server_resources.py`   | CPU, RSS, DB size over time at varying QPS and span counts        |
 
 ### Client-side runtime benchmarks
 
@@ -73,6 +74,7 @@ uv run python trace_perf/bench_trace_loading.py
 uv run python trace_perf/bench_span_size.py
 uv run python trace_perf/bench_explain_queries.py
 uv run python trace_perf/bench_concurrent_writers.py
+uv run python trace_perf/bench_server_resources.py --spans 10,50,100 --qps 5,20,50,100 --plot
 
 # Client-side runtime benchmarks
 uv run python trace_perf/bench_tracing_disabled.py
