@@ -95,6 +95,17 @@ store.log_spans(experiment_id, trace_id, spans)
 
 ### Sustained load
 
+Continuously ingests traces at a target QPS for 60s and measures achieved throughput, latency, and resource usage:
+
+```python
+t0 = time.time()
+while time.time() - t0 < 60:
+    time.sleep(1 / target_qps)
+    store.start_trace(...)
+    store.log_spans(..., spans)
+    # record latency, cpu, db_size per iteration
+```
+
 ### Takeaway
 
 Under sustained write load, the system saturates sharply. Span count dominates throughput; payload size has only a modest effect.
@@ -147,6 +158,14 @@ Monitoring CPU, RSS, throughput, and DB size per second at varying QPS and span 
 
 ### Large span content
 
+Each span's `content` column is padded to a target size (1MB, 5MB, 10MB), then ingested and searched:
+
+```python
+span.content = json.dumps({"input": "x" * target_bytes})
+store.log_spans(..., [span])  # measure ingestion
+store.search_traces(experiment_id)  # measure search
+```
+
 ### Takeaway
 
 Large payloads increase ingestion latency and storage footprint linearly, but do not materially affect baseline search latency.
@@ -167,7 +186,12 @@ Large payloads increase ingestion latency and storage footprint linearly, but do
 
 ### Span size (attribute count)
 
-Span size is controlled by the number of attributes per span. Each attribute adds ~50-200 bytes of serialized JSON.
+Varies the number of attributes per span to control serialized size:
+
+```python
+span.attributes = {f"attr_{i}": f"value_{i}" for i in range(num_attrs)}
+# 5 attrs → 1.2 KB/span, 200 attrs → 33.9 KB/span
+```
 
 | attrs/span | avg span size | ingestion p50 (ms) | get_trace p50 (ms) | search p50 (ms) |
 | ---------: | ------------: | -----------------: | -----------------: | --------------: |
@@ -182,6 +206,17 @@ Span size is controlled by the number of attributes per span. Each attribute add
 - Search is unaffected by span size — it doesn't load span content.
 
 ## Client-Side Serialization
+
+Measures each step in the client export pipeline:
+
+```python
+trace_data = TraceData(spans)
+json_bytes = json.dumps(trace_data)  # json_dumps
+trace_dict = trace_data.to_dict()  # to_dict
+proto_obj = _trace_to_proto(trace_dict)  # to_proto
+proto_bytes = proto_obj.SerializeToString()  # proto_ser
+add_size_stats_to_trace_metadata(trace_data)  # size_stats
+```
 
 ### Takeaway
 
@@ -209,6 +244,18 @@ Serialization cost is linear in payload size. For large payloads, recursive OTLP
 ### Takeaway
 
 Search latency is dominated by N+1 relationship loading, not the SQL query itself. With `max_results=500`, the N+1 lazy loading fires **1501 queries** (3x500+1). On top of that, full-text search and assessment filters each add their own scaling problems.
+
+Measures `search_traces()` with common filter patterns against varying corpus sizes:
+
+```python
+store.search_traces(experiment_id, filter_string, max_results=100)
+# filter_string examples:
+#   ""                                          → no_filter
+#   "attributes.status = 'OK'"                  → by_status
+#   "tags.env = 'prod'"                         → by_tag
+#   "trace.timestamp_ms DESC"                   → timestamp_order
+#   page_token=deep_offset                      → deep_page
+```
 
 ### Baseline search (p50 latency in ms, max_results=100)
 
@@ -265,6 +312,14 @@ The overhead comes from a DISTINCT subquery on the unindexed assessments table j
 
 ## Trace Loading (Deserialization)
 
+Measures the cost of loading a single trace from the store:
+
+```python
+trace = store.get_trace(trace_id)
+# internally: SELECT content FROM spans WHERE trace_id = ?
+# then for each row: json.loads(content) → Span.from_dict(parsed)
+```
+
 ### Takeaway
 
 `get_trace()` deserializes every span via `json.loads(content)` + `Span.from_dict()`. This cost scales with both span count and payload size.
@@ -309,6 +364,21 @@ The overhead comes from a DISTINCT subquery on the unindexed assessments table j
 
 ### Decorator overhead
 
+Compares the cost of calling a trivial function in three scenarios:
+
+```python
+def raw():
+    return 1  # no decorator
+
+
+@mlflow.trace
+def traced():
+    return 1  # tracing enabled
+
+
+# also: tracing disabled via mlflow.tracing.disable()
+```
+
 ### Takeaway
 
 Disabled tracing is not free, and enabled tracing is dominated by span creation and export.
@@ -321,6 +391,18 @@ Disabled tracing is not free, and enabled tracing is dominated by span creation 
 
 ### Streaming overhead
 
+Measures per-chunk overhead when tracing a generator:
+
+```python
+@mlflow.trace
+def stream():
+    for i in range(num_chunks):
+        yield f"chunk_{i}"
+
+
+list(stream())  # force full consumption
+```
+
 ### Takeaway
 
 Tracing a generator adds about 10 us per yielded chunk, which becomes visible for token-by-token streaming.
@@ -332,6 +414,15 @@ Tracing a generator adds about 10 us per yielded chunk, which becomes visible fo
 | 10,000 |          1.16 |       95.35 |         94.19 |           9.42 |
 
 ### Span processor contention
+
+Measures `on_end()` throughput with multiple threads completing spans concurrently:
+
+```python
+# N threads, each completing `spans_per_thread` spans
+with ThreadPoolExecutor(N) as pool:
+    pool.map(lambda s: processor.on_end(s), all_spans)
+# on_end() acquires a lock → serialization point
+```
 
 ### Takeaway
 
@@ -347,6 +438,14 @@ The span processor introduces a meaningful serialization point under concurrency
 |       4 |   100 |          58.98 |         589.8 |   114.03 |        4.5x |
 
 ### Async export batching
+
+Measures the export queue's throughput at different batch sizes:
+
+```python
+queue.put(span)  # enqueue one at a time
+queue.flush()  # drain all pending
+queue.export(batch_size=N)  # export N spans per round-trip
+```
 
 ### Takeaway
 
@@ -669,6 +768,12 @@ docker rm -f mlflow-bench-pg
 
 ### Concurrent writers on SQLite
 
+```python
+# N threads, each continuously ingesting traces against the same SQLite DB
+with ThreadPoolExecutor(N) as pool:
+    pool.map(lambda _: store.start_trace(...) + store.log_spans(...), tasks)
+```
+
 | threads | traces/s | spans/s | p50 (ms) | p95 (ms) | p99 (ms) | scaling |
 | ------: | -------: | ------: | -------: | -------: | -------: | ------: |
 |       1 |     64.4 |     644 |     15.2 |     18.3 |     24.4 |    100% |
@@ -677,6 +782,12 @@ docker rm -f mlflow-bench-pg
 |       8 |     65.6 |     656 |     16.6 |    682.4 |   1418.5 |     13% |
 
 ### End-to-end HTTP path
+
+```python
+# Direct: store.log_spans(...) bypassing HTTP
+# HTTP:   POST /api/2.0/mlflow/traces with OTLP protobuf body
+#         (includes client serialization + network + server deserialization)
+```
 
 | spans | direct p50 (ms) | HTTP p50 (ms) | serialize (ms) | overhead |
 | ----: | --------------: | ------------: | -------------: | -------: |
