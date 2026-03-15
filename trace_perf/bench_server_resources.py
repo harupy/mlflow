@@ -316,25 +316,27 @@ def plot_results(results: list[ResourceTestResult], title_suffix: str, out_path:
         axes[2].plot(times, [s.qps_instant for s in result.samples], label=label, marker=".")
         axes[3].plot(times, [s.db_size_mb for s in result.samples], label=label, marker=".")
 
+    legend_kwargs = {"bbox_to_anchor": (1.01, 1), "loc": "upper left", "borderaxespad": 0}
+
     axes[0].set_ylabel("CPU %")
     axes[0].set_title("CPU Utilization")
-    axes[0].legend()
+    axes[0].legend(**legend_kwargs)
     axes[0].grid(True, alpha=0.3)
 
     axes[1].set_ylabel("RSS (MB)")
     axes[1].set_title("Memory (RSS)")
-    axes[1].legend()
+    axes[1].legend(**legend_kwargs)
     axes[1].grid(True, alpha=0.3)
 
     axes[2].set_ylabel("QPS")
     axes[2].set_title("Achieved Throughput")
-    axes[2].legend()
+    axes[2].legend(**legend_kwargs)
     axes[2].grid(True, alpha=0.3)
 
     axes[3].set_ylabel("DB Size (MB)")
     axes[3].set_xlabel("Time (s)")
     axes[3].set_title("Database Size")
-    axes[3].legend()
+    axes[3].legend(**legend_kwargs)
     axes[3].grid(True, alpha=0.3)
 
     plt.tight_layout()
