@@ -61,8 +61,6 @@ This document benchmarks MLflow tracing across ingestion, search, client-side se
 - The attribution of simple search latency to lazy loading is strongly supported by query-count behavior, but is still an inference rather than a profiler-backed call tree.
 - Client-side serialization costs matter primarily for large payloads; for typical small traces, server-side bottlenecks dominate.
 
-## Findings By Area
-
 ## Ingestion
 
 ### Takeaway
@@ -122,6 +120,12 @@ Under sustained write load, the system saturates sharply. Span count dominates t
 |         100 |   100KB |    10.4 |   1,036 |       96 |      110 |   95% |   2,604 |
 
 #### Target rates
+
+| column       | meaning                                                                 |
+| :----------- | :---------------------------------------------------------------------- |
+| target       | requested QPS                                                           |
+| achieved QPS | actual QPS sustained over the run                                       |
+| headroom     | `1 - (achieved / max)` — how much capacity remains. **SAT** = saturated |
 
 | spans | payload | target | achieved QPS | p50 (ms) | p99 (ms) | CPU % | headroom |
 | ----: | ------: | -----: | -----------: | -------: | -------: | ----: | -------: |
@@ -207,16 +211,15 @@ span.attributes = {f"attr_{i}": f"value_{i}" for i in range(num_attrs)}
 
 ## Client-Side Serialization
 
-Measures each step in the client export pipeline:
+Profiles the client export pipeline with cProfile to identify where CPU time goes.
 
-```python
-trace_data = TraceData(spans)
-json_bytes = json.dumps(trace_data)  # json_dumps
-trace_dict = trace_data.to_dict()  # to_dict
-proto_obj = _trace_to_proto(trace_dict)  # to_proto
-proto_bytes = proto_obj.SerializeToString()  # proto_ser
-add_size_stats_to_trace_metadata(trace_data)  # size_stats
-```
+| column     | what it measures                                            | code                                                                                                                        |
+| :--------- | :---------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------- |
+| json_dumps | JSON-serializing span inputs/outputs via `TraceJSONEncoder` | [`dump_span_attribute_value()`](https://github.com/mlflow/mlflow/blob/c24a030/mlflow/tracing/utils/__init__.py#L124)        |
+| to_dict    | Converting each `Span` to a Python dict                     | [`Span.to_dict()`](https://github.com/mlflow/mlflow/blob/c24a030/mlflow/entities/span.py#L247)                              |
+| to_proto   | Converting each `Span` to an OTel protobuf object           | [`Span.to_otel_proto()`](https://github.com/mlflow/mlflow/blob/c24a030/mlflow/entities/span.py#L448)                        |
+| proto_ser  | Serializing the full `ExportTraceServiceRequest` to bytes   | [`request.SerializeToString()`](https://github.com/mlflow/mlflow/blob/c24a030/mlflow/store/tracking/rest_store.py#L2154)    |
+| size_stats | Re-serializing spans to compute JSON byte sizes             | [`add_size_stats_to_trace_metadata()`](https://github.com/mlflow/mlflow/blob/c24a030/mlflow/tracing/utils/__init__.py#L614) |
 
 ### Takeaway
 
@@ -247,15 +250,13 @@ Search latency is dominated by N+1 relationship loading, not the SQL query itsel
 
 Measures `search_traces()` with common filter patterns against varying corpus sizes:
 
-```python
-store.search_traces(experiment_id, filter_string, max_results=100)
-# filter_string examples:
-#   ""                                          → no_filter
-#   "attributes.status = 'OK'"                  → by_status
-#   "tags.env = 'prod'"                         → by_tag
-#   "trace.timestamp_ms DESC"                   → timestamp_order
-#   page_token=deep_offset                      → deep_page
-```
+| query           | filter / behavior                                     |
+| :-------------- | :---------------------------------------------------- |
+| no_filter       | `""` — no filter, default sort                        |
+| by_status       | `"attributes.status = 'OK'"` — indexed column filter  |
+| by_tag          | `"tags.env = 'prod'"` — tag table join                |
+| timestamp_order | `order_by=["timestamp DESC"]` — indexed sort          |
+| deep_page       | `page_token` pointing to offset 90 — skips prior rows |
 
 ### Baseline search (p50 latency in ms, max_results=100)
 
@@ -364,20 +365,13 @@ trace = store.get_trace(trace_id)
 
 ### Decorator overhead
 
-Compares the cost of calling a trivial function in three scenarios:
+Compares the cost of calling a trivial function (`return 1`) in three scenarios:
 
-```python
-def raw():
-    return 1  # no decorator
-
-
-@mlflow.trace
-def traced():
-    return 1  # tracing enabled
-
-
-# also: tracing disabled via mlflow.tracing.disable()
-```
+| scenario         | what it measures                                              |
+| :--------------- | :------------------------------------------------------------ |
+| raw              | bare function call — no decorator, baseline cost              |
+| tracing disabled | `@mlflow.trace` present but `mlflow.tracing.disable()` called |
+| tracing enabled  | `@mlflow.trace` active — includes span creation and export    |
 
 ### Takeaway
 
@@ -503,7 +497,7 @@ That makes the same architectural fix, bulk inserts instead of per-row ORM merge
 
 ## Root Causes
 
-## 1. Ingestion write amplification in `log_spans()`
+### 1. Ingestion write amplification in `log_spans()`
 
 `session.merge()` is called per span and per metric. Profiling 100 traces with 100 spans shows `session.merge()` accounting for 79% of wall time.
 
@@ -525,7 +519,7 @@ session.bulk_save_objects(span_rows + metric_rows)
 
 ![Ingestion CPU time breakdown](../plots/profile_breakdown.png)
 
-## 2. N+1 relationship loading in `search_traces()`
+### 2. N+1 relationship loading in `search_traces()`
 
 For `max_results=100`, the current pattern is effectively:
 
@@ -549,7 +543,7 @@ session.query(SqlTraceInfo).options(
 )
 ```
 
-## 3. Full-text search scans unindexed JSON content
+### 3. Full-text search scans unindexed JSON content
 
 `trace.text ILIKE '%query%'` scans the raw JSON `content` column of every span:
 
@@ -563,7 +557,7 @@ Potential fix direction:
 
 - Consider a dedicated search index or pre-extracted text column
 
-## 4. Offset-based pagination adds avoidable cost
+### 4. Offset-based pagination adds avoidable cost
 
 Deep pagination requires the database to scan and discard prior rows:
 
@@ -580,7 +574,7 @@ ORDER BY timestamp DESC
 LIMIT 10
 ```
 
-## 5. Recursive OTLP attribute conversion is expensive for large payloads
+### 5. Recursive OTLP attribute conversion is expensive for large payloads
 
 `_set_otel_proto_anyvalue()` recursively decomposes JSON structures into nested protobuf objects. At 10MB payloads this generates about 2.6M recursive calls.
 
@@ -589,7 +583,7 @@ Potential fix direction:
 - Preserve current structure but reduce repeated conversion work
 - Consider opaque string storage only if OTLP compatibility tradeoffs are acceptable
 
-## 6. Size stats recompute JSON unnecessarily
+### 6. Size stats recompute JSON unnecessarily
 
 `add_size_stats_to_trace_metadata()` serializes span data again purely to measure JSON byte size. This adds about 33 ms at 10MB.
 
@@ -598,63 +592,63 @@ Potential fix direction:
 - Reuse cached JSON bytes
 - Or move size computation off the hot path
 
-## 7. Disabled tracing and concurrent span completion have avoidable overhead
+### 7. Disabled tracing and concurrent span completion have avoidable overhead
 
 - The tracing decorator still enters wrapper and context-manager machinery when disabled.
 - The span processor uses a shared lock that serializes `on_end()` under contention.
 
 ## Prioritized Recommendations
 
-## High impact
+### High impact
 
-### 1. Bulk insert in `log_spans()`
+#### 1. Bulk insert in `log_spans()`
 
 - Expected impact: largest ingestion win, likely 5-10x in the hot path
 - Why first: it addresses the dominant bottleneck on both SQLite and PostgreSQL
 
-### 2. Eager-load relationships in `search_traces()`
+#### 2. Eager-load relationships in `search_traces()`
 
 - Expected impact: cut search query count from 301 to roughly 1-4
 - Why second: it directly reduces baseline search latency and has especially high value on PostgreSQL
 
-### 3. Early `is_tracing_enabled()` fast path in `@mlflow.trace`
+#### 3. Early `is_tracing_enabled()` fast path in `@mlflow.trace`
 
 - Expected impact: reduce disabled overhead from about 16 us toward near-zero
 - Why third: low effort and immediately useful for hot paths
 
-## Medium impact
+### Medium impact
 
-### 4. Indexed span content filtering
+#### 4. Indexed span content filtering
 
 - Expected impact: remove linear scan behavior for `trace.text ILIKE` full-text search
 
-### 5. Assessment-search indexing / query rewrite
+#### 5. Assessment-search indexing / query rewrite
 
 - Expected impact: materially reduce the 6.2x penalty for assessment-filtered search
 
-### 6. Reduce span-processor lock contention
+#### 6. Reduce span-processor lock contention
 
 - Expected impact: better scaling for concurrent tracing workloads
 
-### 7. Batch or sample streaming events
+#### 7. Batch or sample streaming events
 
 - Expected impact: reduce generator tracing overhead for high-chunk-count streams
 
-## Lower impact
+### Lower impact
 
-### 8. Collapse redundant metadata queries
+#### 8. Collapse redundant metadata queries
 
 - Current pattern: separate queries for token usage, cost, and session ID
 
-### 9. Defer or cache size-stat computation
+#### 9. Defer or cache size-stat computation
 
 - Important mainly for large payloads
 
-### 10. Switch deep pagination to keyset pagination
+#### 10. Switch deep pagination to keyset pagination
 
 - Helpful for deeper search navigation, not the first-page experience
 
-### 11. Consider opaque JSON strings in OTLP only with compatibility review
+#### 11. Consider opaque JSON strings in OTLP only with compatibility review
 
 - High upside for large payload serialization
 - High semantic and compatibility risk
@@ -773,6 +767,8 @@ docker rm -f mlflow-bench-pg
 with ThreadPoolExecutor(N) as pool:
     pool.map(lambda _: store.start_trace(...) + store.log_spans(...), tasks)
 ```
+
+`scaling` = per-thread throughput as a percentage of single-thread throughput. 100% = perfect linear scaling.
 
 | threads | traces/s | spans/s | p50 (ms) | p95 (ms) | p99 (ms) | scaling |
 | ------: | -------: | ------: | -------: | -------: | -------: | ------: |
