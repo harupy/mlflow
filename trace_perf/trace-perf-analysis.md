@@ -655,28 +655,16 @@ Potential fix direction:
 - High upside for large payload serialization
 - High semantic and compatibility risk
 
-## CI Guidance
+## Do We Need Benchmark CI Jobs?
 
-### Why not run benchmarks in CI today
-
-- **Shared runners are noisy.** GitHub Actions uses shared hardware with variable load. A 10-20% swing from runner noise is indistinguishable from a real regression at the latencies we measure (~10-100 ms). This makes it hard to set meaningful pass/fail thresholds.
-- **The current bottlenecks are structural.** `session.merge()` at 79% of wall time and 301 lazy-load queries per search are algorithmic problems - they won't silently regress by 5% from a code change. They either exist or they don't.
-
-### Why benchmarks alone are not enough
-
-Even with stable hardware, wall-clock benchmarks struggle to catch **small incremental performance degradation** - the kind that accumulates over months of PRs until someone notices the system is 2x slower. Each individual PR might add 3-5% overhead that falls within measurement noise.
+Benchmarks in CI can't catch **small incremental performance degradation** - the kind where each PR adds 3-5% overhead that falls within measurement noise, until the system is 2x slower months later. GitHub Actions shared runners add 10-20% noise on top of that.
 
 Better complementary approaches:
 
-- **Query count assertions.** A test that asserts `search_traces(max_results=100)` executes exactly N SQL queries will catch any change that adds a lazy-load or an extra SELECT - regardless of hardware noise. This is the approach `bench_n_plus_one.py` uses.
-- **Merge call counting.** A test that asserts `log_spans()` with 100 spans makes exactly N `session.merge()` calls will catch any regression in the ingestion path.
+- **Query count assertions.** Assert that `search_traces(max_results=100)` executes exactly N SQL queries. Any added lazy-load or extra SELECT breaks the test regardless of hardware noise. This is the approach `bench_n_plus_one.py` uses.
+- **Merge call counting.** Assert that `log_spans()` with 100 spans makes exactly N `session.merge()` calls.
 
-These are deterministic, noise-free, and can run on any CI runner.
-
-### When to revisit
-
-- After the major bottlenecks (#1 bulk insert, #2 eager loading) are fixed, the remaining performance budget will be tighter, and marginal regressions will matter more.
-- At that point, consider: (a) query-count regression tests in CI now, and (b) wall-clock benchmarks on dedicated stable hardware later.
+For one-off benchmarking, coding agents can write and run benchmark scripts fast enough that keeping permanent benchmark infrastructure may not be worth the maintenance cost.
 
 ## Reproducing
 
