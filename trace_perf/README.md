@@ -45,9 +45,10 @@ See [trace-perf-analysis.md](trace-perf-analysis.md) for results and analysis.
 
 ### Shared utilities
 
-| File       | Description                                                               |
-| ---------- | ------------------------------------------------------------------------- |
-| `utils.py` | Shared data generation, store helpers, query counting, payload generation |
+| File                | Description                                                               |
+| ------------------- | ------------------------------------------------------------------------- |
+| `utils.py`          | Shared data generation, store helpers, query counting, payload generation |
+| `generate_plots.py` | Generate matplotlib plots for trace performance analysis                  |
 
 ## Quick start
 
