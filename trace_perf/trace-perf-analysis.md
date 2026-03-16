@@ -1,5 +1,7 @@
 # Trace Performance Analysis
 
+Source: [harupy/mlflow@trace-perf](https://github.com/harupy/mlflow/tree/trace-perf)
+
 ## Key Takeaways
 
 This document benchmarks MLflow tracing across ingestion, search, client-side serialization, runtime overhead, and backend choice. The goal is to identify the dominant bottlenecks, quantify their impact, and prioritize fixes.
