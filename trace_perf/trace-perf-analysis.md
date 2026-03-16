@@ -650,10 +650,11 @@ Potential fix direction:
 
 - Helpful for deeper search navigation, not the first-page experience
 
-#### 11. Consider opaque JSON strings in OTLP only with compatibility review
+#### 11. Store span attributes as opaque JSON strings in OTLP
 
+- Currently `_set_otel_proto_anyvalue()` recursively converts JSON into nested protobuf objects (~2.6M calls at 10MB). Storing the JSON as a single `string_value` instead would skip this conversion entirely.
 - High upside for large payload serialization
-- High semantic and compatibility risk
+- High compatibility risk: OTLP consumers expect structured `AnyValue` trees, not raw JSON strings
 
 ## Do We Need Benchmark CI Jobs?
 
@@ -664,94 +665,6 @@ Better complementary approaches:
 - **Query count assertions.** Assert that `search_traces(max_results=100)` executes exactly N SQL queries. Any added lazy-load or extra SELECT breaks the test regardless of hardware noise. This is the approach `bench_n_plus_one.py` uses.
 - **Merge call counting.** Assert that `log_spans()` with 100 spans makes exactly N `session.merge()` calls.
 
+- **Lightweight benchmark on master push.** Run a small fixed workload (e.g., ingest 100 spans, search 100 traces) on every push to master and persist the results as a CI artifact. Individual runs are noisy, but aggregating artifacts over time reveals gradual drift that single run-to-run comparisons miss.
+
 For one-off benchmarking, coding agents can write and run benchmark scripts fast enough that keeping permanent benchmark infrastructure may not be worth the maintenance cost.
-
-## Reproducing
-
-```bash
-# Full server-side benchmark
-uv run python trace_perf/trace_benchmark.py
-
-# Ingestion with cProfile
-uv run python trace_perf/trace_benchmark.py --benchmarks ingest --profile
-
-# Client-side serialization benchmark
-uv run python trace_perf/bench_client_serialization.py
-uv run python trace_perf/bench_client_serialization.py --profile
-uv run python trace_perf/bench_client_serialization.py --spans 50
-
-# Sustained load benchmark
-uv run python trace_perf/bench_sustained_load.py
-uv run python trace_perf/bench_sustained_load.py --spans 10,50 --payloads small --qps max,10 --duration 30
-
-# Extended store-layer benchmarks
-uv run python trace_perf/bench_assessments.py
-uv run python trace_perf/bench_large_content.py
-uv run python trace_perf/bench_explain_queries.py
-uv run python trace_perf/bench_concurrent_writers.py
-
-# Client runtime benchmarks
-uv run python trace_perf/bench_tracing_disabled.py
-uv run python trace_perf/bench_streaming_overhead.py
-uv run python trace_perf/bench_span_processor.py
-uv run python trace_perf/bench_async_export.py
-uv run python trace_perf/bench_e2e_http.py
-
-# Generate plots
-uv run python trace_perf/generate_plots.py
-
-# Visualize profiles
-uvx snakeviz trace_benchmark.prof
-uvx snakeviz client_serialization.prof
-
-# PostgreSQL
-docker run -d --name mlflow-bench-pg \
-  -e POSTGRES_USER=mlflow -e POSTGRES_PASSWORD=mlflow -e POSTGRES_DB=mlflow_bench \
-  -p 5432:5432 postgres:16
-
-export PG_URI="postgresql://mlflow:mlflow@localhost:5432/mlflow_bench"
-uv run --with psycopg2-binary python trace_perf/trace_benchmark.py --db-uri "$PG_URI"
-uv run --with psycopg2-binary python trace_perf/bench_sustained_load.py --db-uri "$PG_URI" --spans 10,100 --qps max,10 --duration 30
-uv run --with psycopg2-binary python trace_perf/bench_concurrent_writers.py --db-uri "$PG_URI"
-uv run --with psycopg2-binary python trace_perf/bench_explain_queries.py --db-uri "$PG_URI"
-
-docker rm -f mlflow-bench-pg
-```
-
-## Appendix: Secondary Supporting Results
-
-### Resource usage
-
-- DB size: 217 MB for about 18.5K traces, roughly 12 KB/trace on average
-- Memory: peak RSS delta about 1.7 MB, tracemalloc peak about 2 MB
-
-### Concurrent writers on SQLite
-
-```python
-# N threads, each continuously ingesting traces against the same SQLite DB
-with ThreadPoolExecutor(N) as pool:
-    pool.map(lambda _: store.start_trace(...) + store.log_spans(...), tasks)
-```
-
-`scaling` = per-thread throughput as a percentage of single-thread throughput. 100% = perfect linear scaling.
-
-| threads | traces/s | spans/s | p50 (ms) | p95 (ms) | p99 (ms) | scaling |
-| ------: | -------: | ------: | -------: | -------: | -------: | ------: |
-|       1 |     64.4 |     644 |     15.2 |     18.3 |     24.4 |    100% |
-|       2 |     67.3 |     673 |     14.4 |     35.6 |    244.3 |     52% |
-|       4 |     68.3 |     683 |     15.0 |    181.0 |   1048.6 |     27% |
-|       8 |     65.6 |     656 |     16.6 |    682.4 |   1418.5 |     13% |
-
-### End-to-end HTTP path
-
-```python
-# Direct: store.log_spans(...) bypassing HTTP
-# HTTP:   POST /api/2.0/mlflow/traces with OTLP protobuf body
-#         (includes client serialization + network + server deserialization)
-```
-
-| spans | direct p50 (ms) | HTTP p50 (ms) | serialize (ms) | overhead |
-| ----: | --------------: | ------------: | -------------: | -------: |
-|    10 |            14.4 |          13.5 |            0.2 |     0.9x |
-|    50 |            42.2 |          44.0 |            1.0 |     1.0x |
-|   100 |            79.4 |          80.5 |            1.6 |     1.0x |
