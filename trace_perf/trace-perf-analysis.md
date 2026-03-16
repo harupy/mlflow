@@ -655,31 +655,6 @@ Potential fix direction:
 - High upside for large payload serialization
 - High semantic and compatibility risk
 
-## What We Validated
-
-### Confirmed server-side issues
-
-- Per-span and per-metric `session.merge()` in `log_spans()`
-- Lazy loading of tags, metadata, and assessments in search result hydration
-- Regex or text matching over JSON-backed span content
-- Offset-based deep pagination
-- Much slower assessment-filtered search
-- Poor scaling of concurrent SQLite writes
-
-### Confirmed client-side issues
-
-- Recursive OTLP conversion for large JSON attributes
-- Redundant size-stat serialization
-- Non-zero disabled tracing overhead
-- Measurable streaming chunk overhead
-- Span-processor lock contention under concurrency
-
-### Explicit non-bottlenecks
-
-- HTTP transport
-- Async export queue throughput
-- Baseline search sensitivity to large content size
-
 ## CI Guidance
 
 ### Why not run benchmarks in CI today
