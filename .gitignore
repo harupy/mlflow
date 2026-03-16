@@ -125,6 +125,9 @@ a.py
 a.ipynb
 a.md
 
+# Generated embedded markdown (large base64 images)
+trace_perf/trace-perf-analysis-embedded.md
+
 # Log file created by pre-commit hook for black
 .black.log
 
