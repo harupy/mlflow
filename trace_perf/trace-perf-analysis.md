@@ -125,7 +125,7 @@ Under sustained write load, the system saturates sharply. Span count dominates t
 | :----------- | :---------------------------------------------------------------------- |
 | target       | requested QPS                                                           |
 | achieved QPS | actual QPS sustained over the run                                       |
-| headroom     | `1 - (achieved / max)` — how much capacity remains. **SAT** = saturated |
+| headroom     | `1 - (achieved / max)` - how much capacity remains. **SAT** = saturated |
 
 | spans | payload | target | achieved QPS | p50 (ms) | p99 (ms) | CPU % | headroom |
 | ----: | ------: | -----: | -----------: | -------: | -------: | ----: | -------: |
@@ -153,12 +153,12 @@ Under sustained write load, the system saturates sharply. Span count dominates t
 Monitoring CPU, RSS, throughput, and DB size per second at varying QPS and span counts shows:
 
 - **CPU scales linearly with QPS** until saturation. At 10 spans: 5 QPS uses ~14%, 20 QPS uses ~35%, 50 QPS uses ~78%, 100 QPS saturates at ~95%.
-- **RSS stays flat over time** within each run — no memory leaks or accumulation. The differences between QPS levels are from the pre-generated trace pool, not runtime growth.
+- **RSS stays flat over time** within each run - no memory leaks or accumulation. The differences between QPS levels are from the pre-generated trace pool, not runtime growth.
 - **Throughput is stable** below saturation. Above saturation (e.g., 100 QPS target at 10 spans, or >20 QPS at 50 spans), achieved QPS flattens regardless of target.
 - **DB size grows linearly** with throughput. At 50 QPS with 10 spans, the DB grows at ~0.7 MB/s.
 - **At 50 spans/trace**, 50 and 100 QPS targets both saturate at ~20 QPS. At **100 spans/trace**, everything above 10 QPS saturates at ~11 QPS.
 
-![Server resources over time — 10 spans/trace](../plots/server_resources_10sp.png)
+![Server resources over time  - 10 spans/trace](../plots/server_resources_10sp.png)
 
 ### Large span content
 
@@ -207,7 +207,7 @@ span.attributes = {f"attr_{i}": f"value_{i}" for i in range(num_attrs)}
 
 - Ingestion scales modestly: 1.9x slower at 200 attrs (34 KB/span) vs 5 attrs (1.2 KB/span). The ORM merge overhead still dominates over content size.
 - Deserialization (`get_trace`) scales similarly: 2.5x at 200 attrs.
-- Search is unaffected by span size — it doesn't load span content.
+- Search is unaffected by span size - it doesn't load span content.
 
 ## Client-Side Serialization
 
@@ -252,11 +252,11 @@ Measures `search_traces()` with common filter patterns against varying corpus si
 
 | query           | filter / behavior                                     |
 | :-------------- | :---------------------------------------------------- |
-| no_filter       | `""` — no filter, default sort                        |
-| by_status       | `"attributes.status = 'OK'"` — indexed column filter  |
-| by_tag          | `"tags.env = 'prod'"` — tag table join                |
-| timestamp_order | `order_by=["timestamp DESC"]` — indexed sort          |
-| deep_page       | `page_token` pointing to offset 90 — skips prior rows |
+| no_filter       | `""` - no filter, default sort                        |
+| by_status       | `"attributes.status = 'OK'"` - indexed column filter  |
+| by_tag          | `"tags.env = 'prod'"` - tag table join                |
+| timestamp_order | `order_by=["timestamp DESC"]` - indexed sort          |
+| deep_page       | `page_token` pointing to offset 90 - skips prior rows |
 
 ### Baseline search (p50 latency in ms, max_results=100)
 
@@ -276,7 +276,7 @@ Measures `search_traces()` with common filter patterns against varying corpus si
 
 ### Full-text search (trace.text ILIKE)
 
-`trace.text ILIKE '%query%'` maps to `span.content ILIKE '%query%'` — an unindexed ILIKE over the full JSON `content` column of every span.
+`trace.text ILIKE '%query%'` maps to `span.content ILIKE '%query%'` - an unindexed ILIKE over the full JSON `content` column of every span.
 
 | traces | text ILIKE p50 (ms) | status p50 (ms) | text vs status |
 | -----: | ------------------: | --------------: | -------------: |
@@ -285,7 +285,7 @@ Measures `search_traces()` with common filter patterns against varying corpus si
 |  2,000 |               109.4 |            46.0 |           2.4x |
 |  5,000 |               204.8 |            48.3 |           4.2x |
 
-- Degrades linearly, reaching 205 ms at 5K traces — 4.2x slower than indexed status filter.
+- Degrades linearly, reaching 205 ms at 5K traces - 4.2x slower than indexed status filter.
 - Will continue to degrade with corpus size due to scanning unindexed JSON content.
 
 ### Assessment-filtered search
@@ -335,7 +335,7 @@ trace = store.get_trace(trace_id)
 |   250 |     7.16 |    10.23 |          28.7 |
 
 - Per-span cost amortizes from ~116 us at 10 spans to ~29 us at 250 spans.
-- A 100-span trace loads in under 4 ms — fast for single-trace views.
+- A 100-span trace loads in under 4 ms - fast for single-trace views.
 
 ### By payload size (10 spans)
 
@@ -347,7 +347,7 @@ trace = store.get_trace(trace_id)
 | 10MB    |    28.82 |    29.94 |    24.5x |
 
 - Payload size dominates: 10MB traces take 29 ms to deserialize (24.5x vs small).
-- The cost is `json.loads()` on the content column — linear in content size.
+- The cost is `json.loads()` on the content column - linear in content size.
 
 ### Batch loading
 
@@ -369,9 +369,9 @@ Compares the cost of calling a trivial function (`return 1`) in three scenarios:
 
 | scenario         | what it measures                                              |
 | :--------------- | :------------------------------------------------------------ |
-| raw              | bare function call — no decorator, baseline cost              |
+| raw              | bare function call - no decorator, baseline cost              |
 | tracing disabled | `@mlflow.trace` present but `mlflow.tracing.disable()` called |
-| tracing enabled  | `@mlflow.trace` active — includes span creation and export    |
+| tracing enabled  | `@mlflow.trace` active - includes span creation and export    |
 
 ### Takeaway
 
@@ -683,15 +683,15 @@ Potential fix direction:
 ### Why not run benchmarks in CI today
 
 - **Shared runners are noisy.** GitHub Actions uses shared hardware with variable load. A 10-20% swing from runner noise is indistinguishable from a real regression at the latencies we measure (~10-100 ms). This makes it hard to set meaningful pass/fail thresholds.
-- **The current bottlenecks are structural.** `session.merge()` at 79% of wall time and 301 lazy-load queries per search are algorithmic problems — they won't silently regress by 5% from a code change. They either exist or they don't.
+- **The current bottlenecks are structural.** `session.merge()` at 79% of wall time and 301 lazy-load queries per search are algorithmic problems - they won't silently regress by 5% from a code change. They either exist or they don't.
 
 ### Why benchmarks alone are not enough
 
-Even with stable hardware, wall-clock benchmarks struggle to catch **small incremental performance degradation** — the kind that accumulates over months of PRs until someone notices the system is 2x slower. Each individual PR might add 3-5% overhead that falls within measurement noise.
+Even with stable hardware, wall-clock benchmarks struggle to catch **small incremental performance degradation** - the kind that accumulates over months of PRs until someone notices the system is 2x slower. Each individual PR might add 3-5% overhead that falls within measurement noise.
 
 Better complementary approaches:
 
-- **Query count assertions.** A test that asserts `search_traces(max_results=100)` executes exactly N SQL queries will catch any change that adds a lazy-load or an extra SELECT — regardless of hardware noise. This is the approach `bench_n_plus_one.py` uses.
+- **Query count assertions.** A test that asserts `search_traces(max_results=100)` executes exactly N SQL queries will catch any change that adds a lazy-load or an extra SELECT - regardless of hardware noise. This is the approach `bench_n_plus_one.py` uses.
 - **Merge call counting.** A test that asserts `log_spans()` with 100 spans makes exactly N `session.merge()` calls will catch any regression in the ingestion path.
 
 These are deterministic, noise-free, and can run on any CI runner.
