@@ -22,7 +22,7 @@ plt.rcParams.update({
     "axes.grid": True,
     "grid.alpha": 0.3,
     "font.size": 11,
-    "figure.dpi": 150,
+    "figure.dpi": 300,
 })
 
 COLORS = ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0891b2"]
