@@ -2,6 +2,17 @@
 
 This directory contains reproducible examples demonstrating bugs in MLflow's uv dependency management feature (`mlflow.utils.uv_utils`).
 
+## Post-Logging Impact
+
+| Bug                       | `load_model`          | `pip install -r requirements.txt`            | `uv sync --frozen`                     | `serve`           |
+| ------------------------- | --------------------- | -------------------------------------------- | -------------------------------------- | ----------------- |
+| Bug 1 (workspace leak)    | OK (uses current env) | **FAILS** — `-e ./packages/my-lib` not found | N/A                                    | **FAILS**         |
+| Bug 2 (empty deps)        | OK                    | OK (wrong deps but installable)              | OK                                     | OK but wrong deps |
+| Bug 3 (invalid path)      | OK                    | OK (wrong deps but installable)              | OK                                     | OK but wrong deps |
+| Bug 4 (workspace restore) | OK (uses current env) | **FAILS** — same as bug 1                    | **FAILS** — workspace member not found | **FAILS**         |
+
+Bugs 1 and 4 make workspace-logged models **completely unservable** on any other machine.
+
 ## Summary of Findings
 
 ### Bug 1: Workspace members leak into requirements.txt (Critical)
@@ -19,6 +30,13 @@ These local paths don't exist on other machines, so `pip install -r requirements
 ```
 # Current (broken):     --no-emit-project
 # Fixed:                --no-emit-workspace
+```
+
+**Serve failure:**
+
+```
+$ uv pip install -r requirements.txt
+error: Distribution not found at: file:///...packages/my-lib
 ```
 
 ---
@@ -77,6 +95,14 @@ When restoring the environment via `uv sync --frozen`, uv tries to find those wo
 - Strip `[tool.uv.workspace]` and `[tool.uv.sources]` from the copied `pyproject.toml`
 - Always generate a minimal `pyproject.toml` via `create_uv_sync_pyproject()` instead of copying the original
 - Use `--no-emit-workspace` in export and don't rely on the original `pyproject.toml` for restore
+
+**Restore failure:**
+
+```
+$ uv sync --frozen --no-dev
+error: Failed to determine installation plan
+  Caused by: Distribution not found at: file:///.../model/packages/my-lib
+```
 
 ---
 
