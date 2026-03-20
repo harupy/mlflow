@@ -71,10 +71,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        include:
-          - splits: 4
-          - group: 1
+        runner: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -92,24 +89,20 @@ jobs:
             -r requirements/extra-ml-requirements.txt
       - uses: ./.github/actions/show-versions
       - uses: ./.github/actions/pipdeptree
-      - name: Import check
-        run: |
-          uv run --no-sync python -I tests/check_mlflow_lazily_imports_ml_packages.py
       - name: Run tests
+        env:
+          # Runners 11-20 enable the fix; 1-10 use the old behavior
+          _MLFLOW_FIX_SERVER_UP_TIME: ${{ matrix.runner > 10 && '1' || '' }}
         run: |
+          echo "Runner ${{ matrix.runner }}: fix=${{ matrix.runner > 10 && 'ON' || 'OFF' }}"
           source dev/setup-ssh.sh
-          uv run --no-sync pytest -x --splits=${{ matrix.splits }} --group=${{ matrix.group }} \
+          uv run --no-sync pytest -x --splits=4 --group=3 \
             --quiet --requires-ssh --ignore-flavors \
             --ignore=tests/examples \
             --ignore=tests/evaluate \
             --ignore=tests/genai \
             --ignore=tests/docker \
             tests
-
-      - name: Run databricks-connect related tests
-        run: |
-          uv run --no-sync --with 'databricks-agents,databricks-connect' \
-            pytest tests/utils/test_requirements_utils.py::test_infer_pip_requirements_on_databricks_agents
 
   database:
     if: github.event_name != 'pull_request' || (github.event.pull_request.draft == false || github.event.pull_request.user.login == 'Copilot' && github.event.pull_request.user.type == 'Bot')

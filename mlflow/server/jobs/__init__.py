@@ -219,6 +219,10 @@ def submit_job(
     job_store = _get_job_store()
     serialized_params = json.dumps(params)
     job = job_store.create_job(fn_meta.name, serialized_params, timeout)
+    _logger.info(
+        f"submit_job: created job {job.job_id} "
+        f"(name={fn_meta.name}, creation_time={job.creation_time})"
+    )
     # Only propagate workspace to subprocess when workspaces are enabled
     workspace = job.workspace if MLFLOW_ENABLE_WORKSPACES.get() else None
 

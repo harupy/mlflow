@@ -26,7 +26,12 @@ from mlflow.server.jobs.utils import (
 
 if __name__ == "__main__":
     logger = logging.getLogger("mlflow.server.jobs._job_runner")
-    server_up_time = int(time.time() * 1000)
+    if "_MLFLOW_SERVER_UP_TIME" in os.environ:
+        server_up_time = int(os.environ["_MLFLOW_SERVER_UP_TIME"])
+        logger.info(f"Job runner started, server_up_time={server_up_time} (from parent)")
+    else:
+        server_up_time = int(time.time() * 1000)
+        logger.info(f"Job runner started, server_up_time={server_up_time} (local)")
     _start_watcher_to_kill_job_runner_if_mlflow_server_dies()
 
     huey_store_path = os.environ[HUEY_STORAGE_PATH_ENV_VAR]

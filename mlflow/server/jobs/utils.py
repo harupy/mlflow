@@ -550,13 +550,19 @@ def _start_periodic_tasks_consumer_proc():
 
 
 def _launch_job_runner(env_map, server_proc_pid):
+    env = {**os.environ, **env_map, "MLFLOW_SERVER_PID": str(server_proc_pid)}
+    # When _MLFLOW_FIX_SERVER_UP_TIME is set, pass the timestamp from the parent
+    # process to avoid the race condition where slow subprocess imports cause
+    # server_up_time to be captured after jobs are already submitted.
+    if os.environ.get("_MLFLOW_FIX_SERVER_UP_TIME"):
+        env["_MLFLOW_SERVER_UP_TIME"] = str(int(time.time() * 1000))
     return subprocess.Popen(
         [
             sys.executable,
             "-m",
             "mlflow.server.jobs._job_runner",
         ],
-        env={**os.environ, **env_map, "MLFLOW_SERVER_PID": str(server_proc_pid)},
+        env=env,
     )
 
 
@@ -617,16 +623,30 @@ def _enqueue_unfinished_jobs(server_launching_timestamp: int) -> None:
     from mlflow.server.handlers import _get_job_store
 
     job_store = _get_job_store()
+    _logger.info(
+        f"_enqueue_unfinished_jobs called at {int(time.time() * 1000)} "
+        f"with server_launching_timestamp={server_launching_timestamp}"
+    )
 
     for workspace_ctx in _workspace_contexts_for_recovery():
         with workspace_ctx as workspace:
-            unfinished_jobs = job_store.list_jobs(
-                statuses=[JobStatus.PENDING, JobStatus.RUNNING],
-                # filter out jobs created after the server is launched.
-                end_timestamp=server_launching_timestamp,
+            unfinished_jobs = list(
+                job_store.list_jobs(
+                    statuses=[JobStatus.PENDING, JobStatus.RUNNING],
+                    # filter out jobs created after the server is launched.
+                    end_timestamp=server_launching_timestamp,
+                )
+            )
+            _logger.info(
+                f"Found {len(unfinished_jobs)} unfinished jobs "
+                f"with creation_time <= {server_launching_timestamp}"
             )
 
             for job in unfinished_jobs:
+                _logger.info(
+                    f"Re-enqueuing job {job.job_id} (name={job.job_name}, "
+                    f"status={job.status}, creation_time={job.creation_time})"
+                )
                 if job.status == JobStatus.RUNNING:
                     job_store.reset_job(job.job_id)  # reset the job status to PENDING
 
