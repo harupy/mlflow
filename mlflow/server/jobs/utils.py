@@ -343,9 +343,15 @@ def _exec_job(
             if MLFLOW_ENABLE_WORKSPACES.get():
                 lock_key_job_name = f"{workspace or DEFAULT_WORKSPACE_NAME}:{job_name}"
             lock_key = _compute_exclusive_lock_key(lock_key_job_name, lock_params)
+            _logger.info(
+                f"Attempting to acquire exclusive lock for job {job_id} "
+                f"(job_name={job_name}, lock_key={lock_key}, "
+                f"lock_params={json.dumps(lock_params, sort_keys=True)})"
+            )
             lock = huey_instance.lock_task(lock_key)
             try:
                 lock.acquire()
+                _logger.info(f"Acquired exclusive lock {lock_key} for job {job_id}")
             except TaskLockedException:
                 _logger.info(f"Skipping job {job_id} - exclusive lock {lock_key} already held")
                 job_store.cancel_job(job_id)
@@ -393,6 +399,7 @@ def _exec_job(
                 job_store.fail_job(job_id, job_result.error)
         finally:
             if lock is not None:
+                _logger.info(f"Releasing exclusive lock for job {job_id} (lock_key={lock_key})")
                 lock.release()
 
 
