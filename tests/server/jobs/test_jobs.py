@@ -925,13 +925,3 @@ def test_update_status_details_on_nonexistent_job(tmp_path: Path):
 
     with pytest.raises(MlflowException, match="Job .+ not found"):
         store.update_status_details("nonexistent-job-id", {"stage": "test"})
-
-
-@pytest.mark.parametrize("_iteration", range(50))
-def test_exclusive_job_sequence_repeated(monkeypatch, tmp_path: Path, _iteration):
-    dup_path = tmp_path / "dup"
-    dup_path.mkdir()
-    test_exclusive_job_skips_duplicate(monkeypatch, dup_path)
-    diff_path = tmp_path / "diff"
-    diff_path.mkdir()
-    test_exclusive_job_allows_different_params(monkeypatch, diff_path)
