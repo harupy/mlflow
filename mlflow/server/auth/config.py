@@ -10,8 +10,8 @@ from mlflow.environment_variables import (
 
 DEFAULT_AUTHORIZATION_FUNCTION = "mlflow.server.auth:authenticate_request_basic_auth"
 
-_DEFAULT_ADMIN_USERNAME = "admin"
-_DEFAULT_ADMIN_PASSWORD = "password1234"
+DEFAULT_ADMIN_USERNAME = "admin"
+DEFAULT_ADMIN_PASSWORD = "password1234"
 
 
 class AuthConfig(NamedTuple):

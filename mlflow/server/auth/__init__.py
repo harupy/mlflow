@@ -173,8 +173,8 @@ from mlflow.protos.webhooks_pb2 import (
 )
 from mlflow.server import app
 from mlflow.server.auth.config import (
-    _DEFAULT_ADMIN_PASSWORD,
-    _DEFAULT_ADMIN_USERNAME,
+    DEFAULT_ADMIN_PASSWORD,
+    DEFAULT_ADMIN_USERNAME,
     DEFAULT_AUTHORIZATION_FUNCTION,
     read_auth_config,
 )
@@ -3234,8 +3234,8 @@ def create_app(app: Flask = app):
     store.init_db(auth_config.database_uri)
 
     if (
-        auth_config.admin_username == _DEFAULT_ADMIN_USERNAME
-        and auth_config.admin_password == _DEFAULT_ADMIN_PASSWORD
+        auth_config.admin_username == DEFAULT_ADMIN_USERNAME
+        and auth_config.admin_password == DEFAULT_ADMIN_PASSWORD
     ):
         _logger.warning(
             "The MLflow authentication admin account is using default credentials "
@@ -3245,8 +3245,18 @@ def create_app(app: Flask = app):
             "environment variables, or\n"
             "  2. Edit the admin_username and admin_password values in your auth config file.\n"
             "After changing credentials, update the admin password via the %s endpoint.",
-            _DEFAULT_ADMIN_USERNAME,
+            DEFAULT_ADMIN_USERNAME,
             UPDATE_USER_PASSWORD,
+        )
+    elif auth_config.admin_username != DEFAULT_ADMIN_USERNAME and store.has_user(
+        DEFAULT_ADMIN_USERNAME
+    ):
+        _logger.warning(
+            "The default admin account '%s' still exists in the database even though "
+            "a custom admin username has been configured. Consider deleting the default "
+            "admin account via the %s endpoint to prevent unauthorized access.",
+            DEFAULT_ADMIN_USERNAME,
+            DELETE_USER,
         )
 
     create_admin_user(auth_config.admin_username, auth_config.admin_password)
