@@ -172,7 +172,12 @@ from mlflow.protos.webhooks_pb2 import (
     WebhookService,
 )
 from mlflow.server import app
-from mlflow.server.auth.config import DEFAULT_AUTHORIZATION_FUNCTION, read_auth_config
+from mlflow.server.auth.config import (
+    _DEFAULT_ADMIN_PASSWORD,
+    _DEFAULT_ADMIN_USERNAME,
+    DEFAULT_AUTHORIZATION_FUNCTION,
+    read_auth_config,
+)
 from mlflow.server.auth.entities import User
 from mlflow.server.auth.logo import MLFLOW_LOGO
 from mlflow.server.auth.permissions import (
@@ -3227,6 +3232,23 @@ def create_app(app: Flask = app):
     csrf.init_app(app)
 
     store.init_db(auth_config.database_uri)
+
+    if (
+        auth_config.admin_username == _DEFAULT_ADMIN_USERNAME
+        and auth_config.admin_password == _DEFAULT_ADMIN_PASSWORD
+    ):
+        _logger.warning(
+            "The MLflow authentication admin account is using default credentials "
+            "(username=%s, password=***). Default credentials are publicly documented and "
+            "should not be used in production. To set custom credentials, either:\n"
+            "  1. Set the MLFLOW_AUTH_ADMIN_USERNAME and MLFLOW_AUTH_ADMIN_PASSWORD "
+            "environment variables, or\n"
+            "  2. Edit the admin_username and admin_password values in your auth config file.\n"
+            "After changing credentials, update the admin password via the %s endpoint.",
+            _DEFAULT_ADMIN_USERNAME,
+            UPDATE_USER_PASSWORD,
+        )
+
     create_admin_user(auth_config.admin_username, auth_config.admin_password)
 
     _auth_initialized = True

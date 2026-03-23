@@ -462,6 +462,16 @@ MLFLOW_EXPERIMENT_NAME = _EnvironmentVariable("MLFLOW_EXPERIMENT_NAME", str, Non
 #: (default: ``None``)
 MLFLOW_AUTH_CONFIG_PATH = _EnvironmentVariable("MLFLOW_AUTH_CONFIG_PATH", str, None)
 
+#: Overrides the admin username for MLflow Authentication.
+#: Takes precedence over the value in the auth config file.
+#: (default: ``None``)
+MLFLOW_AUTH_ADMIN_USERNAME = _EnvironmentVariable("MLFLOW_AUTH_ADMIN_USERNAME", str, None)
+
+#: Overrides the admin password for MLflow Authentication.
+#: Takes precedence over the value in the auth config file.
+#: (default: ``None``)
+MLFLOW_AUTH_ADMIN_PASSWORD = _EnvironmentVariable("MLFLOW_AUTH_ADMIN_PASSWORD", str, None)
+
 #: Specifies and takes precedence for setting the UC OSS basic/bearer auth on http requests.
 #: (default: ``None``)
 MLFLOW_UC_OSS_TOKEN = _EnvironmentVariable("MLFLOW_UC_OSS_TOKEN", str, None)

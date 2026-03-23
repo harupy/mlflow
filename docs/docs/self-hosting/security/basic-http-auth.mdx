@@ -1278,8 +1278,18 @@ MLflow resources,** even if `NO_PERMISSIONS` is explicitly set to that admin acc
 
 MLflow has a built-in admin user that will be created the first time that the MLflow authentication feature is enabled.
 
-:::note
-It is recommended that you update the default admin password as soon as possible after creation.
+:::warning
+Using the default admin credentials in production is a security risk. Set custom credentials using
+environment variables:
+
+```bash
+export MLFLOW_AUTH_ADMIN_USERNAME=my-admin
+export MLFLOW_AUTH_ADMIN_PASSWORD=my-secure-password
+```
+
+These environment variables take precedence over values in the configuration file, making them
+ideal for Docker and Kubernetes deployments. The server will log a warning on startup if the
+default credentials are still in use.
 :::
 
 The default admin user credentials are as follows:
@@ -1492,7 +1502,9 @@ Authentication configuration is located at `mlflow/server/auth/basic_auth.ini`:
 </table>
 
 Alternatively, assign the environment variable `MLFLOW_AUTH_CONFIG_PATH` to point
-to your custom configuration file.
+to your custom configuration file. You can also override specific admin credentials using
+the `MLFLOW_AUTH_ADMIN_USERNAME` and `MLFLOW_AUTH_ADMIN_PASSWORD` environment variables,
+which take precedence over values in the configuration file.
 
 The `authorization_function` setting supports pluggable authentication methods
 if you want to use another authentication method than HTTP basic auth. The value
