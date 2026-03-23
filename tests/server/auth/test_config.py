@@ -3,6 +3,7 @@ from unittest import mock
 import pytest
 from flask import Flask
 
+from mlflow.server.auth import create_app
 from mlflow.server.auth.config import (
     DEFAULT_ADMIN_PASSWORD,
     DEFAULT_ADMIN_USERNAME,
@@ -55,8 +56,6 @@ def _mock_auth_app(monkeypatch):
 
 @pytest.mark.usefixtures("_mock_auth_app")
 def test_default_credentials_warning_logged(monkeypatch):
-    from mlflow.server.auth import create_app
-
     monkeypatch.setattr("mlflow.server.auth.auth_config", read_auth_config())
 
     with mock.patch("mlflow.server.auth._logger") as mock_logger:
@@ -70,8 +69,6 @@ def test_default_credentials_warning_logged(monkeypatch):
 
 @pytest.mark.usefixtures("_mock_auth_app")
 def test_no_warning_when_credentials_customized(monkeypatch):
-    from mlflow.server.auth import create_app
-
     monkeypatch.setenv("MLFLOW_AUTH_ADMIN_USERNAME", "custom-admin")
     monkeypatch.setenv("MLFLOW_AUTH_ADMIN_PASSWORD", "custom-password")
     monkeypatch.setattr("mlflow.server.auth.auth_config", read_auth_config())
@@ -88,8 +85,6 @@ def test_no_warning_when_credentials_customized(monkeypatch):
 
 @pytest.mark.usefixtures("_mock_auth_app")
 def test_stale_default_admin_warning(monkeypatch):
-    from mlflow.server.auth import create_app
-
     monkeypatch.setenv("MLFLOW_AUTH_ADMIN_USERNAME", "custom-admin")
     monkeypatch.setenv("MLFLOW_AUTH_ADMIN_PASSWORD", "custom-password")
     monkeypatch.setattr("mlflow.server.auth.auth_config", read_auth_config())
