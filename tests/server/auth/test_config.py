@@ -3,7 +3,7 @@ from unittest import mock
 import pytest
 from flask import Flask
 
-from mlflow.server.auth import create_app
+from mlflow.server.auth import create_app, store
 from mlflow.server.auth.config import (
     DEFAULT_ADMIN_PASSWORD,
     DEFAULT_ADMIN_USERNAME,
@@ -72,8 +72,6 @@ def test_no_warning_when_credentials_customized(monkeypatch, tmp_sqlite_uri):
 
 def test_stale_default_admin_warning(monkeypatch, tmp_sqlite_uri):
     # First, create the default admin user in the DB
-    from mlflow.server.auth import store
-
     store.init_db(tmp_sqlite_uri)
     store.create_user(DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD, is_admin=True)
 
