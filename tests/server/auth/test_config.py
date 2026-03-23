@@ -41,66 +41,45 @@ def test_env_var_overrides_both(monkeypatch):
     assert config.admin_password == "custom-password"
 
 
-def test_default_credentials_warning_logged(monkeypatch):
+def _create_app_and_get_warnings(monkeypatch, tmp_sqlite_uri):
+    """Start a real auth app with a temp DB and capture warning log calls."""
     monkeypatch.setenv("MLFLOW_FLASK_SERVER_SECRET_KEY", "test-secret")
+    config = read_auth_config()._replace(database_uri=tmp_sqlite_uri)
 
+    # _logger.propagate is False, so caplog can't capture — mock only the logger
     with (
-        mock.patch("mlflow.server.auth.store.init_db") as mock_init_db,
-        mock.patch("mlflow.server.auth.create_admin_user") as mock_create_admin,
-        mock.patch("mlflow.server.auth.auth_config", read_auth_config()),
+        mock.patch("mlflow.server.auth.auth_config", config),
         mock.patch("mlflow.server.auth._logger") as mock_logger,
     ):
         create_app(Flask(__name__))
-        mock_init_db.assert_called_once()
-        mock_create_admin.assert_called_once_with(DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD)
 
-    warning_calls = [
-        call for call in mock_logger.warning.call_args_list if "default credentials" in str(call)
-    ]
-    assert len(warning_calls) == 1
+    return mock_logger.warning.call_args_list
 
 
-def test_no_warning_when_credentials_customized(monkeypatch):
-    monkeypatch.setenv("MLFLOW_FLASK_SERVER_SECRET_KEY", "test-secret")
+def test_default_credentials_warning_logged(monkeypatch, tmp_sqlite_uri):
+    warnings = _create_app_and_get_warnings(monkeypatch, tmp_sqlite_uri)
+    assert any("default credentials" in str(call) for call in warnings)
+
+
+def test_no_warning_when_credentials_customized(monkeypatch, tmp_sqlite_uri):
     monkeypatch.setenv("MLFLOW_AUTH_ADMIN_USERNAME", "custom-admin")
     monkeypatch.setenv("MLFLOW_AUTH_ADMIN_PASSWORD", "custom-password")
 
-    with (
-        mock.patch("mlflow.server.auth.store.init_db") as mock_init_db,
-        mock.patch("mlflow.server.auth.create_admin_user") as mock_create_admin,
-        mock.patch("mlflow.server.auth.store.has_user", return_value=False) as mock_has_user,
-        mock.patch("mlflow.server.auth.auth_config", read_auth_config()),
-        mock.patch("mlflow.server.auth._logger") as mock_logger,
-    ):
-        create_app(Flask(__name__))
-        mock_init_db.assert_called_once()
-        mock_create_admin.assert_called_once_with("custom-admin", "custom-password")
-        mock_has_user.assert_called_once_with(DEFAULT_ADMIN_USERNAME)
-
-    warning_calls = [
-        call for call in mock_logger.warning.call_args_list if "default credentials" in str(call)
-    ]
-    assert len(warning_calls) == 0
+    warnings = _create_app_and_get_warnings(monkeypatch, tmp_sqlite_uri)
+    assert not any("default credentials" in str(call) for call in warnings)
+    assert not any("still exists" in str(call) for call in warnings)
 
 
-def test_stale_default_admin_warning(monkeypatch):
-    monkeypatch.setenv("MLFLOW_FLASK_SERVER_SECRET_KEY", "test-secret")
+def test_stale_default_admin_warning(monkeypatch, tmp_sqlite_uri):
+    # First, create the default admin user in the DB
+    from mlflow.server.auth import store
+
+    store.init_db(tmp_sqlite_uri)
+    store.create_user(DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD, is_admin=True)
+
+    # Now start the app with a custom admin username — the old "admin" is still in the DB
     monkeypatch.setenv("MLFLOW_AUTH_ADMIN_USERNAME", "custom-admin")
     monkeypatch.setenv("MLFLOW_AUTH_ADMIN_PASSWORD", "custom-password")
 
-    with (
-        mock.patch("mlflow.server.auth.store.init_db") as mock_init_db,
-        mock.patch("mlflow.server.auth.create_admin_user") as mock_create_admin,
-        mock.patch("mlflow.server.auth.store.has_user", return_value=True) as mock_has_user,
-        mock.patch("mlflow.server.auth.auth_config", read_auth_config()),
-        mock.patch("mlflow.server.auth._logger") as mock_logger,
-    ):
-        create_app(Flask(__name__))
-        mock_init_db.assert_called_once()
-        mock_create_admin.assert_called_once_with("custom-admin", "custom-password")
-        mock_has_user.assert_called_once_with(DEFAULT_ADMIN_USERNAME)
-
-    warning_calls = [
-        call for call in mock_logger.warning.call_args_list if "still exists" in str(call)
-    ]
-    assert len(warning_calls) == 1
+    warnings = _create_app_and_get_warnings(monkeypatch, tmp_sqlite_uri)
+    assert any("still exists" in str(call) for call in warnings)
