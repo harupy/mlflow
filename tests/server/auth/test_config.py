@@ -41,25 +41,18 @@ def test_env_var_overrides_both(monkeypatch):
     assert config.admin_password == "custom-password"
 
 
-@pytest.fixture
-def _mock_auth_app(monkeypatch):
-    monkeypatch.setenv("MLFLOW_FLASK_SERVER_SECRET_KEY", "test-secret")
-    monkeypatch.setattr(
-        "mlflow.server.auth.store.init_db",
-        lambda uri: None,
-    )
-    monkeypatch.setattr(
-        "mlflow.server.auth.create_admin_user",
-        lambda username, password: None,
-    )
-
-
-@pytest.mark.usefixtures("_mock_auth_app")
 def test_default_credentials_warning_logged(monkeypatch):
-    monkeypatch.setattr("mlflow.server.auth.auth_config", read_auth_config())
+    monkeypatch.setenv("MLFLOW_FLASK_SERVER_SECRET_KEY", "test-secret")
 
-    with mock.patch("mlflow.server.auth._logger") as mock_logger:
+    with (
+        mock.patch("mlflow.server.auth.store.init_db") as mock_init_db,
+        mock.patch("mlflow.server.auth.create_admin_user") as mock_create_admin,
+        mock.patch("mlflow.server.auth.auth_config", read_auth_config()),
+        mock.patch("mlflow.server.auth._logger") as mock_logger,
+    ):
         create_app(Flask(__name__))
+        mock_init_db.assert_called_once()
+        mock_create_admin.assert_called_once_with(DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD)
 
     warning_calls = [
         call for call in mock_logger.warning.call_args_list if "default credentials" in str(call)
@@ -67,15 +60,22 @@ def test_default_credentials_warning_logged(monkeypatch):
     assert len(warning_calls) == 1
 
 
-@pytest.mark.usefixtures("_mock_auth_app")
 def test_no_warning_when_credentials_customized(monkeypatch):
+    monkeypatch.setenv("MLFLOW_FLASK_SERVER_SECRET_KEY", "test-secret")
     monkeypatch.setenv("MLFLOW_AUTH_ADMIN_USERNAME", "custom-admin")
     monkeypatch.setenv("MLFLOW_AUTH_ADMIN_PASSWORD", "custom-password")
-    monkeypatch.setattr("mlflow.server.auth.auth_config", read_auth_config())
-    monkeypatch.setattr("mlflow.server.auth.store.has_user", lambda username: False)
 
-    with mock.patch("mlflow.server.auth._logger") as mock_logger:
+    with (
+        mock.patch("mlflow.server.auth.store.init_db") as mock_init_db,
+        mock.patch("mlflow.server.auth.create_admin_user") as mock_create_admin,
+        mock.patch("mlflow.server.auth.store.has_user", return_value=False) as mock_has_user,
+        mock.patch("mlflow.server.auth.auth_config", read_auth_config()),
+        mock.patch("mlflow.server.auth._logger") as mock_logger,
+    ):
         create_app(Flask(__name__))
+        mock_init_db.assert_called_once()
+        mock_create_admin.assert_called_once_with("custom-admin", "custom-password")
+        mock_has_user.assert_called_once_with(DEFAULT_ADMIN_USERNAME)
 
     warning_calls = [
         call for call in mock_logger.warning.call_args_list if "default credentials" in str(call)
@@ -83,15 +83,22 @@ def test_no_warning_when_credentials_customized(monkeypatch):
     assert len(warning_calls) == 0
 
 
-@pytest.mark.usefixtures("_mock_auth_app")
 def test_stale_default_admin_warning(monkeypatch):
+    monkeypatch.setenv("MLFLOW_FLASK_SERVER_SECRET_KEY", "test-secret")
     monkeypatch.setenv("MLFLOW_AUTH_ADMIN_USERNAME", "custom-admin")
     monkeypatch.setenv("MLFLOW_AUTH_ADMIN_PASSWORD", "custom-password")
-    monkeypatch.setattr("mlflow.server.auth.auth_config", read_auth_config())
-    monkeypatch.setattr("mlflow.server.auth.store.has_user", lambda username: True)
 
-    with mock.patch("mlflow.server.auth._logger") as mock_logger:
+    with (
+        mock.patch("mlflow.server.auth.store.init_db") as mock_init_db,
+        mock.patch("mlflow.server.auth.create_admin_user") as mock_create_admin,
+        mock.patch("mlflow.server.auth.store.has_user", return_value=True) as mock_has_user,
+        mock.patch("mlflow.server.auth.auth_config", read_auth_config()),
+        mock.patch("mlflow.server.auth._logger") as mock_logger,
+    ):
         create_app(Flask(__name__))
+        mock_init_db.assert_called_once()
+        mock_create_admin.assert_called_once_with("custom-admin", "custom-password")
+        mock_has_user.assert_called_once_with(DEFAULT_ADMIN_USERNAME)
 
     warning_calls = [
         call for call in mock_logger.warning.call_args_list if "still exists" in str(call)
