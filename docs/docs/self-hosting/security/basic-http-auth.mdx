@@ -1288,8 +1288,10 @@ export MLFLOW_AUTH_ADMIN_PASSWORD=my-secure-password
 ```
 
 These environment variables take precedence over values in the configuration file, making them
-ideal for Docker and Kubernetes deployments. The server will log a warning on startup if the
-default credentials are still in use.
+ideal for Docker and Kubernetes deployments. Note that changing environment variables or
+configuration does not rotate an already-created admin password. Use the update-password API
+endpoint to change the password of an existing admin account. The server will log a warning
+on startup if the default admin account in the database still accepts the default password.
 :::
 
 The default admin user credentials are as follows:

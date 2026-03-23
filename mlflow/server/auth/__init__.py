@@ -3233,20 +3233,18 @@ def create_app(app: Flask = app):
 
     store.init_db(auth_config.database_uri)
 
-    if (
-        auth_config.admin_username == DEFAULT_ADMIN_USERNAME
-        and auth_config.admin_password == DEFAULT_ADMIN_PASSWORD
-    ):
+    create_admin_user(auth_config.admin_username, auth_config.admin_password)
+
+    if store.authenticate_user(DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD):
         _logger.warning(
-            "The MLflow authentication admin account is using default credentials "
-            "(username=%s, password=***). Default credentials are publicly documented and "
-            "should not be used in production. To set custom credentials, either:\n"
-            "  1. Set the MLFLOW_AUTH_ADMIN_USERNAME and MLFLOW_AUTH_ADMIN_PASSWORD "
-            "environment variables, or\n"
-            "  2. Edit the admin_username and admin_password values in your auth config file.\n"
-            "After changing credentials, update the admin password via the %s endpoint.",
+            "The default admin account '%s' still uses the default password. "
+            "Default credentials are publicly documented and should not be used in production. "
+            "To secure the account, either:\n"
+            "  1. Update the password via the %s endpoint, or\n"
+            "  2. Delete the default admin account via the %s endpoint.",
             DEFAULT_ADMIN_USERNAME,
             UPDATE_USER_PASSWORD,
+            DELETE_USER,
         )
     elif auth_config.admin_username != DEFAULT_ADMIN_USERNAME and store.has_user(
         DEFAULT_ADMIN_USERNAME
@@ -3258,8 +3256,6 @@ def create_app(app: Flask = app):
             DEFAULT_ADMIN_USERNAME,
             DELETE_USER,
         )
-
-    create_admin_user(auth_config.admin_username, auth_config.admin_password)
 
     _auth_initialized = True
 

@@ -38,8 +38,16 @@ def read_auth_config() -> AuthConfig:
     return AuthConfig(
         default_permission=config["mlflow"]["default_permission"],
         database_uri=config["mlflow"]["database_uri"],
-        admin_username=MLFLOW_AUTH_ADMIN_USERNAME.get() or config["mlflow"]["admin_username"],
-        admin_password=MLFLOW_AUTH_ADMIN_PASSWORD.get() or config["mlflow"]["admin_password"],
+        admin_username=(
+            MLFLOW_AUTH_ADMIN_USERNAME.get()
+            if MLFLOW_AUTH_ADMIN_USERNAME.get() is not None
+            else config["mlflow"]["admin_username"]
+        ),
+        admin_password=(
+            MLFLOW_AUTH_ADMIN_PASSWORD.get()
+            if MLFLOW_AUTH_ADMIN_PASSWORD.get() is not None
+            else config["mlflow"]["admin_password"]
+        ),
         authorization_function=config["mlflow"].get(
             "authorization_function", DEFAULT_AUTHORIZATION_FUNCTION
         ),

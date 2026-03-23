@@ -58,24 +58,36 @@ def _create_app_and_get_warnings(monkeypatch, tmp_sqlite_uri):
 
 def test_default_credentials_warning_logged(monkeypatch, tmp_sqlite_uri):
     warnings = _create_app_and_get_warnings(monkeypatch, tmp_sqlite_uri)
-    assert any("default credentials" in str(call) for call in warnings)
+    assert any("default password" in str(call) for call in warnings)
 
 
-def test_no_warning_when_credentials_customized(monkeypatch, tmp_sqlite_uri):
-    monkeypatch.setenv("MLFLOW_AUTH_ADMIN_USERNAME", "custom-admin")
-    monkeypatch.setenv("MLFLOW_AUTH_ADMIN_PASSWORD", "custom-password")
+def test_no_warning_when_password_changed(monkeypatch, tmp_sqlite_uri):
+    # Pre-create admin with a non-default password
+    store.init_db(tmp_sqlite_uri)
+    store.create_user(DEFAULT_ADMIN_USERNAME, "secure-password-123", is_admin=True)
 
     warnings = _create_app_and_get_warnings(monkeypatch, tmp_sqlite_uri)
-    assert not any("default credentials" in str(call) for call in warnings)
+    assert not any("default password" in str(call) for call in warnings)
     assert not any("still exists" in str(call) for call in warnings)
 
 
-def test_stale_default_admin_warning(monkeypatch, tmp_sqlite_uri):
-    # First, create the default admin user in the DB
+def test_default_password_warning_even_when_config_changed(monkeypatch, tmp_sqlite_uri):
+    # Admin was created with default password, then config was changed —
+    # the DB still accepts the default password
     store.init_db(tmp_sqlite_uri)
     store.create_user(DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD, is_admin=True)
 
-    # Now start the app with a custom admin username — the old "admin" is still in the DB
+    monkeypatch.setenv("MLFLOW_AUTH_ADMIN_PASSWORD", "new-password")
+
+    warnings = _create_app_and_get_warnings(monkeypatch, tmp_sqlite_uri)
+    assert any("default password" in str(call) for call in warnings)
+
+
+def test_stale_default_admin_warning(monkeypatch, tmp_sqlite_uri):
+    # Default admin exists with a rotated password, but a custom admin username is configured
+    store.init_db(tmp_sqlite_uri)
+    store.create_user(DEFAULT_ADMIN_USERNAME, "rotated-password", is_admin=True)
+
     monkeypatch.setenv("MLFLOW_AUTH_ADMIN_USERNAME", "custom-admin")
     monkeypatch.setenv("MLFLOW_AUTH_ADMIN_PASSWORD", "custom-password")
 
