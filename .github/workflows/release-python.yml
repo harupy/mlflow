@@ -1,0 +1,138 @@
+name: release-python
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+    paths:
+      - ".github/workflows/release-python.yml"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "The branch, tag or SHA to release from."
+        required: true
+      package:
+        description: "The package to release."
+        required: true
+        type: choice
+        options:
+          - mlflow
+          - mlflow-skinny
+          - mlflow-tracing
+      destination:
+        description: "The PyPI server to publish to."
+        required: true
+        type: choice
+        default: "testpypi"
+        options:
+          - testpypi
+          - pypi
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check-actor:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          permission=$(gh api "repos/${REPO}/collaborators/${ACTOR}/permission" --jq '.role_name')
+          if [[ "$permission" != "admin" && "$permission" != "maintain" ]]; then
+            echo "ERROR: Actor '${ACTOR}' has '${permission}' permission, but 'admin' or 'maintain' is required."
+            exit 1
+          fi
+
+  build:
+    if: ${{ !cancelled() && (needs.check-actor.result == 'success' || needs.check-actor.result == 'skipped') }}
+    needs: check-actor
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ github.event_name == 'pull_request' && fromJSON('["mlflow", "mlflow-skinny", "mlflow-tracing"]') || fromJSON(format('["{0}"]', inputs.package)) }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: ./.github/actions/untracked
+      - uses: ./.github/actions/setup-python
+      - if: matrix.package == 'mlflow'
+        uses: ./.github/actions/setup-node
+
+      - name: Build UI
+        if: matrix.package == 'mlflow'
+        working-directory: mlflow/server/js
+        run: |
+          yarn
+          yarn build
+
+      - name: Install dependencies
+        run: |
+          pip install build setuptools twine wheel
+
+      - name: Resolve package type
+        id: resolve
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: |
+          case "$PACKAGE" in
+            mlflow)         echo "type=release" >> $GITHUB_OUTPUT ;;
+            mlflow-skinny)  echo "type=skinny" >> $GITHUB_OUTPUT ;;
+            mlflow-tracing) echo "type=tracing" >> $GITHUB_OUTPUT ;;
+          esac
+
+      - name: Build distribution files
+        env:
+          PACKAGE_TYPE: ${{ steps.resolve.outputs.type }}
+        run: |
+          python dev/build.py --package-type "$PACKAGE_TYPE"
+
+          ls -lh dist
+
+      - name: Run twine check
+        run: |
+          twine check --strict dist/*
+
+      - name: Upload distribution files
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+    environment:
+      name: ${{ inputs.destination }}
+      url: ${{ inputs.destination == 'pypi' && format('https://pypi.org/project/{0}', inputs.package) || format('https://test.pypi.org/project/{0}', inputs.package) }}
+    steps:
+      - name: Download distribution files
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
+        with:
+          repository-url: ${{ inputs.destination == 'pypi' && 'https://upload.pypi.org/legacy/' || 'https://test.pypi.org/legacy/' }}
+          packages-dir: dist/
+          skip-existing: "true"
