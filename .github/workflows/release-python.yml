@@ -40,7 +40,7 @@ jobs:
       fail-fast: false
       matrix:
         # Build all packages on PRs, only the selected package on workflow_dispatch
-        package: ${{ github.event_name == 'pull_request' && fromJSON('["mlflow", "mlflow-skinny", "mlflow-tracing"]') || fromJSON(format('["{0}"]', inputs.package)) }}
+        package: ${{ github.event_name == 'pull_request' && fromJSON('["mlflow", "mlflow-skinny", "mlflow-tracing"]') || fromJSON(format('["{0}"]', github.event.inputs.package)) }}
     steps:
       - name: Check actor
         if: github.event_name == 'workflow_dispatch'
@@ -57,7 +57,7 @@ jobs:
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ github.event.inputs.ref }}
       - uses: ./.github/actions/untracked
       - uses: ./.github/actions/setup-python
       - if: matrix.package == 'mlflow'
@@ -115,12 +115,12 @@ jobs:
       - name: Download distribution files
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          name: dist-${{ inputs.package }}
+          name: dist-${{ github.event.inputs.package }}
           path: dist/
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
         with:
-          repository-url: ${{ inputs.destination == 'pypi' && 'https://upload.pypi.org/legacy/' || 'https://test.pypi.org/legacy/' }}
+          repository-url: ${{ github.event.inputs.destination == 'pypi' && 'https://upload.pypi.org/legacy/' || 'https://test.pypi.org/legacy/' }}
           packages-dir: dist/
           skip-existing: "true"
