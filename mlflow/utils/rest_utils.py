@@ -1,5 +1,6 @@
 import base64
 import contextlib
+import inspect
 import json
 import logging
 import random
@@ -305,6 +306,7 @@ def http_request(
 
 
 def _get_credentials_strategy() -> "CredentialsStrategy | None":
+    # Import here to avoid a circular import
     from mlflow.utils.databricks_utils import is_in_databricks_model_serving_environment
 
     if not is_in_databricks_model_serving_environment():
@@ -342,12 +344,13 @@ def get_workspace_client(
         or MLFLOW_DATABRICKS_ENDPOINT_HTTP_RETRY_TIMEOUT.get(),
     )
 
-    credentials_strategy = _get_credentials_strategy()
-    try:
+    sig = inspect.signature(WorkspaceClient)
+    if "credentials_strategy" in sig.parameters and (
+        credentials_strategy := _get_credentials_strategy()
+    ):
         return WorkspaceClient(config=config, credentials_strategy=credentials_strategy)
-    except TypeError:
-        # WorkspaceClient may not support credentials_strategy param in older versions
-        return WorkspaceClient(config=config)
+
+    return WorkspaceClient(config=config)
 
 
 def _can_parse_as_json_object(string):
