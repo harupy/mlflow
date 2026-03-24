@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 import sklearn.neighbors as knn
 from click.testing import CliRunner
-from fastapi.responses import StreamingResponse
+from fastapi import Request
 
 import mlflow
 from mlflow import MlflowClient
@@ -21,12 +21,22 @@ from mlflow.entities import (
     RunTag,
 )
 from mlflow.entities.assessment_source import AssessmentSource, AssessmentSourceType
+from mlflow.entities.gateway_budget_policy import (
+    BudgetAction,
+    BudgetDuration,
+    BudgetDurationUnit,
+    BudgetTargetScope,
+    BudgetUnit,
+)
 from mlflow.entities.gateway_endpoint import GatewayModelLinkageType
 from mlflow.entities.trace import Trace
 from mlflow.entities.webhook import WebhookAction, WebhookEntity, WebhookEvent
 from mlflow.gateway.cli import start
+from mlflow.gateway.constants import MLFLOW_GATEWAY_CALLER_HEADER
 from mlflow.gateway.schemas import chat
 from mlflow.genai.datasets import create_dataset
+from mlflow.genai.discovery.entities import _TriageResult
+from mlflow.genai.discovery.pipeline import discover_issues
 from mlflow.genai.judges import make_judge
 from mlflow.genai.judges.base import AlignmentOptimizer
 from mlflow.genai.scorers import scorer
@@ -45,6 +55,7 @@ from mlflow.pyfunc.model import (
     ResponsesAgentResponse,
 )
 from mlflow.server.gateway_api import chat_completions, invocations
+from mlflow.store.tracking.gateway.entities import GatewayEndpointConfig
 from mlflow.store.tracking.sqlalchemy_store import SqlAlchemyStore
 from mlflow.telemetry.client import TelemetryClient
 from mlflow.telemetry.events import (
@@ -59,16 +70,21 @@ from mlflow.telemetry.events import (
     CreateRegisteredModelEvent,
     CreateRunEvent,
     CreateWebhookEvent,
+    DiscoverIssuesEvent,
     EvaluateEvent,
+    GatewayCreateBudgetPolicyEvent,
     GatewayCreateEndpointEvent,
     GatewayCreateSecretEvent,
+    GatewayDeleteBudgetPolicyEvent,
     GatewayDeleteEndpointEvent,
     GatewayDeleteSecretEvent,
     GatewayGetEndpointEvent,
     GatewayInvocationEvent,
+    GatewayListBudgetPoliciesEvent,
     GatewayListEndpointsEvent,
     GatewayListSecretsEvent,
     GatewayStartEvent,
+    GatewayUpdateBudgetPolicyEvent,
     GatewayUpdateEndpointEvent,
     GatewayUpdateSecretEvent,
     GenAIEvaluateEvent,
@@ -94,7 +110,11 @@ from mlflow.tracing.distributed import (
     get_tracing_context_headers_for_http_request,
     set_tracing_context_from_http_request_headers,
 )
-from mlflow.tracking.fluent import _create_dataset_input, _initialize_logged_model
+from mlflow.tracking.fluent import (
+    _create_dataset_input,
+    _create_logged_model,
+    _initialize_logged_model,
+)
 from mlflow.utils.os import is_windows
 
 from tests.telemetry.helper_functions import validate_telemetry_record
@@ -150,7 +170,22 @@ def test_create_logged_model(mock_requests, mock_telemetry_client: TelemetryClie
         name="model",
     )
     validate_telemetry_record(
-        mock_telemetry_client, mock_requests, event_name, {"flavor": "sklearn"}
+        mock_telemetry_client,
+        mock_requests,
+        event_name,
+        {"flavor": "sklearn", "serialization_format": "cloudpickle"},
+    )
+
+    mlflow.sklearn.log_model(
+        knn.KNeighborsClassifier(),
+        name="model",
+        serialization_format=mlflow.sklearn.SERIALIZATION_FORMAT_PICKLE,
+    )
+    validate_telemetry_record(
+        mock_telemetry_client,
+        mock_requests,
+        event_name,
+        {"flavor": "sklearn", "serialization_format": "pickle"},
     )
 
     class SimpleResponsesAgent(ResponsesAgent):
@@ -182,6 +217,22 @@ def test_create_logged_model(mock_requests, mock_telemetry_client: TelemetryClie
         mock_requests,
         event_name,
         {"flavor": "pyfunc.ResponsesAgent"},
+    )
+
+    _create_logged_model(name="model", flavor="pyfunc", uses_uv=True)
+    validate_telemetry_record(
+        mock_telemetry_client,
+        mock_requests,
+        event_name,
+        {"flavor": "pyfunc", "uses_uv": True},
+    )
+
+    _create_logged_model(name="model", flavor="pyfunc", uses_uv=False)
+    validate_telemetry_record(
+        mock_telemetry_client,
+        mock_requests,
+        event_name,
+        {"flavor": "pyfunc"},
     )
 
 
@@ -559,13 +610,11 @@ def test_genai_evaluate_telemetry_data_fields(
         )
 
         # Test with pandas DataFrame
-        df_data = pd.DataFrame(
-            [
-                {"inputs": {"question": "Q1"}, "outputs": "A1"},
-                {"inputs": {"question": "Q2"}, "outputs": "A2"},
-                {"inputs": {"question": "Q3"}, "outputs": "A3"},
-            ]
-        )
+        df_data = pd.DataFrame([
+            {"inputs": {"question": "Q1"}, "outputs": "A1"},
+            {"inputs": {"question": "Q2"}, "outputs": "A2"},
+            {"inputs": {"question": "Q3"}, "outputs": "A3"},
+        ])
         mlflow.genai.evaluate(data=df_data, scorers=[sample_scorer])
         expected_params = {
             "predict_fn_provided": False,
@@ -668,17 +717,22 @@ def test_simulate_conversation(mock_requests, mock_telemetry_client: TelemetryCl
     def mock_predict_fn(input, **kwargs):
         return {"role": "assistant", "content": "Mock response"}
 
+    mock_trace = mock.Mock()
     with (
         mock.patch(
-            "mlflow.genai.simulators.simulator._invoke_model_without_tracing",
+            "mlflow.genai.simulators.simulator.invoke_model_without_tracing",
             return_value="Mock user message",
         ),
         mock.patch(
             "mlflow.genai.simulators.simulator.ConversationSimulator._check_goal_achieved",
             return_value=False,
         ),
+        mock.patch(
+            "mlflow.genai.simulators.simulator.mlflow.get_trace",
+            return_value=mock_trace,
+        ),
     ):
-        result = simulator._simulate(predict_fn=mock_predict_fn)
+        result = simulator.simulate(predict_fn=mock_predict_fn)
 
     assert len(result) == 2
 
@@ -715,7 +769,7 @@ def test_simulate_conversation_from_genai_evaluate(
 
     with (
         mock.patch(
-            "mlflow.genai.simulators.simulator._invoke_model_without_tracing",
+            "mlflow.genai.simulators.simulator.invoke_model_without_tracing",
             return_value="Mock user message",
         ),
         mock.patch(
@@ -1264,6 +1318,43 @@ def test_align_judge(mock_requests, mock_telemetry_client: TelemetryClient):
     )
 
 
+def test_discover_issues(mock_requests, mock_telemetry_client: TelemetryClient):
+    traces = [
+        mock.MagicMock(spec=Trace),
+        mock.MagicMock(spec=Trace),
+        mock.MagicMock(spec=Trace),
+    ]
+
+    with (
+        patch("mlflow.genai.discovery.pipeline.get_session_id", return_value=None),
+        patch("mlflow.genai.discovery.pipeline.verify_scorer"),
+        patch("mlflow.genai.discovery.pipeline.mlflow.genai.evaluate"),
+        patch(
+            "mlflow.genai.discovery.pipeline.extract_failing_traces",
+            return_value=_TriageResult([], {}, {}),
+        ),
+        patch("mlflow.genai.discovery.pipeline.mlflow.MlflowClient"),
+        patch("mlflow.genai.discovery.pipeline.mlflow.set_experiment"),
+    ):
+        discover_issues(
+            traces=traces,
+            model="openai:/gpt-4",
+            categories=["hallucination", "accuracy"],
+        )
+
+    expected_params = {
+        "model": "openai:/gpt-4",
+        "trace_count": 3,
+        "categories": ["hallucination", "accuracy"],
+        "issue_count": 0,
+        "total_traces_analyzed": 3,
+        "total_cost_usd": None,
+    }
+    validate_telemetry_record(
+        mock_telemetry_client, mock_requests, DiscoverIssuesEvent.name, expected_params
+    )
+
+
 def test_autologging(mock_requests, mock_telemetry_client: TelemetryClient):
     try:
         mlflow.openai.autolog()
@@ -1273,13 +1364,11 @@ def test_autologging(mock_requests, mock_telemetry_client: TelemetryClient):
         data = [record["data"] for record in mock_requests]
         params = [event["params"] for event in data if event["event_name"] == AutologgingEvent.name]
         assert (
-            json.dumps(
-                {
-                    "flavor": mlflow.openai.FLAVOR_NAME,
-                    "log_traces": True,
-                    "disable": False,
-                }
-            )
+            json.dumps({
+                "flavor": mlflow.openai.FLAVOR_NAME,
+                "log_traces": True,
+                "disable": False,
+            })
             in params
         )
         assert json.dumps({"flavor": "all", "log_traces": True, "disable": False}) in params
@@ -1450,16 +1539,14 @@ def test_scorer_call_from_genai_evaluate(mock_requests, mock_telemetry_client: T
     model("How does MLflow work?", session_id="test_session")
     trace_2 = mlflow.get_trace(mlflow.get_last_active_trace_id())
 
-    test_data = pd.DataFrame(
-        [
-            {
-                "trace": trace_1,
-            },
-            {
-                "trace": trace_2,
-            },
-        ]
-    )
+    test_data = pd.DataFrame([
+        {
+            "trace": trace_1,
+        },
+        {
+            "trace": trace_2,
+        },
+    ])
 
     mock_feedback = Feedback(
         name="test_feedback",
@@ -1689,12 +1776,10 @@ def test_scorer_call_wrapped_builtin_scorer_from_genai_evaluate(
     model("How does MLflow work?", session_id="test_session")
     trace_2 = mlflow.get_trace(mlflow.get_last_active_trace_id())
 
-    test_data = pd.DataFrame(
-        [
-            {"trace": trace_1},
-            {"trace": trace_2},
-        ]
-    )
+    test_data = pd.DataFrame([
+        {"trace": trace_1},
+        {"trace": trace_2},
+    ])
 
     mock_feedback = Feedback(
         name="user_frustration",
@@ -1771,6 +1856,7 @@ def test_gateway_crud_telemetry(mock_requests, mock_telemetry_client: TelemetryC
             "has_fallback_config": False,
             "routing_strategy": None,
             "num_model_configs": 1,
+            "usage_tracking": True,
         },
     )
 
@@ -1809,6 +1895,7 @@ def test_gateway_crud_telemetry(mock_requests, mock_telemetry_client: TelemetryC
             "has_fallback_config": False,
             "routing_strategy": None,
             "num_model_configs": None,
+            "usage_tracking": None,
         },
     )
 
@@ -1888,6 +1975,57 @@ def test_gateway_secret_crud_telemetry(
     store.delete_gateway_secret(secret_id=secret2.secret_id)
 
 
+def test_gateway_budget_policy_crud_telemetry(
+    mock_requests, mock_telemetry_client: TelemetryClient, tmp_path
+):
+    db_path = tmp_path / "mlflow.db"
+    store = SqlAlchemyStore(f"sqlite:///{db_path}", tmp_path.as_posix())
+
+    policy = store.create_budget_policy(
+        budget_unit=BudgetUnit.USD,
+        budget_amount=100.0,
+        duration=BudgetDuration(unit=BudgetDurationUnit.DAYS, value=30),
+        target_scope=BudgetTargetScope.GLOBAL,
+        budget_action=BudgetAction.ALERT,
+        created_by="test-user",
+    )
+    validate_telemetry_record(
+        mock_telemetry_client,
+        mock_requests,
+        GatewayCreateBudgetPolicyEvent.name,
+        {
+            "budget_unit": "USD",
+            "duration_unit": "DAYS",
+            "target_scope": "GLOBAL",
+            "budget_action": "ALERT",
+        },
+    )
+
+    store.list_budget_policies()
+    validate_telemetry_record(
+        mock_telemetry_client,
+        mock_requests,
+        GatewayListBudgetPoliciesEvent.name,
+    )
+
+    store.update_budget_policy(
+        budget_policy_id=policy.budget_policy_id,
+        budget_amount=200.0,
+    )
+    validate_telemetry_record(
+        mock_telemetry_client,
+        mock_requests,
+        GatewayUpdateBudgetPolicyEvent.name,
+    )
+
+    store.delete_budget_policy(budget_policy_id=policy.budget_policy_id)
+    validate_telemetry_record(
+        mock_telemetry_client,
+        mock_requests,
+        GatewayDeleteBudgetPolicyEvent.name,
+    )
+
+
 @pytest.mark.asyncio
 async def test_gateway_invocation_telemetry(
     mock_requests, mock_telemetry_client: TelemetryClient, tmp_path
@@ -1958,7 +2096,10 @@ async def test_gateway_invocation_telemetry(
     ):
         mock_provider = MagicMock()
         mock_provider.chat = AsyncMock(return_value=mock_response)
-        mock_create_provider.return_value = mock_provider
+        mock_endpoint_config = GatewayEndpointConfig(
+            endpoint_id=endpoint.endpoint_id, endpoint_name=endpoint.name, models=[]
+        )
+        mock_create_provider.return_value = (mock_provider, mock_endpoint_config)
 
         await invocations(endpoint.name, mock_request)
 
@@ -1988,7 +2129,10 @@ async def test_gateway_invocation_telemetry(
     ):
         mock_provider = MagicMock()
         mock_provider.chat = AsyncMock(return_value=mock_response)
-        mock_create_provider.return_value = mock_provider
+        mock_endpoint_config = GatewayEndpointConfig(
+            endpoint_id=endpoint.endpoint_id, endpoint_name=endpoint.name, models=[]
+        )
+        mock_create_provider.return_value = (mock_provider, mock_endpoint_config)
 
         await chat_completions(mock_request)
 
@@ -2010,21 +2154,32 @@ async def test_gateway_invocation_telemetry(
     )
 
     async def mock_stream():
-        yield "data: test\n\n"
+        yield chat.StreamResponsePayload(
+            id="test-id",
+            object="chat.completion.chunk",
+            created=1234567890,
+            model="gpt-4",
+            choices=[
+                chat.StreamChoice(
+                    index=0,
+                    delta=chat.StreamDelta(role="assistant", content="Hello"),
+                    finish_reason=None,
+                )
+            ],
+        )
 
     with (
         patch("mlflow.server.gateway_api._get_store", return_value=store),
         patch(
             "mlflow.server.gateway_api._create_provider_from_endpoint_name"
         ) as mock_create_provider,
-        patch("mlflow.server.gateway_api.make_streaming_response") as mock_streaming,
     ):
         mock_provider = MagicMock()
         mock_provider.chat_stream = MagicMock(return_value=mock_stream())
-        mock_create_provider.return_value = mock_provider
-        mock_streaming.return_value = StreamingResponse(
-            mock_stream(), media_type="text/event-stream"
+        mock_endpoint_config = GatewayEndpointConfig(
+            endpoint_id=endpoint.endpoint_id, endpoint_name=endpoint.name, models=[]
         )
+        mock_create_provider.return_value = (mock_provider, mock_endpoint_config)
 
         await chat_completions(mock_request)
 
@@ -2033,6 +2188,39 @@ async def test_gateway_invocation_telemetry(
         mock_requests,
         GatewayInvocationEvent.name,
         {"is_streaming": True, "invocation_type": "mlflow_chat_completions"},
+    )
+
+    # Test that caller header is included in telemetry when present
+    mock_request = MagicMock(spec=Request)
+    mock_request.json = AsyncMock(
+        return_value={
+            "model": endpoint.name,
+            "messages": [{"role": "user", "content": "Hi"}],
+            "stream": False,
+        }
+    )
+    mock_request.headers = {MLFLOW_GATEWAY_CALLER_HEADER: "judge"}
+
+    with (
+        patch("mlflow.server.gateway_api._get_store", return_value=store),
+        patch(
+            "mlflow.server.gateway_api._create_provider_from_endpoint_name"
+        ) as mock_create_provider,
+    ):
+        mock_provider = MagicMock()
+        mock_provider.chat = AsyncMock(return_value=mock_response)
+        mock_endpoint_config = GatewayEndpointConfig(
+            endpoint_id=endpoint.endpoint_id, endpoint_name=endpoint.name, models=[]
+        )
+        mock_create_provider.return_value = (mock_provider, mock_endpoint_config)
+
+        await chat_completions(mock_request)
+
+    validate_telemetry_record(
+        mock_telemetry_client,
+        mock_requests,
+        GatewayInvocationEvent.name,
+        {"is_streaming": False, "invocation_type": "mlflow_chat_completions", "caller": "judge"},
     )
 
 

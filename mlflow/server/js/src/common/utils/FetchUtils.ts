@@ -10,8 +10,8 @@ import JsonBigInt from 'json-bigint';
 import yaml from 'js-yaml';
 import { isNil, pickBy } from 'lodash';
 import { ErrorWrapper } from './ErrorWrapper';
-import { matchPredefinedError } from '@databricks/web-shared/errors';
-import { matchPredefinedErrorFromResponse } from '@databricks/web-shared/errors';
+import { matchPredefinedError, matchPredefinedErrorFromResponse } from '@databricks/web-shared/errors';
+import { getActiveWorkspace } from '../../workspaces/utils/WorkspaceUtils';
 
 export const HTTPMethods = {
   GET: 'GET',
@@ -48,8 +48,13 @@ export const getDefaultHeadersFromCookies = (cookieStr: any) => {
 
 export const getDefaultHeaders = (cookieStr: any) => {
   const cookieHeaders = getDefaultHeadersFromCookies(cookieStr);
+
+  // getActiveWorkspace() returns null if workspaces feature is not enabled
+  const workspace = getActiveWorkspace();
+
   return {
     ...cookieHeaders,
+    ...(workspace ? { 'X-MLFLOW-WORKSPACE': workspace } : {}),
   };
 };
 
@@ -88,8 +93,7 @@ export const yamlResponseParser = ({ resolve, response }: any) =>
   parseResponse({ resolve, response, parser: yaml.safeLoad });
 
 export const defaultError = ({ reject, response, err }: any) => {
-  // eslint-disable-next-line no-console -- TODO(FEINF-3587)
-  console.error('Fetch failed: ', response || err);
+  // error is propagated via reject below
   if (response) {
     response.text().then((text: any) => reject(new ErrorWrapper(text, response.status)));
   } else if (err) {
@@ -99,8 +103,9 @@ export const defaultError = ({ reject, response, err }: any) => {
 
 /**
  * Makes a fetch request.
- * Note this is not intended to be used outside of this file,
- * use `fetchEndpoint` instead.
+ * Note: this function is intended for internal use within this module.
+ * External callers should use `fetchAPI` or `fetchOrFail` instead.
+ * @deprecated Use `fetchAPI` (returns parsed JSON) or `fetchOrFail` (returns raw Response) for better error parsing support.
  */
 export const fetchEndpointRaw = ({
   relativeUrl,
@@ -207,6 +212,7 @@ const defaultFetchErrorConditionFn = (res: any) => !res || (!res.ok && !HTTPRetr
 
 /**
  * Makes a fetch request.
+ * @deprecated Use `fetchAPI` (returns parsed JSON) or `fetchOrFail` (returns raw Response) for better error parsing support.
  * @param relativeUrl: relative URL to the shard URL
  * @param method: HTTP method for the request
  * @param body: request body
@@ -279,8 +285,6 @@ const generateJsonBody = (data: any) => {
     return JSON.stringify(filterUndefinedFields(data));
   } else {
     throw new Error(
-      // Reported during ESLint upgrade
-      // eslint-disable-next-line max-len
       'Unexpected type of input. The REST api payload type must be either an object or a string, got ' + typeof data,
     );
   }
@@ -288,6 +292,7 @@ const generateJsonBody = (data: any) => {
 
 /* All functions below are essentially syntactic sugars for fetchEndpoint */
 
+/** @deprecated Use `fetchAPI` (returns parsed JSON) or `fetchOrFail` (returns raw Response) for better error parsing support. */
 export const getJson = (props: any) => {
   const { relativeUrl, data } = props;
   const queryParams = new URLSearchParams(filterUndefinedFields(data)).toString();
@@ -300,6 +305,7 @@ export const getJson = (props: any) => {
   });
 };
 
+/** @deprecated Use `fetchAPI` (returns parsed JSON) or `fetchOrFail` (returns raw Response) for better error parsing support. */
 export const postJson = (props: any) => {
   const { data } = props;
   return fetchEndpoint({
@@ -310,6 +316,7 @@ export const postJson = (props: any) => {
   });
 };
 
+/** @deprecated Use `fetchAPI` (returns parsed JSON) or `fetchOrFail` (returns raw Response) for better error parsing support. */
 export const putJson = (props: any) => {
   const { data } = props;
   return fetchEndpoint({
@@ -320,6 +327,7 @@ export const putJson = (props: any) => {
   });
 };
 
+/** @deprecated Use `fetchAPI` (returns parsed JSON) or `fetchOrFail` (returns raw Response) for better error parsing support. */
 export const patchJson = (props: any) => {
   const { data } = props;
   return fetchEndpoint({
@@ -330,6 +338,7 @@ export const patchJson = (props: any) => {
   });
 };
 
+/** @deprecated Use `fetchAPI` (returns parsed JSON) or `fetchOrFail` (returns raw Response) for better error parsing support. */
 export const deleteJson = (props: any) => {
   const { data } = props;
   return fetchEndpoint({
@@ -340,6 +349,7 @@ export const deleteJson = (props: any) => {
   });
 };
 
+/** @deprecated Use `fetchAPI` (returns parsed JSON) or `fetchOrFail` (returns raw Response) for better error parsing support. */
 export const getBigIntJson = (props: any) => {
   const { relativeUrl, data } = props;
   const queryParams = new URLSearchParams(filterUndefinedFields(data));
@@ -353,6 +363,7 @@ export const getBigIntJson = (props: any) => {
   });
 };
 
+/** @deprecated Use `fetchAPI` (returns parsed JSON) or `fetchOrFail` (returns raw Response) for better error parsing support. */
 export const postBigIntJson = (props: any) => {
   const { data } = props;
   return fetchEndpoint({
@@ -363,6 +374,7 @@ export const postBigIntJson = (props: any) => {
   });
 };
 
+/** @deprecated Use `fetchAPI` (returns parsed JSON) or `fetchOrFail` (returns raw Response) for better error parsing support. */
 export const putBigIntJson = (props: any) => {
   const { data } = props;
   return fetchEndpoint({
@@ -373,6 +385,7 @@ export const putBigIntJson = (props: any) => {
   });
 };
 
+/** @deprecated Use `fetchAPI` (returns parsed JSON) or `fetchOrFail` (returns raw Response) for better error parsing support. */
 export const patchBigIntJson = (props: any) => {
   const { data } = props;
   return fetchEndpoint({
@@ -383,6 +396,7 @@ export const patchBigIntJson = (props: any) => {
   });
 };
 
+/** @deprecated Use `fetchAPI` (returns parsed JSON) or `fetchOrFail` (returns raw Response) for better error parsing support. */
 export const deleteBigIntJson = (props: any) => {
   const { data } = props;
   return fetchEndpoint({
@@ -453,19 +467,33 @@ function serializeRequestBody(payload: any | FormData | Blob) {
     : JSON.stringify(payload);
 }
 
+export type FetchAPIOptions = Omit<RequestInit, 'body'> & {
+  body?: any;
+};
+
 // Helper method to make a request to the backend.
-export const fetchAPI = async (url: string, method: 'POST' | 'GET' | 'PATCH' | 'DELETE' = 'GET', body?: any) => {
+export const fetchAPI = async (url: string, options: FetchAPIOptions = {}) => {
+  const { method, headers, body, ...restOptions } = options;
+
+  let cookieString = '';
+  if (typeof document !== 'undefined' && typeof document.cookie === 'string') {
+    cookieString = document.cookie || '';
+  }
+
+  const fetchOptions: RequestInit = {
+    ...restOptions,
+    method: method || HTTPMethods.GET,
+    headers: {
+      ...getDefaultHeaders(cookieString),
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...headers,
+    },
+    ...(body && { body: serializeRequestBody(body) }),
+  };
+
   // eslint-disable-next-line no-restricted-globals
   const fetchFn = fetch;
-  const headers = {
-    ...(body ? { 'Content-Type': 'application/json' } : {}),
-    ...getDefaultHeaders(document.cookie),
-  };
-  const response = await fetchFn(url, {
-    method,
-    body: serializeRequestBody(body),
-    headers,
-  });
+  const response = await fetchFn(url, fetchOptions);
   if (!response.ok) {
     const predefinedError = matchPredefinedError(response);
     if (predefinedError) {
@@ -484,6 +512,7 @@ export const fetchAPI = async (url: string, method: 'POST' | 'GET' | 'PATCH' | '
 /**
  * Wrapper around fetch that throws on non-OK responses
  * Returns the Response object for further processing (.json(), .text(), etc.)
+ * Automatically includes default headers (cookies and workspace).
  *
  * @param input - URL or Request object
  * @param options - Fetch options
@@ -491,8 +520,21 @@ export const fetchAPI = async (url: string, method: 'POST' | 'GET' | 'PATCH' | '
  * @throws PredefinedError (NotFoundError, PermissionError, etc.) if response is not OK
  */
 export async function fetchOrFail(input: RequestInfo | URL, options?: RequestInit): Promise<Response> {
+  let cookieString = '';
+  if (typeof document !== 'undefined' && typeof document.cookie === 'string') {
+    cookieString = document.cookie || '';
+  }
+
+  const fetchOptions: RequestInit = {
+    ...options,
+    headers: {
+      ...getDefaultHeaders(cookieString),
+      ...options?.headers,
+    },
+  };
+
   // eslint-disable-next-line no-restricted-globals -- See go/spog-fetch
-  const response = await fetch(input, options);
+  const response = await fetch(input, fetchOptions);
   if (!response.ok) {
     const error = matchPredefinedErrorFromResponse(response);
     throw error;

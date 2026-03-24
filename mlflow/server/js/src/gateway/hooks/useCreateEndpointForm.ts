@@ -1,10 +1,11 @@
 import { useForm } from 'react-hook-form';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useCreateEndpointMutation } from './useCreateEndpointMutation';
 import { useCreateSecret } from './useCreateSecret';
 import { useCreateModelDefinitionMutation } from './useCreateModelDefinitionMutation';
 import { useModelsQuery } from './useModelsQuery';
 import { useEndpointsQuery } from './useEndpointsQuery';
+import { useProviderConfigQuery } from './useProviderConfigQuery';
 import type { ProviderModel, Endpoint } from '../types';
 import type { SecretMode } from '../components/model-configuration/types';
 import { isValidEndpointName } from '../utils/gatewayUtils';
@@ -21,6 +22,8 @@ export interface CreateEndpointFormData {
     secretFields: Record<string, string>;
     configFields: Record<string, string>;
   };
+  usageTracking: boolean;
+  experimentId: string;
 }
 
 export interface UseCreateEndpointFormOptions {
@@ -58,6 +61,8 @@ export function useCreateEndpointForm({
         secretFields: {},
         configFields: {},
       },
+      usageTracking: true,
+      experimentId: '',
     },
   });
 
@@ -96,7 +101,7 @@ export function useCreateEndpointForm({
       let secretId = values.existingSecretId;
 
       if (values.secretMode === 'new') {
-        const authConfig: Record<string, string> = { ...values.newSecret.configFields };
+        const authConfig = { ...values.newSecret.configFields } satisfies Record<string, string>;
         if (values.newSecret.authMode) {
           authConfig['auth_mode'] = values.newSecret.authMode;
         }
@@ -129,6 +134,7 @@ export function useCreateEndpointForm({
             weight: 1.0,
           },
         ],
+        usage_tracking: values.usageTracking,
       });
 
       onSuccess?.(endpointResponse.endpoint);
@@ -146,6 +152,7 @@ export function useCreateEndpointForm({
   const secretMode = form.watch('secretMode');
   const existingSecretId = form.watch('existingSecretId');
   const newSecretName = form.watch('newSecret.name');
+  const newSecretAuthMode = form.watch('newSecret.authMode');
   const newSecretFields = form.watch('newSecret.secretFields');
 
   const prevProviderRef = useRef(provider);
@@ -195,8 +202,15 @@ export function useCreateEndpointForm({
     }
   };
 
-  const hasSecretFieldValues = Object.values(newSecretFields || {}).some((v) => !!v);
-  const isSecretConfigured = secretMode === 'existing' ? !!existingSecretId : !!newSecretName && hasSecretFieldValues;
+  const { data: providerConfig } = useProviderConfigQuery({ provider: provider || '' });
+  const selectedAuthMode = useMemo(
+    () => providerConfig?.auth_modes?.find((m) => m.mode === newSecretAuthMode),
+    [providerConfig, newSecretAuthMode],
+  );
+  const requiresSecretFields = selectedAuthMode?.secret_fields?.some((f) => f.required) ?? true;
+  const hasSecretFieldValues = !requiresSecretFields || Object.values(newSecretFields || {}).some((v) => !!v);
+  const isSecretConfigured =
+    secretMode === 'existing' ? !!existingSecretId : !!newSecretName && !!newSecretAuthMode && hasSecretFieldValues;
   const isFormComplete = !!provider && !!modelName && isSecretConfigured;
 
   return {

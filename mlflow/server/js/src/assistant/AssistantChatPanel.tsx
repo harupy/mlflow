@@ -12,13 +12,14 @@ import {
   RefreshIcon,
   SparkleDoubleIcon,
   SparkleIcon,
-  Spinner,
+  StopIcon,
+  Tag,
   Tooltip,
   Typography,
   useDesignSystemTheme,
   SendIcon,
   WrenchSparkleIcon,
-  Tag,
+  Spinner,
 } from '@databricks/design-system';
 import { FormattedMessage } from '@databricks/i18n';
 
@@ -96,6 +97,20 @@ const ChatMessageBubble = ({
           <Typography.Text css={{ whiteSpace: 'pre-wrap' }}>{message.content}</Typography.Text>
         ) : (
           <GenAIMarkdownRenderer>{message.content}</GenAIMarkdownRenderer>
+        )}
+        {/* Interrupted indicator */}
+        {message.isInterrupted && (
+          <span
+            css={{
+              display: 'block',
+              marginTop: theme.spacing.sm,
+              fontSize: theme.typography.fontSizeSm,
+              fontStyle: 'italic',
+              color: theme.colors.textSecondary,
+            }}
+          >
+            Interrupted by user
+          </span>
         )}
         {/* Loading indicator */}
         {message.isStreaming && (
@@ -245,17 +260,26 @@ const PromptSuggestions = ({ onSelect }: { onSelect: (prompt: string) => void })
  */
 const ChatPanelContent = () => {
   const { theme } = useDesignSystemTheme();
-  const { messages, isStreaming, error, activeTools, sendMessage, regenerateLastMessage } = useAssistant();
-  const pageContext = useAssistantPageContext();
-  const hasExperimentContext = Boolean(pageContext['experimentId']);
+  const { messages, isStreaming, error, activeTools, sendMessage, regenerateLastMessage, cancelSession } =
+    useAssistant();
 
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Auto-resize textarea to fit content
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [inputValue]);
 
   const handleSend = useCallback(() => {
     if (inputValue.trim() && !isStreaming) {
@@ -339,12 +363,14 @@ const ChatPanelContent = () => {
             backgroundColor: theme.colors.backgroundPrimary,
           }}
         >
-          <div css={{ display: 'flex', alignItems: 'center' }}>
-            <input
+          <div css={{ display: 'flex', alignItems: 'flex-end' }}>
+            <textarea
+              ref={textareaRef}
               placeholder="Ask a question..."
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
+              rows={1}
               css={{
                 flex: 1,
                 border: 'none',
@@ -353,6 +379,12 @@ const ChatPanelContent = () => {
                 fontSize: theme.typography.fontSizeBase,
                 color: theme.colors.textPrimary,
                 padding: theme.spacing.xs,
+                resize: 'none',
+                overflowX: 'hidden',
+                overflowY: 'auto',
+                fontFamily: 'inherit',
+                lineHeight: 'inherit',
+                maxHeight: 150,
                 '&::placeholder': {
                   color: theme.colors.textPlaceholder,
                 },
@@ -362,31 +394,13 @@ const ChatPanelContent = () => {
                 },
               }}
             />
-            <button
-              onClick={handleSend}
-              disabled={!inputValue.trim() || isStreaming}
-              css={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: theme.spacing.xs,
-                border: 'none',
-                background: 'transparent',
-                cursor: !inputValue.trim() || isStreaming ? 'not-allowed' : 'pointer',
-                borderRadius: theme.borders.borderRadiusSm,
-                color: theme.colors.actionPrimaryBackgroundDefault,
-                opacity: !inputValue.trim() || isStreaming ? 0.3 : 1,
-                '&:hover:not(:disabled)': {
-                  backgroundColor: theme.colors.actionDefaultBackgroundHover,
-                },
-                '&:active:not(:disabled)': {
-                  backgroundColor: theme.colors.actionDefaultBackgroundPress,
-                },
-              }}
+            <Button
+              componentId="mlflow.assistant.chat_panel.send"
+              onClick={isStreaming ? cancelSession : handleSend}
+              disabled={!isStreaming && !inputValue.trim()}
+              icon={isStreaming ? <StopIcon /> : <SendIcon />}
               aria-label="Send message"
-            >
-              {isStreaming ? <Spinner size="small" /> : <SendIcon />}
-            </button>
+            />
           </div>
           <AssistantContextTags />
         </div>

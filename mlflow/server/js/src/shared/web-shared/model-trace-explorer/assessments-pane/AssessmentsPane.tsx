@@ -1,76 +1,63 @@
-import { isNil, partition, uniqBy } from 'lodash';
+import { cloneDeep, partition, uniqBy } from 'lodash';
 import { useMemo } from 'react';
 
-import {
-  Button,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  CloseIcon,
-  Tooltip,
-  Typography,
-  useDesignSystemTheme,
-} from '@databricks/design-system';
+import { Button, CloseIcon, Spacer, Tooltip, Typography, useDesignSystemTheme } from '@databricks/design-system';
 import { FormattedMessage } from '@databricks/i18n';
 
-import { AssessmentCreateButton } from './AssessmentCreateButton';
 import { ASSESSMENT_PANE_MIN_WIDTH } from './AssessmentsPane.utils';
-import { ExpectationItem } from './ExpectationItem';
-import { FeedbackGroup } from './FeedbackGroup';
-import { shouldUseTracesV4API } from '../FeatureUtils';
-import type { Assessment, FeedbackAssessment } from '../ModelTrace.types';
+import { isEvaluatingTracesInDetailsViewEnabled, shouldUseTracesV4API } from '../FeatureUtils';
+import type {
+  Assessment,
+  ExpectationAssessment,
+  FeedbackAssessment,
+  IssueReferenceAssessment,
+} from '../ModelTrace.types';
 import { useModelTraceExplorerViewState } from '../ModelTraceExplorerViewStateContext';
 import { useTraceCachedActions } from '../hooks/useTraceCachedActions';
+import { AssessmentsPaneExpectationsSection } from './AssessmentsPaneExpectationsSection';
+import { AssessmentsPaneFeedbackSection } from './AssessmentsPaneFeedbackSection';
+import { AssessmentsPaneIssuesSection } from './AssessmentsPaneIssuesSection';
+import { useModelTraceExplorerRunJudgesContext } from '../contexts/RunJudgesContext';
+import { useSelectedIssueId } from '@mlflow/mlflow/src/experiment-tracking/components/run-page/hooks/useSelectedIssueId';
 
-type GroupedFeedbacksByValue = { [value: string]: FeedbackAssessment[] };
-
-type GroupedFeedbacks = [assessmentName: string, feedbacks: GroupedFeedbacksByValue][];
-
-const groupFeedbacks = (feedbacks: FeedbackAssessment[]): GroupedFeedbacks => {
-  const aggregated: Record<string, GroupedFeedbacksByValue> = {};
-  feedbacks.forEach((feedback) => {
-    if (feedback.valid === false) {
-      return;
-    }
-
-    let value = null;
-    if (feedback.feedback.value !== '') {
-      value = JSON.stringify(feedback.feedback.value);
-    }
-
-    const { assessment_name } = feedback;
-    if (!aggregated[assessment_name]) {
-      aggregated[assessment_name] = {};
-    }
-
-    const group = aggregated[assessment_name];
-    if (!isNil(value)) {
-      if (!group[value]) {
-        group[value] = [];
-      }
-      group[value].push(feedback);
-    }
-  });
-
-  return Object.entries(aggregated).toSorted(([leftName], [rightName]) => leftName.localeCompare(rightName));
+/**
+ * Safely calls useSelectedIssueId hook, returning undefined if not in a Router context.
+ * This prevents crashes when AssessmentsPane is rendered outside a Router (e.g., tests, OSS notebook).
+ */
+const useSafeSelectedIssueId = (): string | undefined => {
+  try {
+    const [selectedIssueId] = useSelectedIssueId();
+    return selectedIssueId;
+  } catch (error) {
+    // Hook throws when not in a Router context
+    return undefined;
+  }
 };
 
 export const AssessmentsPane = ({
   assessments,
   traceId,
+  sessionId,
   activeSpanId,
   className,
   assessmentsTitleOverride,
   disableCloseButton,
+  enableRunScorer = true,
 }: {
   assessments: Assessment[];
   traceId: string;
+  sessionId?: string;
   activeSpanId?: string;
   className?: string;
   assessmentsTitleOverride?: (count?: number) => JSX.Element;
   disableCloseButton?: boolean;
+  enableRunScorer?: boolean;
 }) => {
   const reconstructAssessments = useTraceCachedActions((state) => state.reconstructAssessments);
   const cachedActions = useTraceCachedActions((state) => state.assessmentActions[traceId]);
+
+  // Get selected issue ID from URL (safe in non-router contexts)
+  const selectedIssueId = useSafeSelectedIssueId();
 
   // Combine the initial assessments with the cached actions (additions and deletions)
   const allAssessments = useMemo(() => {
@@ -83,15 +70,27 @@ export const AssessmentsPane = ({
   }, [assessments, reconstructAssessments, cachedActions]);
 
   const { theme } = useDesignSystemTheme();
-  const { setAssessmentsPaneExpanded, assessmentsPaneExpanded, isInComparisonView } = useModelTraceExplorerViewState();
-  const [feedbacks, expectations] = useMemo(
-    () => partition(allAssessments, (assessment) => 'feedback' in assessment),
-    [allAssessments],
-  );
-  const groupedFeedbacks = useMemo(() => groupFeedbacks(feedbacks), [feedbacks]);
-  const sortedExpectations = expectations.toSorted((left, right) =>
-    left.assessment_name.localeCompare(right.assessment_name),
-  );
+  const { setAssessmentsPaneExpanded } = useModelTraceExplorerViewState();
+
+  const { feedbacks, expectations, issues } = useMemo(() => {
+    const feedbacks: FeedbackAssessment[] = [];
+    const expectations: ExpectationAssessment[] = [];
+    const issues: IssueReferenceAssessment[] = [];
+
+    for (const assessment of allAssessments) {
+      if ('feedback' in assessment) {
+        feedbacks.push(assessment);
+      } else if ('issue' in assessment) {
+        issues.push(assessment);
+      } else if ('expectation' in assessment) {
+        expectations.push(assessment);
+      }
+    }
+
+    return { feedbacks, expectations, issues };
+  }, [allAssessments]);
+
+  const runJudgeConfiguration = useModelTraceExplorerRunJudgesContext();
 
   return (
     <div
@@ -99,10 +98,10 @@ export const AssessmentsPane = ({
       css={{
         display: 'flex',
         flexDirection: 'column',
-        ...(isInComparisonView
-          ? { padding: `${theme.spacing.sm} 0`, maxHeight: theme.spacing.lg * 10 }
-          : { padding: theme.spacing.sm, paddingTop: theme.spacing.xs, height: '100%' }),
-        ...(isInComparisonView ? {} : { borderLeft: `1px solid ${theme.colors.border}` }),
+        padding: theme.spacing.sm,
+        paddingTop: theme.spacing.xs,
+        height: '100%',
+        borderLeft: `1px solid ${theme.colors.border}`,
         overflowY: 'auto',
         minWidth: ASSESSMENT_PANE_MIN_WIDTH,
         width: '100%',
@@ -111,13 +110,12 @@ export const AssessmentsPane = ({
       className={className}
     >
       <div css={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        {!isInComparisonView &&
-          (assessmentsTitleOverride ? (
-            assessmentsTitleOverride()
-          ) : (
-            <FormattedMessage defaultMessage="Assessments" description="Label for the assessments pane" />
-          ))}
-        {!isInComparisonView && setAssessmentsPaneExpanded && !disableCloseButton && (
+        {assessmentsTitleOverride ? (
+          assessmentsTitleOverride()
+        ) : (
+          <FormattedMessage defaultMessage="Assessments" description="Label for the assessments pane" />
+        )}
+        {setAssessmentsPaneExpanded && !disableCloseButton && (
           <Tooltip
             componentId="shared.model-trace-explorer.close-assessments-pane-tooltip"
             content={
@@ -137,36 +135,30 @@ export const AssessmentsPane = ({
           </Tooltip>
         )}
       </div>
-      {groupedFeedbacks.map(([name, valuesMap]) => (
-        <FeedbackGroup key={name} name={name} valuesMap={valuesMap} traceId={traceId} activeSpanId={activeSpanId} />
-      ))}
-      {sortedExpectations.length > 0 && (
+      <AssessmentsPaneFeedbackSection
+        enableRunScorer={
+          enableRunScorer &&
+          isEvaluatingTracesInDetailsViewEnabled() &&
+          Boolean(runJudgeConfiguration.renderRunJudgeModal)
+        }
+        feedbacks={feedbacks}
+        activeSpanId={activeSpanId}
+        traceId={traceId}
+        sessionId={sessionId}
+      />
+      <Spacer size="sm" shrinks={false} />
+      <AssessmentsPaneExpectationsSection
+        expectations={expectations}
+        activeSpanId={activeSpanId}
+        traceId={traceId}
+        sessionId={sessionId}
+      />
+      {issues.length > 0 && (
         <>
-          <Typography.Text color="secondary" css={{ marginBottom: theme.spacing.sm }}>
-            <FormattedMessage
-              defaultMessage="Expectations"
-              description="Label for the expectations section in the assessments pane"
-            />
-          </Typography.Text>
-          <div
-            css={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm, marginBottom: theme.spacing.sm }}
-          >
-            {sortedExpectations.map((expectation) => (
-              <ExpectationItem expectation={expectation} key={expectation.assessment_id} />
-            ))}
-          </div>
+          <Spacer size="sm" shrinks={false} />
+          <AssessmentsPaneIssuesSection issues={issues} selectedIssueId={selectedIssueId} />
         </>
       )}
-      <AssessmentCreateButton
-        title={
-          <FormattedMessage
-            defaultMessage="Add new assessment"
-            description="Label for the button to add a new assessment"
-          />
-        }
-        spanId={activeSpanId}
-        traceId={traceId}
-      />
     </div>
   );
 };

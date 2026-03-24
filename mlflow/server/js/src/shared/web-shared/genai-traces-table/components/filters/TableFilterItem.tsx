@@ -20,6 +20,7 @@ import {
   STATE_COLUMN_ID,
   TRACE_NAME_COLUMN_ID,
   USER_COLUMN_ID,
+  SESSION_COLUMN_ID,
   RUN_NAME_COLUMN_ID,
   LOGGED_MODEL_COLUMN_ID,
   LINKED_PROMPTS_COLUMN_ID,
@@ -27,6 +28,7 @@ import {
   CUSTOM_METADATA_COLUMN_ID,
   SPAN_NAME_COLUMN_ID,
   SPAN_TYPE_COLUMN_ID,
+  SPAN_STATUS_COLUMN_ID,
   SPAN_CONTENT_COLUMN_ID,
 } from '../../hooks/useTableColumns';
 import type {
@@ -36,7 +38,7 @@ import type {
   TableFilterOptions,
   TracesTableColumn,
 } from '../../types';
-import { FilterOperator, TracesTableColumnGroup, TracesTableColumnGroupToLabelMap } from '../../types';
+import { FilterOperator, TracesTableColumnGroup, TracesTableColumnGroupToLabelMap, isNullOperator } from '../../types';
 
 const getFilterableInfoColumns = (usesV4APIs?: boolean) => {
   // We use a different set of filterable info columns depending on whether v4 APIs are used
@@ -46,6 +48,7 @@ const getFilterableInfoColumns = (usesV4APIs?: boolean) => {
       STATE_COLUMN_ID,
       TRACE_NAME_COLUMN_ID,
       USER_COLUMN_ID,
+      SESSION_COLUMN_ID,
       RUN_NAME_COLUMN_ID,
       LOGGED_MODEL_COLUMN_ID,
       SOURCE_COLUMN_ID,
@@ -59,6 +62,7 @@ const getFilterableInfoColumns = (usesV4APIs?: boolean) => {
     STATE_COLUMN_ID,
     TRACE_NAME_COLUMN_ID,
     USER_COLUMN_ID,
+    SESSION_COLUMN_ID,
     RUN_NAME_COLUMN_ID,
     LOGGED_MODEL_COLUMN_ID,
     SOURCE_COLUMN_ID,
@@ -82,12 +86,28 @@ const getAvailableOperators = (column: string, key?: string): FilterOperator[] =
     return [FilterOperator.EQUALS, FilterOperator.NOT_EQUALS, FilterOperator.CONTAINS];
   }
 
+  if (column === SPAN_STATUS_COLUMN_ID) {
+    return [FilterOperator.EQUALS, FilterOperator.NOT_EQUALS];
+  }
+
   if (column === SPAN_CONTENT_COLUMN_ID) {
     return [FilterOperator.CONTAINS];
   }
 
   if (column === INPUTS_COLUMN_ID || column === RESPONSE_COLUMN_ID) {
     return [FilterOperator.RLIKE, FilterOperator.EQUALS];
+  }
+
+  if (column === TracesTableColumnGroup.ASSESSMENT) {
+    return [FilterOperator.EQUALS, FilterOperator.IS_NULL, FilterOperator.IS_NOT_NULL];
+  }
+
+  if (column === TracesTableColumnGroup.TAG) {
+    return [FilterOperator.EQUALS, FilterOperator.IS_NULL, FilterOperator.IS_NOT_NULL];
+  }
+
+  if (column === SESSION_COLUMN_ID) {
+    return [FilterOperator.EQUALS, FilterOperator.CONTAINS];
   }
 
   return [FilterOperator.EQUALS];
@@ -109,7 +129,7 @@ export const TableFilterItem = ({
   onChange: (filter: TableFilter, index: number) => void;
   onDelete: () => void;
   assessmentInfos: AssessmentInfo[];
-  experimentId: string;
+  experimentId?: string;
   tableFilterOptions: TableFilterOptions;
   allColumns: TracesTableColumn[];
   usesV4APIs?: boolean;
@@ -159,6 +179,7 @@ export const TableFilterItem = ({
         // these when the search API supports them
         { value: SPAN_CONTENT_COLUMN_ID, renderValue: () => 'Span content' },
         { value: SPAN_NAME_COLUMN_ID, renderValue: () => 'Span name' },
+        { value: SPAN_STATUS_COLUMN_ID, renderValue: () => 'Span status' },
         { value: SPAN_TYPE_COLUMN_ID, renderValue: () => 'Span type' },
       );
     }
@@ -295,27 +316,29 @@ export const TableFilterItem = ({
             );
           })()}
         </div>
-        <div
-          css={{
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <FormUI.Label htmlFor={`filter-value-${index}`}>
-            <FormattedMessage
-              defaultMessage="Value"
-              description="Label for the value field in the GenAI Traces Table Filter form"
+        {!isNullOperator(operator as FilterOperator) && (
+          <div
+            css={{
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <FormUI.Label htmlFor={`filter-value-${index}`}>
+              <FormattedMessage
+                defaultMessage="Value"
+                description="Label for the value field in the GenAI Traces Table Filter form"
+              />
+            </FormUI.Label>
+            <TableFilterItemValueInput
+              index={index}
+              tableFilter={tableFilter}
+              assessmentInfos={assessmentInfos}
+              onChange={onChange}
+              experimentId={experimentId}
+              tableFilterOptions={tableFilterOptions}
             />
-          </FormUI.Label>
-          <TableFilterItemValueInput
-            index={index}
-            tableFilter={tableFilter}
-            assessmentInfos={assessmentInfos}
-            onChange={onChange}
-            experimentId={experimentId}
-            tableFilterOptions={tableFilterOptions}
-          />
-        </div>
+          </div>
+        )}
         <div
           css={{
             alignSelf: 'flex-end',
