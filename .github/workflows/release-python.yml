@@ -60,6 +60,34 @@ jobs:
           ref: ${{ github.event.inputs.ref }}
       - uses: ./.github/actions/untracked
       - uses: ./.github/actions/setup-python
+
+      - name: Install dependencies
+        run: |
+          pip install build packaging setuptools twine wheel
+
+      - name: Validate ref and version
+        if: github.event.inputs.destination == 'pypi'
+        env:
+          REF: ${{ github.event.inputs.ref }}
+        run: |
+          python -c "
+          import os, re, sys
+          from packaging.version import Version
+
+          ref = os.environ['REF']
+          m = re.fullmatch(r'branch-(\d+)\.(\d+)', ref)
+          if not m:
+              sys.exit(f'ERROR: ref {ref!r} does not match branch-<major>.<minor>')
+
+          text = open('pyproject.toml').read()
+          m2 = re.search(r'^version\s*=\s*\"([^\"]+)\"', text, re.MULTILINE)
+          if not m2:
+              sys.exit('ERROR: Could not find version in pyproject.toml')
+
+          version = Version(m2.group(1))
+          if (version.major, version.minor) != (int(m.group(1)), int(m.group(2))):
+              sys.exit(f'ERROR: Package version {version!r} does not match ref {ref!r}')
+          "
       - if: matrix.package == 'mlflow'
         uses: ./.github/actions/setup-node
 
@@ -69,10 +97,6 @@ jobs:
         run: |
           yarn install --immutable
           yarn build
-
-      - name: Install dependencies
-        run: |
-          pip install build setuptools twine wheel
 
       - name: Resolve package type
         id: resolve
