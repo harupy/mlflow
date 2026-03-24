@@ -344,9 +344,15 @@ def get_workspace_client(
         or MLFLOW_DATABRICKS_ENDPOINT_HTTP_RETRY_TIMEOUT.get(),
     )
 
-    sig = inspect.signature(WorkspaceClient)
-    if "credentials_strategy" in sig.parameters and (
-        credentials_strategy := _get_credentials_strategy()
+    try:
+        sig = inspect.signature(WorkspaceClient)
+    except (TypeError, ValueError):
+        sig = None
+
+    if (
+        sig is not None
+        and "credentials_strategy" in sig.parameters
+        and (credentials_strategy := _get_credentials_strategy())
     ):
         return WorkspaceClient(config=config, credentials_strategy=credentials_strategy)
 
