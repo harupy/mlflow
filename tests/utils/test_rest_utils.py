@@ -1,3 +1,4 @@
+import inspect
 import re
 import time
 import warnings
@@ -6,6 +7,8 @@ from unittest import mock
 import numpy
 import pytest
 import requests
+from databricks.sdk import WorkspaceClient
+from databricks.sdk.credentials_provider import ModelServingUserCredentials
 
 from mlflow.deployments.databricks import DatabricksDeploymentClient
 from mlflow.environment_variables import (
@@ -25,6 +28,7 @@ from mlflow.utils.rest_utils import (
     _DATABRICKS_SDK_RETRY_AFTER_SECS_DEPRECATION_WARNING,
     MlflowHostCreds,
     _can_parse_as_json_object,
+    _get_credentials_strategy,
     augmented_raise_for_status,
     call_endpoint,
     call_endpoints,
@@ -978,3 +982,47 @@ def test_validate_deployment_timeout_config(timeout, retry_timeout_seconds, shou
                 timeout=timeout, retry_timeout_seconds=retry_timeout_seconds
             )
             assert len(w) == 0
+
+
+def test_get_workspace_client_credentials_strategy():
+    strategy = ModelServingUserCredentials()
+    real_sig = inspect.signature(WorkspaceClient)
+
+    # credentials_strategy is passed when available
+    get_workspace_client.cache_clear()
+    with (
+        mock.patch("databricks.sdk.WorkspaceClient") as mock_wc,
+        mock.patch("databricks.sdk.config.Config"),
+        mock.patch("mlflow.utils.rest_utils._get_credentials_strategy", return_value=strategy),
+        mock.patch("inspect.signature", return_value=real_sig),
+    ):
+        get_workspace_client(False, "http://host", None, None, None, None)
+        mock_wc.assert_called_once_with(config=mock.ANY, credentials_strategy=strategy)
+
+    # credentials_strategy is omitted when _get_credentials_strategy returns None
+    get_workspace_client.cache_clear()
+    with (
+        mock.patch("databricks.sdk.WorkspaceClient") as mock_wc,
+        mock.patch("databricks.sdk.config.Config"),
+        mock.patch("mlflow.utils.rest_utils._get_credentials_strategy", return_value=None),
+    ):
+        get_workspace_client(False, "http://host", None, None, None, None)
+        mock_wc.assert_called_once_with(config=mock.ANY)
+
+    # Falls back gracefully when inspect.signature raises
+    get_workspace_client.cache_clear()
+    with (
+        mock.patch("databricks.sdk.WorkspaceClient") as mock_wc,
+        mock.patch("databricks.sdk.config.Config"),
+        mock.patch("mlflow.utils.rest_utils._get_credentials_strategy", return_value=strategy),
+        mock.patch("inspect.signature", side_effect=TypeError),
+    ):
+        get_workspace_client(False, "http://host", None, None, None, None)
+        mock_wc.assert_called_once_with(config=mock.ANY)
+
+    # _get_credentials_strategy returns None outside model serving
+    with mock.patch(
+        "mlflow.utils.databricks_utils.is_in_databricks_model_serving_environment",
+        return_value=False,
+    ):
+        assert _get_credentials_strategy() is None
