@@ -98,22 +98,17 @@ jobs:
           yarn install --immutable
           yarn build
 
-      - name: Resolve package type
-        id: resolve
+      - name: Build distribution files
         env:
           PACKAGE: ${{ matrix.package }}
         run: |
           case "$PACKAGE" in
-            mlflow)         echo "type=release" >> $GITHUB_OUTPUT ;;
-            mlflow-skinny)  echo "type=skinny" >> $GITHUB_OUTPUT ;;
-            mlflow-tracing) echo "type=tracing" >> $GITHUB_OUTPUT ;;
+            mlflow)         package_type=release ;;
+            mlflow-skinny)  package_type=skinny ;;
+            mlflow-tracing) package_type=tracing ;;
           esac
 
-      - name: Build distribution files
-        env:
-          PACKAGE_TYPE: ${{ steps.resolve.outputs.type }}
-        run: |
-          python dev/build.py --package-type "$PACKAGE_TYPE"
+          python dev/build.py --package-type "$package_type"
 
           ls -lh dist
 
