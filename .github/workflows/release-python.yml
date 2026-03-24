@@ -2,10 +2,6 @@ name: release-python
 
 on:
   pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
     paths:
       - ".github/workflows/release-python.yml"
   workflow_dispatch:
@@ -35,26 +31,7 @@ defaults:
     shell: bash
 
 jobs:
-  check-actor:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-slim
-    timeout-minutes: 5
-    permissions: {}
-    steps:
-      - env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          ACTOR: ${{ github.actor }}
-        run: |
-          permission=$(gh api "repos/${REPO}/collaborators/${ACTOR}/permission" --jq '.role_name')
-          if [[ "$permission" != "admin" && "$permission" != "maintain" ]]; then
-            echo "ERROR: Actor '${ACTOR}' has '${permission}' permission, but 'admin' or 'maintain' is required."
-            exit 1
-          fi
-
   build:
-    if: ${{ !cancelled() && (needs.check-actor.result == 'success' || needs.check-actor.result == 'skipped') }}
-    needs: check-actor
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -62,8 +39,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Build all packages on PRs, only the selected package on workflow_dispatch
         package: ${{ github.event_name == 'pull_request' && fromJSON('["mlflow", "mlflow-skinny", "mlflow-tracing"]') || fromJSON(format('["{0}"]', inputs.package)) }}
     steps:
+      - name: Check actor
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          role=$(gh api "repos/${REPO}/collaborators/${ACTOR}/permission" --jq '.role_name')
+          if [[ "$role" != "admin" && "$role" != "maintain" ]]; then
+            echo "ERROR: Actor '${ACTOR}' has '${role}' role, but 'admin' or 'maintain' is required."
+            exit 1
+          fi
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ inputs.ref }}
@@ -76,7 +67,7 @@ jobs:
         if: matrix.package == 'mlflow'
         working-directory: mlflow/server/js
         run: |
-          yarn
+          yarn install --immutable
           yarn build
 
       - name: Install dependencies
