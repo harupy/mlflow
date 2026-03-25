@@ -10,6 +10,12 @@ runs:
       # Ref: https://github.com/pyenv/pyenv/wiki#suggested-build-environment
       # Note: llvm is optional (required only for building PyPy/clang)
       run: |
+        . /etc/os-release
+        sudo tee /etc/apt/sources.list << EOF
+        deb http://snapshot.ubuntu.com/ubuntu/20260310T000000Z $VERSION_CODENAME main restricted universe
+        deb http://snapshot.ubuntu.com/ubuntu/20260310T000000Z $VERSION_CODENAME-updates main restricted universe
+        deb http://snapshot.ubuntu.com/ubuntu/20260310T000000Z $VERSION_CODENAME-security main restricted universe
+        EOF
         sudo apt-get update -y
         sudo apt-get purge -y man-db || true
         sudo apt-get install -y --no-install-recommends make build-essential libssl-dev zlib1g-dev \

@@ -94,6 +94,12 @@ jobs:
         run: |
           source ./dev/install-common-deps.sh --ml
           uv pip install --system fastapi uvicorn
+          . /etc/os-release
+          sudo tee /etc/apt/sources.list << EOF
+          deb http://snapshot.ubuntu.com/ubuntu/20260310T000000Z $VERSION_CODENAME main restricted universe
+          deb http://snapshot.ubuntu.com/ubuntu/20260310T000000Z $VERSION_CODENAME-updates main restricted universe
+          deb http://snapshot.ubuntu.com/ubuntu/20260310T000000Z $VERSION_CODENAME-security main restricted universe
+          EOF
           sudo apt-get update -y
           # Required for the transformers example that uses the Whisper model
           sudo apt-get install -y ffmpeg
