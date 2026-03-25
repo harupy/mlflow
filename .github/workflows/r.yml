@@ -33,7 +33,6 @@ defaults:
 env:
   MLFLOW_HOME: ${{ github.workspace }}
   PIP_CONSTRAINT: ${{ github.workspace }}/requirements/constraints.txt
-  APT_SNAPSHOT: "20260310T000000Z"
 
 jobs:
   r:
@@ -77,8 +76,14 @@ jobs:
           key: ${{ steps.os-name.outputs.os-name }}-${{ hashFiles('mlflow/R/mlflow/R-version') }}-0-${{ hashFiles('mlflow/R/mlflow/depends.Rds') }}
       - name: Install dependencies
         run: |
-          sudo apt-get update --snapshot $APT_SNAPSHOT -y
-          sudo apt-get install --snapshot $APT_SNAPSHOT -y libcurl4-openssl-dev libharfbuzz-dev libfribidi-dev libtiff-dev
+          . /etc/os-release
+          sudo tee /etc/apt/sources.list << EOF
+          deb http://snapshot.ubuntu.com/ubuntu/20260310T000000Z $VERSION_CODENAME main restricted universe
+          deb http://snapshot.ubuntu.com/ubuntu/20260310T000000Z $VERSION_CODENAME-updates main restricted universe
+          deb http://snapshot.ubuntu.com/ubuntu/20260310T000000Z $VERSION_CODENAME-security main restricted universe
+          EOF
+          sudo apt-get update -y
+          sudo apt-get install -y libcurl4-openssl-dev libharfbuzz-dev libfribidi-dev libtiff-dev
           Rscript -e 'source(".install-deps.R", echo=TRUE)'
       - name: Set USE_R_DEVEL
         run: |
