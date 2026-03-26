@@ -56,7 +56,7 @@ runs:
       run: echo "Rate limit before setup-uv:$(gh api rate_limit --jq '.rate.remaining')"
     - uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7.3.1
       with:
-        resolution-strategy: "lowest"
+        version: "0.10.12"
     - name: Rate limit after setup-uv
       shell: bash
       env:
