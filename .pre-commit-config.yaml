@@ -50,6 +50,7 @@ repos:
         language: system
         files: |
           (?x)^(
+            \.github/netlify/deploy\.py|
             dev/.*\.py|
             \.claude/skills/.*\.py
           )$
