@@ -49,9 +49,19 @@ runs:
     - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
       with:
         python-version: ${{ steps.get-python-version.outputs.version }}
+    - name: Rate limit before setup-uv
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: echo "Rate limit before setup-uv:$(gh api rate_limit --jq '.rate.remaining')"
     - uses: astral-sh/setup-uv@5a095e7a2014a4212f075830d4f7277575a9d098 # v7.3.1
       with:
         resolution-strategy: "lowest"
+    - name: Rate limit after setup-uv
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: echo "Rate limit after setup-uv:$(gh api rate_limit --jq '.rate.remaining')"
     - run: |
         # The default `first-index` strategy is too strict. Use `unsafe-first-match` instead.
         # https://docs.astral.sh/uv/configuration/environment/#uv_index_strategy
