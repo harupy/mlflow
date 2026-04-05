@@ -76,25 +76,20 @@ jobs:
                   identical += 1
           print(f'  Identical timestamps: {identical}/100')
 
-          print()
-          print('Span creation simulation (100 pairs, sleep(0.001)):')
-          identical = 0
-          for _ in range(100):
-              t1 = time.time_ns()
-              time.sleep(0.001)
-              t2 = time.time_ns()
-              if t1 == t2:
-                  identical += 1
-          print(f'  Identical timestamps: {identical}/100')
-
-          print()
-          print('Span creation simulation (100 pairs, sleep(0.002)):')
-          identical = 0
-          for _ in range(100):
-              t1 = time.time_ns()
-              time.sleep(0.002)
-              t2 = time.time_ns()
-              if t1 == t2:
-                  identical += 1
-          print(f'  Identical timestamps: {identical}/100')
+          for sleep_ms in [0.001, 0.002]:
+              print()
+              print(f'Span creation simulation (100 pairs, sleep({sleep_ms})):')
+              identical = 0
+              deltas = []
+              for _ in range(100):
+                  t1 = time.time_ns()
+                  time.sleep(sleep_ms)
+                  t2 = time.time_ns()
+                  deltas.append(t2 - t1)
+                  if t1 == t2:
+                      identical += 1
+              print(f'  Identical timestamps: {identical}/100')
+              print(f'  Actual sleep min: {min(deltas):>12,} ns ({min(deltas) / 1e6:.3f} ms)')
+              print(f'  Actual sleep max: {max(deltas):>12,} ns ({max(deltas) / 1e6:.3f} ms)')
+              print(f'  Actual sleep avg: {sum(deltas)//len(deltas):>12,} ns ({sum(deltas)/len(deltas) / 1e6:.3f} ms)')
           "
