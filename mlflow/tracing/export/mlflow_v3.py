@@ -196,8 +196,25 @@ class MlflowV3SpanExporter(SpanExporter):
             experiment_id: The experiment ID to log spans to.
             spans: List of spans to log.
         """
+        import time as _time  # noqa: F811
+        import threading as _threading  # noqa: F811
+
+        for s in spans:
+            _logger.warning(  # noqa: G004
+                f"DEBUG _log_spans BEFORE write: name={s.name}, "
+                f"spanType={s.attributes.get('mlflow.spanType')}, "
+                f"thread={_threading.current_thread().name}, "
+                f"wall_time={_time.time_ns()}"
+            )
         try:
             self._client.log_spans(experiment_id, spans)
+            for s in spans:
+                _logger.warning(  # noqa: G004
+                    f"DEBUG _log_spans AFTER write: name={s.name}, "
+                    f"spanType={s.attributes.get('mlflow.spanType')}, "
+                    f"thread={_threading.current_thread().name}, "
+                    f"wall_time={_time.time_ns()}"
+                )
         except NotImplementedError:
             # Silently skip if the store doesn't support log_spans. This is expected for stores that
             # don't implement span-level logging, and we don't want to spam warnings for every span.
