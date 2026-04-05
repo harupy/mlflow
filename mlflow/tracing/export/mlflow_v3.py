@@ -78,8 +78,18 @@ class MlflowV3SpanExporter(SpanExporter):
             )
             return
 
+        import time as _time  # noqa: F811
+
         mlflow_spans_by_experiment = self._collect_mlflow_spans_for_export(spans)
         for experiment_id, spans_to_log in mlflow_spans_by_experiment.items():
+            for s in spans_to_log:
+                _logger.warning(  # noqa: G004
+                    f"DEBUG export_span: name={s.name}, "
+                    f"start_time_ns={s.start_time_ns}, "
+                    f"spanType={s.attributes.get('mlflow.spanType')}, "
+                    f"async={self._should_log_async()}, "
+                    f"wall_time={_time.time_ns()}"
+                )
             if self._should_log_async():
                 self._async_queue.put(
                     task=Task(

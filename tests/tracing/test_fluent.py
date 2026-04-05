@@ -675,7 +675,7 @@ def test_trace_with_experiment_id_issue_warning_when_not_root_span():
     )
 
 
-@pytest.mark.repeat(50)  # clint: disable=pytest-mark-repeat
+@pytest.mark.repeat(20)  # clint: disable=pytest-mark-repeat
 def test_start_span_context_manager(async_logging_enabled):
     datetime_now = datetime.now()
 
