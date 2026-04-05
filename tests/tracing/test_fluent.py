@@ -732,34 +732,31 @@ def test_start_span_context_manager(async_logging_enabled):
             f"spanType={span.attributes.get('mlflow.spanType')}"
         )
 
-    # Debug: probe SQLite directly to see raw row order
-    import sqlalchemy as _sa  # noqa: F811
-
+    # Debug: run the same joinedload query used by search_traces
     from mlflow.tracking._tracking_service.utils import _get_store
+    from sqlalchemy.orm import joinedload as _joinedload
 
     store = _get_store()
-    print(f"DEBUG store={type(store).__name__}, has_engine={hasattr(store, 'engine')}", flush=True)  # noqa: T201
-    if hasattr(store, "engine"):
-        with store.engine.connect() as conn:
-            tables = conn.execute(_sa.text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()
-            print(f"DEBUG tables={[t[0] for t in tables]}", flush=True)  # noqa: T201
-            if any(t[0] == "spans" for t in tables):
-                count = conn.execute(_sa.text("SELECT COUNT(*) FROM spans")).fetchone()
-                print(f"DEBUG total spans in db={count[0]}, trace_id={trace.info.trace_id}", flush=True)  # noqa: T201
-                rows = conn.execute(
-                    _sa.text(
-                        "SELECT rowid, span_id, name, type, start_time_unix_nano "
-                        "FROM spans WHERE trace_id = :tid ORDER BY rowid"
-                    ),
-                    {"tid": trace.info.trace_id},
-                ).fetchall()
-                print(f"DEBUG matching rows={len(rows)}", flush=True)  # noqa: T201
-                for row in rows:
+    if hasattr(store, "ManagedSessionMaker"):
+        from mlflow.store.tracking.dbmodels.models import SqlTraceInfo
+
+        with store.ManagedSessionMaker() as session:
+            sql_trace = (
+                session.query(SqlTraceInfo)
+                .options(_joinedload(SqlTraceInfo.spans))
+                .filter(SqlTraceInfo.request_id == trace.info.trace_id)
+                .one_or_none()
+            )
+            if sql_trace and sql_trace.spans:
+                for i, s in enumerate(sql_trace.spans):
                     print(  # noqa: T201
-                        f"DEBUG db_row: rowid={row[0]}, span_id={row[1]}, "
-                        f"name={row[2]}, type={row[3]}, start_time={row[4]}",
+                        f"DEBUG joinedload span[{i}]: span_id={s.span_id}, "
+                        f"name={s.name}, type={s.type}, "
+                        f"start_time={s.start_time_unix_nano}",
                         flush=True,
                     )
+            else:
+                print(f"DEBUG joinedload: no spans found for {trace.info.trace_id}", flush=True)  # noqa: T201
 
     root_span = trace.data.spans[0]
     assert root_span.name == "root_span"
