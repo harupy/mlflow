@@ -4493,6 +4493,7 @@ class SqlAlchemyStore(SqlAlchemyGatewayStoreMixin, AbstractStore):
         )
 
     def log_spans(self, location: str, spans: list[Span], tracking_uri=None) -> list[Span]:
+        print(f"DEBUG SqlAlchemyStore.log_spans called with {len(spans)} spans")  # noqa: T201
         """
         Log multiple span entities to the tracking store.
 
@@ -4686,6 +4687,18 @@ class SqlAlchemyStore(SqlAlchemyGatewayStoreMixin, AbstractStore):
             # --- Phase 3: Bulk upsert all spans and metrics (2 queries) ---
             _bulk_upsert(session, SqlSpan, all_span_rows)
             _bulk_upsert(session, SqlSpanMetrics, all_metric_rows)
+
+            # DEBUG: Check raw row order after upsert
+            print(f"DEBUG about to query raw rows for {len(all_trace_ids)} traces: {all_trace_ids}", flush=True)  # noqa: T201
+            raw_rows = session.execute(
+                sa.text("SELECT rowid, span_id, name, type, start_time_unix_nano, trace_id FROM spans ORDER BY rowid"),
+            ).fetchall()
+            print(f"DEBUG total raw rows: {len(raw_rows)}", flush=True)  # noqa: T201
+            for row in raw_rows:
+                print(  # noqa: T201
+                    f"DEBUG raw_row: rowid={row[0]}, span_id={row[1]}, name={row[2]}, type={row[3]}, start_time={row[4]}, trace_id={row[5]}",
+                    flush=True,
+                )
 
             # --- Phase 4: Batch-fetch existing metadata records (up to 3 queries) ---
             trace_ids_with_token_usage = [
