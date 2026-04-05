@@ -675,6 +675,7 @@ def test_trace_with_experiment_id_issue_warning_when_not_root_span():
     )
 
 
+@pytest.mark.repeat(50)  # clint: disable=pytest-mark-repeat
 def test_start_span_context_manager(async_logging_enabled):
     datetime_now = datetime.now()
 
@@ -721,6 +722,15 @@ def test_start_span_context_manager(async_logging_enabled):
     assert trace.data.request == '{"x": 1, "y": 2}'
     assert trace.data.response == "25"
     assert len(trace.data.spans) == 3
+
+    # Debug: print span ordering info to diagnose flaky test on Windows CI
+    for i, span in enumerate(trace.data.spans):
+        print(  # noqa: T201
+            f"DEBUG span[{i}]: name={span.name}, "
+            f"start_time_ns={span.start_time_ns}, "
+            f"end_time_ns={span.end_time_ns}, "
+            f"spanType={span.attributes.get('mlflow.spanType')}"
+        )
 
     root_span = trace.data.spans[0]
     assert root_span.name == "root_span"
