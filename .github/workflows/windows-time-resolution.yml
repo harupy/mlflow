@@ -66,15 +66,35 @@ jobs:
           print()
 
           # Simulate span creation timing
-          print('Span creation simulation (100 pairs):')
+          print('Span creation simulation (100 pairs, no sleep):')
           identical = 0
           for _ in range(100):
               t1 = time.time_ns()
-              # Simulate minimal work between span starts
               x = 1 + 2
               t2 = time.time_ns()
               if t1 == t2:
                   identical += 1
+          print(f'  Identical timestamps: {identical}/100')
 
+          print()
+          print('Span creation simulation (100 pairs, sleep(0.001)):')
+          identical = 0
+          for _ in range(100):
+              t1 = time.time_ns()
+              time.sleep(0.001)
+              t2 = time.time_ns()
+              if t1 == t2:
+                  identical += 1
+          print(f'  Identical timestamps: {identical}/100')
+
+          print()
+          print('Span creation simulation (100 pairs, sleep(0.002)):')
+          identical = 0
+          for _ in range(100):
+              t1 = time.time_ns()
+              time.sleep(0.002)
+              t2 = time.time_ns()
+              if t1 == t2:
+                  identical += 1
           print(f'  Identical timestamps: {identical}/100')
           "
