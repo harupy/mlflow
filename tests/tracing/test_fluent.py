@@ -675,8 +675,10 @@ def test_trace_with_experiment_id_issue_warning_when_not_root_span():
     )
 
 
+@pytest.mark.repeat(50)  # clint: disable=pytest-mark-repeat
 def test_start_span_context_manager(async_logging_enabled):
     datetime_now = datetime.now()
+    use_sleep = os.environ.get("GROUP") == "0"
 
     class TestModel:
         def predict(self, x, y):
@@ -690,6 +692,8 @@ def test_start_span_context_manager(async_logging_enabled):
                     child_span.set_outputs(z)
                     child_span.set_attributes({"delta": 2, "time": datetime_now})
 
+                if use_sleep:
+                    time.sleep(0.001)
                 res = self.square(z)
                 root_span.set_outputs(res)
             return res
