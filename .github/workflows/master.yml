@@ -423,4 +423,4 @@ jobs:
           SPLITS: ${{ matrix.splits }}
           GROUP: ${{ matrix.group }}
         run: |
-          uv run --no-sync pytest -s "tests/tracing/test_fluent.py::test_start_span_context_manager[True]"
+          uv run --no-sync pytest -s -k "test_start_span_context_manager and True" tests/tracing/test_fluent.py
