@@ -1,0 +1,80 @@
+name: Windows time resolution
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/windows-time-resolution.yml
+
+jobs:
+  time-resolution:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Measure time.time_ns() resolution
+        run: |
+          python -c "
+          import sys
+          import time
+
+          print(f'Python {sys.version}')
+          print(f'Platform: {sys.platform}')
+          print()
+
+          # Measure time.time_ns() resolution
+          samples = []
+          for _ in range(1000):
+              t1 = time.time_ns()
+              while True:
+                  t2 = time.time_ns()
+                  if t2 != t1:
+                      samples.append(t2 - t1)
+                      break
+
+          min_delta = min(samples)
+          max_delta = max(samples)
+          avg_delta = sum(samples) / len(samples)
+
+          print(f'time.time_ns() resolution:')
+          print(f'  Min delta: {min_delta:>12,} ns ({min_delta / 1e6:.3f} ms)')
+          print(f'  Max delta: {max_delta:>12,} ns ({max_delta / 1e6:.3f} ms)')
+          print(f'  Avg delta: {avg_delta:>12,.0f} ns ({avg_delta / 1e6:.3f} ms)')
+          print()
+
+          # Measure perf_counter_ns() resolution for comparison
+          samples = []
+          for _ in range(1000):
+              t1 = time.perf_counter_ns()
+              while True:
+                  t2 = time.perf_counter_ns()
+                  if t2 != t1:
+                      samples.append(t2 - t1)
+                      break
+
+          min_delta = min(samples)
+          max_delta = max(samples)
+          avg_delta = sum(samples) / len(samples)
+
+          print(f'time.perf_counter_ns() resolution:')
+          print(f'  Min delta: {min_delta:>12,} ns ({min_delta / 1e6:.3f} ms)')
+          print(f'  Max delta: {max_delta:>12,} ns ({max_delta / 1e6:.3f} ms)')
+          print(f'  Avg delta: {avg_delta:>12,.0f} ns ({avg_delta / 1e6:.3f} ms)')
+          print()
+
+          # Simulate span creation timing
+          print('Span creation simulation (100 pairs):')
+          identical = 0
+          for _ in range(100):
+              t1 = time.time_ns()
+              # Simulate minimal work between span starts
+              x = 1 + 2
+              t2 = time.time_ns()
+              if t1 == t2:
+                  identical += 1
+
+          print(f'  Identical timestamps: {identical}/100')
+          "
