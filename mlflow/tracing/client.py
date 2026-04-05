@@ -494,8 +494,10 @@ class TracingClient:
                 if trace_info.tags.get(TraceTagKey.SPANS_LOCATION) == SpansLocation.TRACKING_STORE:
                     # location is not used for traces with mlflow experiment location in tracking
                     # store, so we use None as the location
+                    print(f"DEBUG routing trace {trace_info.trace_id} to TRACKING_STORE path", flush=True)  # noqa: T201
                     trace_infos_by_location[None].append(trace_info)
                 else:
+                    print(f"DEBUG routing trace {trace_info.trace_id} to ARTIFACT_REPO path", flush=True)  # noqa: T201
                     trace_infos_by_location[SpansLocation.ARTIFACT_REPO].append(trace_info)
             else:
                 _logger.warning(f"Unsupported location: {trace_info.trace_location}. Skipping.")
