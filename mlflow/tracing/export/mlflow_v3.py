@@ -199,9 +199,14 @@ class MlflowV3SpanExporter(SpanExporter):
         import time as _time  # noqa: F811
         import threading as _threading  # noqa: F811
 
+        if not hasattr(self, "_log_spans_seq"):
+            self._log_spans_seq = 0
+        self._log_spans_seq += 1
+        seq = self._log_spans_seq
+
         for s in spans:
             _logger.warning(  # noqa: G004
-                f"DEBUG _log_spans BEFORE write: name={s.name}, "
+                f"DEBUG _log_spans BEFORE write: seq={seq}, name={s.name}, "
                 f"spanType={s.attributes.get('mlflow.spanType')}, "
                 f"thread={_threading.current_thread().name}, "
                 f"wall_time={_time.time_ns()}"
@@ -210,7 +215,7 @@ class MlflowV3SpanExporter(SpanExporter):
             self._client.log_spans(experiment_id, spans)
             for s in spans:
                 _logger.warning(  # noqa: G004
-                    f"DEBUG _log_spans AFTER write: name={s.name}, "
+                    f"DEBUG _log_spans AFTER write: seq={seq}, name={s.name}, "
                     f"spanType={s.attributes.get('mlflow.spanType')}, "
                     f"thread={_threading.current_thread().name}, "
                     f"wall_time={_time.time_ns()}"
