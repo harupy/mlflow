@@ -78,18 +78,8 @@ class MlflowV3SpanExporter(SpanExporter):
             )
             return
 
-        import time as _time  # noqa: F811
-
         mlflow_spans_by_experiment = self._collect_mlflow_spans_for_export(spans)
         for experiment_id, spans_to_log in mlflow_spans_by_experiment.items():
-            for s in spans_to_log:
-                _logger.warning(  # noqa: G004
-                    f"DEBUG export_span: name={s.name}, "
-                    f"start_time_ns={s.start_time_ns}, "
-                    f"spanType={s.attributes.get('mlflow.spanType')}, "
-                    f"async={self._should_log_async()}, "
-                    f"wall_time={_time.time_ns()}"
-                )
             if self._should_log_async():
                 self._async_queue.put(
                     task=Task(
@@ -196,30 +186,8 @@ class MlflowV3SpanExporter(SpanExporter):
             experiment_id: The experiment ID to log spans to.
             spans: List of spans to log.
         """
-        import time as _time  # noqa: F811
-        import threading as _threading  # noqa: F811
-
-        if not hasattr(self, "_log_spans_seq"):
-            self._log_spans_seq = 0
-        self._log_spans_seq += 1
-        seq = self._log_spans_seq
-
-        for s in spans:
-            _logger.warning(  # noqa: G004
-                f"DEBUG _log_spans BEFORE write: seq={seq}, name={s.name}, "
-                f"spanType={s.attributes.get('mlflow.spanType')}, "
-                f"thread={_threading.current_thread().name}, "
-                f"wall_time={_time.time_ns()}"
-            )
         try:
             self._client.log_spans(experiment_id, spans)
-            for s in spans:
-                _logger.warning(  # noqa: G004
-                    f"DEBUG _log_spans AFTER write: seq={seq}, name={s.name}, "
-                    f"spanType={s.attributes.get('mlflow.spanType')}, "
-                    f"thread={_threading.current_thread().name}, "
-                    f"wall_time={_time.time_ns()}"
-                )
         except NotImplementedError:
             # Silently skip if the store doesn't support log_spans. This is expected for stores that
             # don't implement span-level logging, and we don't want to spam warnings for every span.

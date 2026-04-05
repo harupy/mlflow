@@ -231,14 +231,6 @@ class BaseMlflowSpanProcessor(OtelMetricsMixin, SimpleSpanProcessor):
                     self._pending_on_end_condition.notify_all()
 
     def _on_end_impl(self, span: OTelReadableSpan) -> None:
-        import time as _time  # noqa: F811
-
-        _logger.warning(  # noqa: G004
-            f"DEBUG on_end: name={span.name}, "
-            f"start_time={span.start_time}, "
-            f"end_time={span.end_time}, "
-            f"wall_time={_time.time_ns()}"
-        )
         if self._export_metrics:
             self.record_metrics_for_span(span)
 

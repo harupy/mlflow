@@ -719,26 +719,9 @@ class TracingClient:
             TraceData object representing the downloaded trace data.
         """
         artifact_repo = self._get_artifact_repo_for_trace(trace_info)
-        trace_data = TraceData.from_dict(artifact_repo.download_trace_data())
-        # DEBUG: log span order after reading from artifact
-        for i, s in enumerate(trace_data.spans):
-            print(  # noqa: T201
-                f"DEBUG download_trace_data span[{i}]: name={s.name}, "
-                f"start_time_ns={s.start_time_ns}, "
-                f"spanType={s.attributes.get('mlflow.spanType')}",
-                flush=True,
-            )
-        return trace_data
+        return TraceData.from_dict(artifact_repo.download_trace_data())
 
     def _upload_trace_data(self, trace_info: TraceInfo, trace_data: TraceData) -> None:
-        # DEBUG: log span order before writing to artifact
-        for i, s in enumerate(trace_data.spans):
-            print(  # noqa: T201
-                f"DEBUG upload_trace_data span[{i}]: name={s.name}, "
-                f"start_time_ns={s.start_time_ns}, "
-                f"spanType={s.attributes.get('mlflow.spanType')}",
-                flush=True,
-            )
         artifact_repo = self._get_artifact_repo_for_trace(trace_info)
         trace_data_json = json.dumps(trace_data.to_dict(), cls=TraceJSONEncoder, ensure_ascii=False)
         return artifact_repo.upload_trace_data(trace_data_json)
