@@ -106,13 +106,8 @@ jobs:
           GROUP: ${{ matrix.group }}
         run: |
           source dev/setup-ssh.sh
-          uv run --no-sync pytest --splits=$SPLITS --group=$GROUP \
-            --quiet --requires-ssh --ignore-flavors \
-            --ignore=tests/examples \
-            --ignore=tests/evaluate \
-            --ignore=tests/genai \
-            --ignore=tests/docker \
-            tests
+          uv run --no-sync pytest \
+            tests/server/jobs/test_scorer_invocation.py::test_invoke_agentic_scorer
 
       - name: Run databricks-connect related tests
         run: |

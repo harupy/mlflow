@@ -221,6 +221,9 @@ def client(tmp_path_factory: pytest.TempPathFactory, mock_gateway_server: str) -
             "_MLFLOW_ALLOWED_JOB_NAME_LIST": "invoke_scorer",
             # Point gateway calls to our mock server
             "MLFLOW_GATEWAY_URI": mock_gateway_server,
+            # Disable remote model catalog fetch - otherwise scorer cost lookups
+            # trigger ~68 sequential HTTPS fetches on cold cache, causing timeouts.
+            # "MLFLOW_MODEL_CATALOG_URI": "",
             # Set batch size to 2 for testing job batching behavior
             "MLFLOW_SERVER_SCORER_INVOKE_BATCH_SIZE": "2",
         },
@@ -418,7 +421,8 @@ def experiment_with_conversation_traces(client: Client):
     }
 
 
-def test_invoke_agentic_scorer(client: Client, experiment_with_agentic_trace):
+@pytest.mark.parametrize("_repeat", range(10))
+def test_invoke_agentic_scorer(client: Client, experiment_with_agentic_trace, _repeat):
     experiment_id, trace_id = experiment_with_agentic_trace
 
     # Scorer using {{trace}} template variable (triggers tool-based flow)
