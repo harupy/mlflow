@@ -57,6 +57,9 @@ MLFLOW_SERVER_JOB_TRANSIENT_ERROR_CLASSES_PATH_ENV_VAR = (
 # Number of worker threads for the periodic tasks consumer
 PERIODIC_TASKS_WORKER_COUNT = 5
 
+# Filename suffix for per-queue huey sqlite stores written under HUEY_STORAGE_PATH_ENV_VAR.
+HUEY_STORE_FILE_SUFFIX = ".mlflow-huey-store"
+
 
 def _exponential_backoff_retry(retry_count: int) -> None:
     from huey.exceptions import RetryTask
@@ -454,7 +457,7 @@ def _get_or_init_huey_instance(instance_key: str):
         if instance_key not in _huey_instance_map:
             _logger.debug(f"Creating huey instance for {instance_key}")
             huey_store_file = os.path.join(
-                os.environ[HUEY_STORAGE_PATH_ENV_VAR], f"{instance_key}.mlflow-huey-store"
+                os.environ[HUEY_STORAGE_PATH_ENV_VAR], f"{instance_key}{HUEY_STORE_FILE_SUFFIX}"
             )
             huey_instance = SqliteHuey(
                 filename=huey_store_file,

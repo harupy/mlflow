@@ -19,7 +19,11 @@ from mlflow.server.jobs import (
     _SUPPORTED_JOB_FUNCTION_LIST,
     get_job,
 )
-from mlflow.server.jobs.utils import _launch_job_runner
+from mlflow.server.jobs.utils import (
+    HUEY_PERIODIC_TASKS_INSTANCE_KEY,
+    HUEY_STORE_FILE_SUFFIX,
+    _launch_job_runner,
+)
 from mlflow.store.jobs.sqlalchemy_store import SqlAlchemyJobStore
 
 
@@ -39,6 +43,22 @@ def _launch_job_runner_for_test():
             yield proc
         finally:
             proc.kill()
+
+
+def _wait_for_job_runner_ready(huey_store_path: Path, timeout: float = 10) -> None:
+    """
+    Wait for the job runner subprocess to start its huey consumers. The job runner always
+    launches a periodic-tasks consumer, so its sqlite store is a reliable readiness sentinel.
+    """
+    sentinel = huey_store_path / f"{HUEY_PERIODIC_TASKS_INSTANCE_KEY}{HUEY_STORE_FILE_SUFFIX}"
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if sentinel.exists():
+            # Small grace period for consumer workers to start polling their queues.
+            time.sleep(0.5)
+            return
+        time.sleep(0.1)
+    raise TimeoutError(f"Job runner did not become ready within {timeout}s")
 
 
 @contextmanager
@@ -70,7 +90,7 @@ def _setup_job_runner(
         SqlAlchemyJobStore(backend_store_uri)
 
         with _launch_job_runner_for_test() as job_runner_proc:
-            time.sleep(10)
+            _wait_for_job_runner_ready(huey_store_path)
             yield job_runner_proc
     finally:
         # Clear the huey instance cache AFTER killing the runner to ensure clean state for next test
