@@ -43,12 +43,8 @@ def _launch_job_runner_for_test():
 
 def _wait_for_job_runner_ready(huey_store_path: Path, timeout: float = 10) -> None:
     """
-    Wait for the job runner subprocess to start at least one huey consumer. A consumer
-    creates its sqlite store file (``*.mlflow-huey-store``) on import, so the appearance of
-    any such file indicates the runner has progressed past Python startup. As a fallback,
-    if no file appears within ``timeout`` we proceed anyway after a short grace period --
-    that mirrors the previous unconditional ``time.sleep(10)`` behavior so we are never
-    strictly less robust than before.
+    Wait until at least one huey consumer has created its sqlite store file, indicating
+    the job runner has started. On timeout, fall back to a short sleep instead of failing.
     """
     deadline = time.time() + timeout
     while time.time() < deadline:
