@@ -55,6 +55,7 @@ def _setup_job_runner(
     default_artifact_root = str(tmp_path / "artifacts")
     try:
         monkeypatch.setenv("MLFLOW_SERVER_ENABLE_JOB_EXECUTION", "true")
+        monkeypatch.setenv("MLFLOW_DISABLE_TELEMETRY", "true")
         monkeypatch.setenv(BACKEND_STORE_URI_ENV_VAR, backend_store_uri)
         monkeypatch.setenv(ARTIFACT_ROOT_ENV_VAR, default_artifact_root)
         monkeypatch.setenv(HUEY_STORAGE_PATH_ENV_VAR, str(huey_store_path))
