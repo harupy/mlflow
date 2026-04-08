@@ -100,5 +100,5 @@ def wait_job_finalize(job_id, timeout=60):
         job = get_job(job_id)
         if JobStatus.is_finalized(job.status):
             return
-        time.sleep(0.5)
+        time.sleep(0.1)
     raise TimeoutError("The job is not finalized within the timeout.")

@@ -162,7 +162,7 @@ def _start_huey_consumer_proc(
 _JOB_ENTRY_MODULE = "mlflow.server.jobs._job_subproc_entry"
 
 
-_JOB_STATUS_POLL_INTERVAL = 1
+_JOB_STATUS_POLL_INTERVAL = 0.1
 
 
 def _exec_job_in_subproc(
