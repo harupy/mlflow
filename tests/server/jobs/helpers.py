@@ -1,6 +1,9 @@
 """Shared test helpers for job execution tests."""
 
+import functools
 import os
+import shutil
+import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -21,6 +24,20 @@ from mlflow.server.jobs import (
 )
 from mlflow.server.jobs.utils import _launch_job_runner
 from mlflow.store.jobs.sqlalchemy_store import SqlAlchemyJobStore
+
+
+@functools.lru_cache(maxsize=1)
+def _migrated_db_template() -> Path:
+    """Build a fully-migrated SQLite DB once per session and cache the path.
+
+    Each test then copies this file instead of running all 56 Alembic
+    migrations from scratch, saving ~10s/test on CI.
+    """
+    tmp_dir = Path(tempfile.mkdtemp(prefix="mlflow-jobs-template-"))
+    db_path = tmp_dir / "mlflow.db"
+    store = SqlAlchemyJobStore(f"sqlite:///{db_path}")
+    store.engine.dispose()
+    return db_path
 
 
 def _get_mlflow_repo_home():
@@ -49,7 +66,12 @@ def _setup_job_runner(
     allowed_job_names: list[str],
     backend_store_uri: str | None = None,
 ):
-    backend_store_uri = backend_store_uri or f"sqlite:///{tmp_path / 'mlflow.db'}"
+    if backend_store_uri is None:
+        db_path = tmp_path / "mlflow.db"
+        # Copy the pre-migrated template DB instead of running 56 Alembic
+        # migrations from scratch on every test.
+        shutil.copy2(_migrated_db_template(), db_path)
+        backend_store_uri = f"sqlite:///{db_path}"
     huey_store_path = tmp_path / "huey_store"
     huey_store_path.mkdir()
     default_artifact_root = str(tmp_path / "artifacts")
