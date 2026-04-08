@@ -13,7 +13,6 @@ The job runner will:
 
 import logging
 import os
-import time
 
 from mlflow.server.constants import MLFLOW_SERVER_UP_TIME
 from mlflow.server.jobs.utils import (
@@ -39,5 +38,4 @@ if __name__ == "__main__":
     # (periodic tasks are registered when the consumer starts up)
     _launch_periodic_tasks_consumer()
 
-    time.sleep(10)  # wait for huey consumer launching
     _enqueue_unfinished_jobs(server_up_time)
