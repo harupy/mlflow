@@ -145,3 +145,5 @@ if __name__ == "__main__":
         f"[PROFILE] _job_subproc_entry: exiting at +{_t.time() - _PROFILE_T0:.3f}s",
         flush=True,
     )
+    # Skip atexit handlers entirely to test whether they're the slow path.
+    os._exit(0)
