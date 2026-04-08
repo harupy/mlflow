@@ -249,10 +249,16 @@ def _exec_job_in_subproc(
     if workspace:
         job_env[MLFLOW_WORKSPACE.name] = workspace
 
+    print(f"[PROFILE] _exec_job_in_subproc: spawning {job_cmd}", flush=True)  # noqa: T201
+    _t0 = time.time()
     with subprocess.Popen(
         job_cmd,
         env=job_env,
     ) as popen:
+        print(  # noqa: T201
+            f"[PROFILE] _exec_job_in_subproc: Popen returned at +{time.time() - _t0:.3f}s",
+            flush=True,
+        )
         beg_time = time.time()
         while popen.poll() is None:
             time.sleep(_JOB_STATUS_POLL_INTERVAL)
@@ -268,6 +274,10 @@ def _exec_job_in_subproc(
                     popen.kill()
                     job_store.mark_job_timed_out(job_id)
                     return None
+        print(  # noqa: T201
+            f"[PROFILE] _exec_job_in_subproc: subproc exited at +{time.time() - _t0:.3f}s rc={popen.returncode}",  # noqa: E501
+            flush=True,
+        )
 
         if popen.returncode == 0:
             return JobResult.load(result_file)

@@ -6,6 +6,11 @@ or the job has extra environment variables setting,
 the job is executed as a subprocess.
 """
 
+import time as _t
+
+_PROFILE_T0 = _t.time()
+print("[PROFILE] _job_subproc_entry: process start at +0.000s", flush=True)  # noqa: T201
+
 import importlib
 import json
 import logging
@@ -15,6 +20,11 @@ import traceback
 from contextlib import nullcontext
 
 import cloudpickle
+
+print(  # noqa: T201
+    f"[PROFILE] _job_subproc_entry: stdlib + cloudpickle imported at +{_t.time() - _PROFILE_T0:.3f}s",  # noqa: E501
+    flush=True,
+)
 
 from mlflow.environment_variables import MLFLOW_WORKSPACE
 from mlflow.server.jobs.logging_utils import configure_logging_for_jobs
@@ -32,14 +42,27 @@ from mlflow.server.jobs.utils import (
 from mlflow.telemetry.client import get_telemetry_client, set_telemetry_client
 from mlflow.utils.workspace_context import WorkspaceContext
 
+print(  # noqa: T201
+    f"[PROFILE] _job_subproc_entry: mlflow imports done at +{_t.time() - _PROFILE_T0:.3f}s",
+    flush=True,
+)
+
 _logger = logging.getLogger(__name__)
 # Configure Python logging to suppress noisy job logs
 configure_logging_for_jobs()
 
 
 def _main():
+    print(  # noqa: T201
+        f"[PROFILE] _job_subproc_entry: _main started at +{_t.time() - _PROFILE_T0:.3f}s",
+        flush=True,
+    )
     # ensure telemetry can be captured within jobs
     set_telemetry_client()
+    print(  # noqa: T201
+        f"[PROFILE] _job_subproc_entry: telemetry init at +{_t.time() - _PROFILE_T0:.3f}s",
+        flush=True,
+    )
 
     # ensure the subprocess is killed when parent process dies.
     threading.Thread(
@@ -79,6 +102,10 @@ def _main():
             module = importlib.import_module(".".join(module_parts))
             transient_error_classes.append(getattr(module, cls_name))
 
+    print(  # noqa: T201
+        f"[PROFILE] _job_subproc_entry: about to run function at +{_t.time() - _PROFILE_T0:.3f}s",
+        flush=True,
+    )
     try:
         with ctx:
             value = function(**params)
