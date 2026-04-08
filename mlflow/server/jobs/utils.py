@@ -260,7 +260,9 @@ def _exec_job_in_subproc(
             flush=True,
         )
         beg_time = time.time()
+        _poll_count = 0
         while popen.poll() is None:
+            _poll_count += 1
             time.sleep(_JOB_STATUS_POLL_INTERVAL)
 
             job_status = job_store.get_job(job_id).status
@@ -275,7 +277,7 @@ def _exec_job_in_subproc(
                     job_store.mark_job_timed_out(job_id)
                     return None
         print(  # noqa: T201
-            f"[PROFILE] _exec_job_in_subproc: subproc exited at +{time.time() - _t0:.3f}s rc={popen.returncode}",  # noqa: E501
+            f"[PROFILE] _exec_job_in_subproc: poll loop done at +{time.time() - _t0:.3f}s after {_poll_count} polls",  # noqa: E501
             flush=True,
         )
 
