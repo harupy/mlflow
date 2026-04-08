@@ -114,6 +114,10 @@ def _main():
             result=json.dumps(value),
         )
         job_result.dump(result_dump_path)
+        print(  # noqa: T201
+            f"[PROFILE] _job_subproc_entry: result dumped at +{_t.time() - _PROFILE_T0:.3f}s",
+            flush=True,
+        )
     except Exception as e:
         _logger.error(
             f"Job function {os.environ[MLFLOW_SERVER_JOB_FUNCTION_FULLNAME_ENV_VAR]} failed with "
@@ -137,3 +141,7 @@ def _main():
 
 if __name__ == "__main__":
     _main()
+    print(  # noqa: T201
+        f"[PROFILE] _job_subproc_entry: exiting at +{_t.time() - _PROFILE_T0:.3f}s",
+        flush=True,
+    )
