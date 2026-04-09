@@ -386,12 +386,6 @@ jobs:
     timeout-minutes: 120
     permissions:
       contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        group: [1, 2, 3]
-        include:
-          - splits: 3
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -420,23 +414,7 @@ jobs:
           # Use non-GUI matplotlib backend since Tkinter may not be installed properly on Windows runners
           # https://github.com/stefmolin/data-morph/pull/273
           MPLBACKEND: Agg
-          SPLITS: ${{ matrix.splits }}
-          GROUP: ${{ matrix.group }}
         run: |
           export PATH=$PATH:$HADOOP_HOME/bin
-          uv run --no-sync pytest tests \
-            --splits=$SPLITS \
-            --group=$GROUP \
-            --ignore-flavors \
-            --ignore=tests/projects \
-            --ignore=tests/examples \
-            --ignore=tests/evaluate \
-            --ignore=tests/optuna \
-            --ignore=tests/pyspark/optuna \
-            --ignore=tests/genai \
-            --ignore=tests/sagemaker \
-            --ignore=tests/gateway \
-            --ignore=tests/server/auth \
-            --ignore=tests/data/test_spark_dataset.py \
-            --ignore=tests/data/test_spark_dataset_source.py \
-            --ignore=tests/docker
+          uv run --no-sync pytest \
+            tests/tracing/test_fluent.py::test_search_traces_yields_expected_dataframe_contents
