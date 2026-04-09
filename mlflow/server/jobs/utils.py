@@ -162,7 +162,45 @@ def _start_huey_consumer_proc(
 _JOB_ENTRY_MODULE = "mlflow.server.jobs._job_subproc_entry"
 
 
-_JOB_STATUS_POLL_INTERVAL = 1
+_JOB_STATUS_POLL_INTERVAL = 0.1
+
+
+_forkserver_ctx = None
+
+
+def _get_forkserver_context() -> Any:
+    """Get a forkserver multiprocessing context with mlflow pre-imported.
+
+    Initialized lazily on first call. The forkserver process imports mlflow
+    once at startup so subsequent forks have it ready, eliminating cold
+    mlflow imports per job (~3s on Linux CI).
+    """
+    import multiprocessing  # clint: disable=lazy-import
+
+    global _forkserver_ctx
+    if _forkserver_ctx is None:
+        _forkserver_ctx = multiprocessing.get_context("forkserver")
+        _forkserver_ctx.set_forkserver_preload(["mlflow", "mlflow.server.jobs._job_subproc_entry"])
+        # Force the forkserver process to actually start (and import preloaded
+        # modules) by spawning and joining a no-op Process. Without this, the
+        # forkserver is started lazily on first real .start() call, so the
+        # first job pays the full cold-import cost.
+        _warmup = _forkserver_ctx.Process(target=int, args=(0,))
+        _warmup.start()
+        _warmup.join()
+    return _forkserver_ctx
+
+
+def _run_job_in_fork(env_overrides: dict[str, str]) -> None:
+    """Entry point for forkserver-based job execution.
+
+    Runs in a forked child process. Applies env var overrides then dispatches
+    to the existing _main() entry point.
+    """
+    os.environ.update(env_overrides)
+    from mlflow.server.jobs._job_subproc_entry import _main
+
+    _main()
 
 
 def _exec_job_in_subproc(
@@ -249,12 +287,70 @@ def _exec_job_in_subproc(
     if workspace:
         job_env[MLFLOW_WORKSPACE.name] = workspace
 
+    # Compute env overrides relative to current os.environ; only the new/changed
+    # entries need to be applied in the child.
+    env_overrides = {k: v for k, v in job_env.items() if os.environ.get(k) != v}
+
+    if python_env is None:
+        # Fast path: forkserver with mlflow pre-imported. Cuts cold-import cost
+        # from ~3s to ~10ms per job on CI.
+        print(  # noqa: T201
+            "[PROFILE] _exec_job_in_subproc: forkserver path",
+            flush=True,
+        )
+        _t0 = time.time()
+        ctx = _get_forkserver_context()
+        proc = ctx.Process(target=_run_job_in_fork, args=(env_overrides,))
+        proc.start()
+        print(  # noqa: T201
+            f"[PROFILE] _exec_job_in_subproc: Process.start returned at +{time.time() - _t0:.3f}s",
+            flush=True,
+        )
+        beg_time = time.time()
+        _poll_count = 0
+        while proc.is_alive():
+            _poll_count += 1
+            time.sleep(_JOB_STATUS_POLL_INTERVAL)
+
+            job_status = job_store.get_job(job_id).status
+            if job_status == JobStatus.CANCELED:
+                proc.terminate()
+                proc.join()
+                return None
+
+            if timeout is not None and beg_time + timeout <= time.time():
+                proc.terminate()
+                proc.join()
+                job_store.mark_job_timed_out(job_id)
+                return None
+        proc.join()
+        print(  # noqa: T201
+            f"[PROFILE] _exec_job_in_subproc: forkserver done at +{time.time() - _t0:.3f}s after {_poll_count} polls rc={proc.exitcode}",  # noqa: E501
+            flush=True,
+        )
+        if proc.exitcode == 0:
+            return JobResult.load(result_file)
+        return JobResult.from_error(
+            RuntimeError(
+                f"The fork that executes job function {function_fullname} "
+                f"exited with code {proc.exitcode}"
+            )
+        )
+
+    print(f"[PROFILE] _exec_job_in_subproc: spawning {job_cmd}", flush=True)  # noqa: T201
+    _t0 = time.time()
     with subprocess.Popen(
         job_cmd,
         env=job_env,
     ) as popen:
+        print(  # noqa: T201
+            f"[PROFILE] _exec_job_in_subproc: Popen returned at +{time.time() - _t0:.3f}s",
+            flush=True,
+        )
         beg_time = time.time()
+        _poll_count = 0
         while popen.poll() is None:
+            _poll_count += 1
             time.sleep(_JOB_STATUS_POLL_INTERVAL)
 
             job_status = job_store.get_job(job_id).status
@@ -268,6 +364,10 @@ def _exec_job_in_subproc(
                     popen.kill()
                     job_store.mark_job_timed_out(job_id)
                     return None
+        print(  # noqa: T201
+            f"[PROFILE] _exec_job_in_subproc: poll loop done at +{time.time() - _t0:.3f}s after {_poll_count} polls",  # noqa: E501
+            flush=True,
+        )
 
         if popen.returncode == 0:
             return JobResult.load(result_file)

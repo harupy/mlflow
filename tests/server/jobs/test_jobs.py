@@ -69,10 +69,11 @@ def basic_job_fun(x, y, sleep_secs=0):
     return x + y
 
 
-def test_basic_job(monkeypatch, tmp_path):
+def test_basic_job(monkeypatch, tmp_path, db_uri):
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=["tests.server.jobs.test_jobs.basic_job_fun"],
         allowed_job_names=["basic_job_fun"],
     ):
@@ -96,10 +97,11 @@ def json_in_out_fun(data):
     return {"res": x + y}
 
 
-def test_job_json_input_output(monkeypatch, tmp_path):
+def test_job_json_input_output(monkeypatch, tmp_path, db_uri):
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=["tests.server.jobs.test_jobs.json_in_out_fun"],
         allowed_job_names=["json_in_out_fun"],
     ):
@@ -120,10 +122,11 @@ def err_fun(data):
     raise RuntimeError()
 
 
-def test_error_job(monkeypatch, tmp_path):
+def test_error_job(monkeypatch, tmp_path, db_uri):
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=["tests.server.jobs.test_jobs.err_fun"],
         allowed_job_names=["err_fun"],
     ):
@@ -146,10 +149,11 @@ def assert_job_result(job_id, expected_status, expected_result):
     assert job.parsed_result == expected_result
 
 
-def test_job_resume_on_job_runner_restart(monkeypatch, tmp_path):
+def test_job_resume_on_job_runner_restart(monkeypatch, tmp_path, db_uri):
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=["tests.server.jobs.test_jobs.basic_job_fun"],
         allowed_job_names=["basic_job_fun"],
     ) as job_runner_proc:
@@ -175,7 +179,7 @@ def test_job_resume_on_job_runner_restart(monkeypatch, tmp_path):
             assert_job_result(job3_id, JobStatus.SUCCEEDED, 15)
 
 
-def test_job_resume_on_new_job_runner(monkeypatch, tmp_path):
+def test_job_resume_on_new_job_runner(monkeypatch, tmp_path, db_uri):
     db_tmp_path = tmp_path / "db"
     db_tmp_path.mkdir()
     runner1_tmp_path = tmp_path / "runner1"
@@ -234,10 +238,11 @@ def job_fun_parallelism3(x, y, sleep_secs=0):
     return x + y
 
 
-def test_job_queue_parallelism(monkeypatch, tmp_path):
+def test_job_queue_parallelism(monkeypatch, tmp_path, db_uri):
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=[
             "tests.server.jobs.test_jobs.job_fun_parallelism2",
             "tests.server.jobs.test_jobs.job_fun_parallelism3",
@@ -334,12 +339,13 @@ def transient_err_fun2_fail_then_succeed(counter_file: str):
     raise TimeoutError("test transient timeout error.")
 
 
-def test_job_retry_on_transient_error(monkeypatch, tmp_path):
+def test_job_retry_on_transient_error(monkeypatch, tmp_path, db_uri):
     monkeypatch.setenv("MLFLOW_SERVER_JOB_TRANSIENT_ERROR_RETRY_BASE_DELAY", "1")
     monkeypatch.setenv("MLFLOW_SERVER_JOB_TRANSIENT_ERROR_MAX_RETRIES", "2")
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=[
             "tests.server.jobs.test_jobs.transient_err_fun_always_fail",
             "tests.server.jobs.test_jobs.transient_err_fun_fail_then_succeed",
@@ -391,12 +397,13 @@ def test_job_retry_on_transient_error(monkeypatch, tmp_path):
 # MLflow server handler might be executed in multiple MLflow server workers
 # so that we need a test to cover the case that executes `submit_job` in
 # multi-processes case.
-def test_submit_jobs_from_multi_processes(monkeypatch, tmp_path):
+def test_submit_jobs_from_multi_processes(monkeypatch, tmp_path, db_uri):
     context = multiprocessing.get_context("spawn")
     with (
         _setup_job_runner(
             monkeypatch,
             tmp_path,
+            backend_store_uri=db_uri,
             supported_job_functions=["tests.server.jobs.test_jobs.basic_job_fun"],
             allowed_job_names=["basic_job_fun"],
         ),
@@ -426,10 +433,11 @@ def sleep_fun(sleep_secs, tmp_dir):
     time.sleep(sleep_secs)
 
 
-def test_job_timeout(monkeypatch, tmp_path):
+def test_job_timeout(monkeypatch, tmp_path, db_uri):
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=["tests.server.jobs.test_jobs.sleep_fun"],
         allowed_job_names=["sleep_fun"],
     ):
@@ -461,11 +469,12 @@ def test_job_timeout(monkeypatch, tmp_path):
         assert job.retry_count == 0
 
 
-def test_list_job_pagination(monkeypatch, tmp_path):
+def test_list_job_pagination(monkeypatch, tmp_path, db_uri):
     monkeypatch.setattr(mlflow.store.jobs.sqlalchemy_store, "_LIST_JOB_PAGE_SIZE", 3)
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=["tests.server.jobs.test_jobs.basic_job_fun"],
         allowed_job_names=["basic_job_fun"],
     ):
@@ -479,10 +488,11 @@ def bad_job_function() -> None:
     return
 
 
-def test_job_function_without_decorator(monkeypatch, tmp_path):
+def test_job_function_without_decorator(monkeypatch, tmp_path, db_uri):
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=["tests.server.jobs.test_jobs.bad_job_function"],
         allowed_job_names=["bad_job_function"],
     ):
@@ -498,10 +508,11 @@ def job_use_process(tmp_dir):
     (Path(tmp_dir) / str(os.getpid())).write_text("")
 
 
-def test_job_use_process(monkeypatch, tmp_path):
+def test_job_use_process(monkeypatch, tmp_path, db_uri):
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=["tests.server.jobs.test_jobs.job_use_process"],
         allowed_job_names=["job_use_process"],
     ):
@@ -515,10 +526,11 @@ def test_job_use_process(monkeypatch, tmp_path):
         assert len(os.listdir(str(job_tmp_path))) == 2
 
 
-def test_submit_job_bad_call(monkeypatch, tmp_path):
+def test_submit_job_bad_call(monkeypatch, tmp_path, db_uri):
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=["tests.server.jobs.test_jobs.basic_job_fun"],
         allowed_job_names=["basic_job_fun"],
     ):
@@ -554,12 +566,13 @@ def check_python_env_fn():
     )
 
 
-def test_job_with_python_env(monkeypatch, tmp_path):
+def test_job_with_python_env(monkeypatch, tmp_path, db_uri):
     monkeypatch.setenv("MLFLOW_HOME", _get_mlflow_repo_home())
 
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=["tests.server.jobs.test_jobs.check_python_env_fn"],
         allowed_job_names=["python_env_checker"],
     ):
@@ -619,10 +632,11 @@ def test_exec_job_fails_job_on_unexpected_error(tmp_path: Path, workspaces_enabl
         handlers._job_store = None
 
 
-def test_cancel_job(monkeypatch, tmp_path: Path):
+def test_cancel_job(monkeypatch, tmp_path: Path, db_uri):
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=["tests.server.jobs.test_jobs.sleep_fun"],
         allowed_job_names=["sleep_fun"],
     ):
@@ -772,10 +786,11 @@ def exclusive_sleep_fun(sleep_secs: int, experiment_id: str, tmp_dir: str):
     return experiment_id
 
 
-def test_exclusive_job_skips_duplicate(monkeypatch, tmp_path: Path):
+def test_exclusive_job_skips_duplicate(monkeypatch, tmp_path: Path, db_uri):
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=["tests.server.jobs.test_jobs.exclusive_sleep_fun"],
         allowed_job_names=["exclusive_sleep_fun"],
     ):
@@ -799,10 +814,11 @@ def test_exclusive_job_skips_duplicate(monkeypatch, tmp_path: Path):
         assert JobStatus.CANCELED in statuses
 
 
-def test_exclusive_job_allows_different_params(monkeypatch, tmp_path: Path):
+def test_exclusive_job_allows_different_params(monkeypatch, tmp_path: Path, db_uri):
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=["tests.server.jobs.test_jobs.exclusive_sleep_fun"],
         allowed_job_names=["exclusive_sleep_fun"],
     ):
@@ -826,10 +842,11 @@ def test_exclusive_job_allows_different_params(monkeypatch, tmp_path: Path):
         assert get_job(job2_id).status == JobStatus.SUCCEEDED
 
 
-def test_submit_job_with_extra_envs(monkeypatch, tmp_path):
+def test_submit_job_with_extra_envs(monkeypatch, tmp_path, db_uri):
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=["tests.server.jobs.test_jobs.multiple_env_vars_fun"],
         allowed_job_names=["multiple_env_vars_fun"],
     ):
@@ -847,10 +864,11 @@ def test_submit_job_with_extra_envs(monkeypatch, tmp_path):
         assert os.environ.get(name) is None
 
 
-def test_submit_job_without_extra_envs(monkeypatch, tmp_path):
+def test_submit_job_without_extra_envs(monkeypatch, tmp_path, db_uri):
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=["tests.server.jobs.test_jobs.env_var_reader_fun"],
         allowed_job_names=["env_var_reader_fun"],
     ):
@@ -870,12 +888,13 @@ def workspace_env_checker():
     return MLFLOW_WORKSPACE.get()
 
 
-def test_submit_job_workspace_propagation(monkeypatch, tmp_path, workspaces_enabled):
+def test_submit_job_workspace_propagation(monkeypatch, tmp_path, db_uri, workspaces_enabled):
     expected_workspace = DEFAULT_WORKSPACE_NAME if workspaces_enabled else None
 
     with _setup_job_runner(
         monkeypatch,
         tmp_path,
+        backend_store_uri=db_uri,
         supported_job_functions=["tests.server.jobs.test_jobs.workspace_env_checker"],
         allowed_job_names=["workspace_env_checker"],
     ):

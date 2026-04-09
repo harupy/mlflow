@@ -55,6 +55,8 @@ def _setup_job_runner(
     default_artifact_root = str(tmp_path / "artifacts")
     try:
         monkeypatch.setenv("MLFLOW_SERVER_ENABLE_JOB_EXECUTION", "true")
+        monkeypatch.setenv("MLFLOW_DISABLE_TELEMETRY", "true")
+        monkeypatch.setenv("MLFLOW_ENABLE_ASYNC_TRACE_LOGGING", "false")
         monkeypatch.setenv(BACKEND_STORE_URI_ENV_VAR, backend_store_uri)
         monkeypatch.setenv(ARTIFACT_ROOT_ENV_VAR, default_artifact_root)
         monkeypatch.setenv(HUEY_STORAGE_PATH_ENV_VAR, str(huey_store_path))
@@ -100,5 +102,5 @@ def wait_job_finalize(job_id, timeout=60):
         job = get_job(job_id)
         if JobStatus.is_finalized(job.status):
             return
-        time.sleep(0.5)
+        time.sleep(0.1)
     raise TimeoutError("The job is not finalized within the timeout.")
