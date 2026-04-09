@@ -1026,6 +1026,7 @@ def test_search_traces_with_default_experiment_id(mock_client):
 
 
 @skip_when_testing_trace_sdk
+@pytest.mark.repeat(20)  # clint: disable=pytest-mark-repeat
 def test_search_traces_yields_expected_dataframe_contents(monkeypatch):
     model = DefaultTestModel()
     expected_traces = []
