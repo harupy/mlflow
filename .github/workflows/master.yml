@@ -386,11 +386,20 @@ jobs:
     timeout-minutes: 120
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: fix
+            ref: ""
+          - variant: baseline
+            ref: master
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
           submodules: true
+          ref: ${{ matrix.ref }}
       - uses: ./.github/actions/untracked
       - uses: ./.github/actions/setup-python
       - uses: ./.github/actions/setup-pyenv
@@ -416,5 +425,5 @@ jobs:
           MPLBACKEND: Agg
         run: |
           export PATH=$PATH:$HADOOP_HOME/bin
-          uv run --no-sync pytest \
+          uv run --no-sync pytest --count=20 \
             tests/tracing/test_fluent.py::test_search_traces_yields_expected_dataframe_contents
