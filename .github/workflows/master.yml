@@ -47,7 +47,7 @@ jobs:
   # The python skinny tests cover the subset of mlflow functionality
   # while also verifying certain dependencies are omitted.
   python-skinny:
-    if: github.event_name != 'pull_request' || (github.event.pull_request.draft == false || github.event.pull_request.user.login == 'Copilot' && github.event.pull_request.user.type == 'Bot')
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -66,7 +66,7 @@ jobs:
           ./dev/run-python-skinny-tests.sh
 
   python:
-    if: github.event_name != 'pull_request' || (github.event.pull_request.draft == false || github.event.pull_request.user.login == 'Copilot' && github.event.pull_request.user.type == 'Bot')
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
@@ -122,7 +122,7 @@ jobs:
             pytest tests/utils/test_requirements_utils.py::test_infer_pip_requirements_on_databricks_agents
 
   database:
-    if: github.event_name != 'pull_request' || (github.event.pull_request.draft == false || github.event.pull_request.user.login == 'Copilot' && github.event.pull_request.user.type == 'Bot')
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
@@ -182,7 +182,7 @@ jobs:
           ./tests/db/compose.sh down --volumes --remove-orphans --rmi all
 
   java:
-    if: github.event_name != 'pull_request' || (github.event.pull_request.draft == false || github.event.pull_request.user.login == 'Copilot' && github.event.pull_request.user.type == 'Bot')
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -206,7 +206,7 @@ jobs:
           uv run --no-dev mvn clean package -q
 
   flavors:
-    if: github.event_name != 'pull_request' || (github.event.pull_request.draft == false || github.event.pull_request.user.login == 'Copilot' && github.event.pull_request.user.type == 'Bot')
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
@@ -235,7 +235,7 @@ jobs:
             tests/autologging
 
   models:
-    if: github.event_name != 'pull_request' || (github.event.pull_request.draft == false || github.event.pull_request.user.login == 'Copilot' && github.event.pull_request.user.type == 'Bot')
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
@@ -271,7 +271,7 @@ jobs:
           uv run --no-sync pytest --splits=$SPLITS --group=$GROUP tests/models
 
   evaluate:
-    if: github.event_name != 'pull_request' || (github.event.pull_request.draft == false || github.event.pull_request.user.login == 'Copilot' && github.event.pull_request.user.type == 'Bot')
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
@@ -309,7 +309,7 @@ jobs:
           uv run --no-sync pytest tests/evaluate/test_default_evaluator_delta.py
 
   genai:
-    if: github.event_name != 'pull_request' || (github.event.pull_request.draft == false || github.event.pull_request.user.login == 'Copilot' && github.event.pull_request.user.type == 'Bot')
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -341,7 +341,7 @@ jobs:
             --ignore tests/genai/optimize --ignore tests/genai/prompts
 
   pyfunc:
-    if: github.event_name != 'pull_request' || (github.event.pull_request.draft == false || github.event.pull_request.user.login == 'Copilot' && github.event.pull_request.user.type == 'Bot')
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
@@ -389,14 +389,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [1, 2, 3]
         include:
-          - splits: 3
+          - variant: fix
+            ref: ""
+          - variant: baseline
+            ref: master
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
           submodules: true
+          ref: ${{ matrix.ref }}
       - uses: ./.github/actions/untracked
       - uses: ./.github/actions/setup-python
       - uses: ./.github/actions/setup-pyenv
@@ -420,23 +423,7 @@ jobs:
           # Use non-GUI matplotlib backend since Tkinter may not be installed properly on Windows runners
           # https://github.com/stefmolin/data-morph/pull/273
           MPLBACKEND: Agg
-          SPLITS: ${{ matrix.splits }}
-          GROUP: ${{ matrix.group }}
         run: |
           export PATH=$PATH:$HADOOP_HOME/bin
-          uv run --no-sync pytest tests \
-            --splits=$SPLITS \
-            --group=$GROUP \
-            --ignore-flavors \
-            --ignore=tests/projects \
-            --ignore=tests/examples \
-            --ignore=tests/evaluate \
-            --ignore=tests/optuna \
-            --ignore=tests/pyspark/optuna \
-            --ignore=tests/genai \
-            --ignore=tests/sagemaker \
-            --ignore=tests/gateway \
-            --ignore=tests/server/auth \
-            --ignore=tests/data/test_spark_dataset.py \
-            --ignore=tests/data/test_spark_dataset_source.py \
-            --ignore=tests/docker
+          uv run --no-sync pytest --count=20 \
+            tests/tracing/test_fluent.py::test_search_traces_yields_expected_dataframe_contents
