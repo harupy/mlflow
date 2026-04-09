@@ -764,19 +764,17 @@ def get_trace(trace_id: str, silent: bool = False, flush: bool = False) -> Trace
     # Special handling for evaluation request ID.
     trace_id = _EVAL_REQUEST_ID_TO_TRACE_ID.get(trace_id) or trace_id
 
+    # Flush before fetching so that when the trace row already exists in the
+    # store but its metadata has not been written yet by the async exporter,
+    # we don't return a trace with stale/empty trace_metadata.
+    if flush:
+        _flush_pending_async_trace_writes()
+
     exc: MlflowException | None = None
     try:
         return TracingClient().get_trace(trace_id)
     except MlflowException as e:
         exc = e
-
-    if flush:
-        _flush_pending_async_trace_writes()
-        exc = None
-        try:
-            return TracingClient().get_trace(trace_id)
-        except MlflowException as e:
-            exc = e
 
     if not silent:
         hint = (
