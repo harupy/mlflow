@@ -21,8 +21,14 @@ from mlflow.server.constants import MLFLOW_HUEY_INSTANCE_KEY
 from mlflow.server.jobs.logging_utils import configure_logging_for_jobs
 from mlflow.server.jobs.utils import (
     _exit_when_orphaned,
+    _get_forkserver_context,
     _get_or_init_huey_instance,
 )
+
+# Eagerly initialize the forkserver so the first job submission doesn't pay
+# the ~5s cold mlflow import inside the forkserver process. This runs in
+# parallel with the rest of the consumer setup, front-loading the cost.
+_get_forkserver_context()
 
 # Configure Python logging to suppress noisy job logs
 configure_logging_for_jobs()

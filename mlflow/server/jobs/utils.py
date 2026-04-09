@@ -181,6 +181,13 @@ def _get_forkserver_context() -> Any:
     if _forkserver_ctx is None:
         _forkserver_ctx = multiprocessing.get_context("forkserver")
         _forkserver_ctx.set_forkserver_preload(["mlflow", "mlflow.server.jobs._job_subproc_entry"])
+        # Force the forkserver process to actually start (and import preloaded
+        # modules) by spawning and joining a no-op Process. Without this, the
+        # forkserver is started lazily on first real .start() call, so the
+        # first job pays the full cold-import cost.
+        _warmup = _forkserver_ctx.Process(target=int, args=(0,))
+        _warmup.start()
+        _warmup.join()
     return _forkserver_ctx
 
 
