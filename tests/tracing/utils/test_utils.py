@@ -744,13 +744,11 @@ def test_litellm_provider_list_printed_when_debug_logging(capsys):
 
 
 def test_dump_span_attribute_value_handles_circular_reference():
-    """Values with circular references (e.g. pydantic_ai's `run_context` passed to
-    `LiveSpan.set_inputs`) must not crash tracing. `json.dumps` raises
-    `ValueError: Circular reference detected` for such values; the dump helper should
-    fall back to a repr-based string so the span attribute is still set.
-    """
     cyclic = {"name": "run_context"}
     cyclic["self"] = cyclic
+
+    with pytest.raises(ValueError, match="Circular reference detected"):
+        json.dumps(cyclic)
 
     # Must not raise; fall back result is a valid JSON string containing repr(value).
     result = dump_span_attribute_value(cyclic)
