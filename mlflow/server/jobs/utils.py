@@ -767,11 +767,11 @@ def register_periodic_tasks(huey_instance) -> None:
     """
     from huey import crontab
 
-    @huey_instance.periodic_task(crontab(minute="*/1"))
-    # Prevent concurrent execution if scheduler takes longer than 1 minute.
+    @huey_instance.periodic_task(crontab(minute="*/5"))
+    # Prevent concurrent execution if scheduler takes longer than the interval.
     @huey_instance.lock_task("online-scoring-scheduler-lock")
     def online_scoring_scheduler():
-        """Runs every minute to fetch active scorer configs and submit scoring jobs."""
+        """Runs every 5 minutes to fetch active scorer configs and submit scoring jobs."""
         from mlflow.genai.scorers.job import run_online_scoring_scheduler
 
         try:
@@ -779,4 +779,4 @@ def register_periodic_tasks(huey_instance) -> None:
         except Exception as e:
             _logger.exception(f"Online scoring scheduler failed: {e!r}")
 
-    _logger.info("Registered online_scoring_scheduler periodic task (runs every 1 minute)")
+    _logger.info("Registered online_scoring_scheduler periodic task (runs every 5 minutes)")
