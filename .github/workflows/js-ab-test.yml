@@ -29,9 +29,9 @@ jobs:
       - uses: ./.github/actions/setup-node
       - name: Install dependencies
         run: yarn install --immutable
-      - name: "Run A (convenience API) x10"
+      - name: "Run A (convenience API) x100"
         run: |
-          for i in $(seq 1 10); do
+          for i in $(seq 1 100); do
             echo "=== Attempt $i ==="
             yarn test --verbose --testPathPattern='CreateBudgetPolicyModal\.test\.tsx$' || echo "FAILED on attempt $i"
           done
@@ -52,9 +52,9 @@ jobs:
       - uses: ./.github/actions/setup-node
       - name: Install dependencies
         run: yarn install --immutable
-      - name: "Run B (setup API) x10"
+      - name: "Run B (setup API) x100"
         run: |
-          for i in $(seq 1 10); do
+          for i in $(seq 1 100); do
             echo "=== Attempt $i ==="
             yarn test --verbose --testPathPattern='CreateBudgetPolicyModal\.setup\.test' || echo "FAILED on attempt $i"
           done
