@@ -4751,7 +4751,28 @@ class SqlAlchemyStore(SqlAlchemyGatewayStoreMixin, AbstractStore):
                     .all()
                 }
 
-            # --- Phase 5: Per-trace updates (UPDATE + merges) ---
+            trace_ids_with_user = [tid for tid in all_trace_ids if trace_aggregates[tid].user_id]
+            existing_user_ids: set[str] = set()
+            if trace_ids_with_user:
+                existing_user_ids = {
+                    request_id
+                    for (request_id,) in session
+                    .query(SqlTraceMetadata.request_id)
+                    .filter(
+                        SqlTraceMetadata.request_id.in_(trace_ids_with_user),
+                        SqlTraceMetadata.key == TraceMetadataKey.TRACE_USER,
+                    )
+                    .all()
+                }
+
+            # --- Phase 5: Per-trace UPDATE on SqlTraceInfo + collect metadata rows ---
+            # Metadata/metrics/tag rows are accumulated here and bulk-upserted in
+            # Phase 6, collapsing up to ~10 per-trace session.merge() calls (each
+            # costing a SELECT + INSERT/UPDATE round-trip) into three bulk upserts
+            # regardless of batch size.
+            metadata_rows: list[dict[str, Any]] = []
+            metric_rows: list[dict[str, Any]] = []
+            tag_rows: list[dict[str, Any]] = []
             for trace_id in all_trace_ids:
                 agg = trace_aggregates[trace_id]
                 sql_trace_info = existing_traces[trace_id]
@@ -4811,20 +4832,16 @@ class SqlAlchemyStore(SqlAlchemyGatewayStoreMixin, AbstractStore):
                             existing_record.value if existing_record else {},
                             aggregated_token_usage,
                         )
-                        session.merge(
-                            SqlTraceMetadata(
-                                request_id=trace_id,
-                                key=TraceMetadataKey.TOKEN_USAGE,
-                                value=json.dumps(trace_token_usage),
-                            )
+                        metadata_rows.append({
+                            "request_id": trace_id,
+                            "key": TraceMetadataKey.TOKEN_USAGE,
+                            "value": json.dumps(trace_token_usage),
+                        })
+                        metric_rows.extend(
+                            {"request_id": trace_id, "key": key, "value": float(value)}
+                            for key in TokenUsageKey.all_keys()
+                            if (value := trace_token_usage.get(key)) is not None
                         )
-                        for key in TokenUsageKey.all_keys():
-                            if (value := trace_token_usage.get(key)) is not None:
-                                session.merge(
-                                    SqlTraceMetrics(
-                                        request_id=trace_id, key=key, value=float(value)
-                                    )
-                                )
 
                 # Cost metadata — skip only if start_trace() has already written the
                 # authoritative value (flag set AND existing record present). If the flag
@@ -4835,13 +4852,11 @@ class SqlAlchemyStore(SqlAlchemyGatewayStoreMixin, AbstractStore):
                         recorded_cost = update_cost(
                             existing_record.value if existing_record else {}, aggregated_cost
                         )
-                        session.merge(
-                            SqlTraceMetadata(
-                                request_id=trace_id,
-                                key=TraceMetadataKey.COST,
-                                value=json.dumps(recorded_cost),
-                            )
-                        )
+                        metadata_rows.append({
+                            "request_id": trace_id,
+                            "key": TraceMetadataKey.COST,
+                            "value": json.dumps(recorded_cost),
+                        })
 
                 # Session ID metadata
                 if (
@@ -4849,33 +4864,19 @@ class SqlAlchemyStore(SqlAlchemyGatewayStoreMixin, AbstractStore):
                     and trace_id not in existing_sessions
                     and trace_id not in finalized_trace_ids
                 ):
-                    session.merge(
-                        SqlTraceMetadata(
-                            request_id=trace_id,
-                            key=TraceMetadataKey.TRACE_SESSION,
-                            value=agg.session_id,
-                        )
-                    )
+                    metadata_rows.append({
+                        "request_id": trace_id,
+                        "key": TraceMetadataKey.TRACE_SESSION,
+                        "value": agg.session_id,
+                    })
 
                 # User ID metadata
-                if agg.user_id:
-                    existing_user_id = (
-                        session
-                        .query(SqlTraceMetadata)
-                        .filter(
-                            SqlTraceMetadata.request_id == trace_id,
-                            SqlTraceMetadata.key == TraceMetadataKey.TRACE_USER,
-                        )
-                        .one_or_none()
-                    )
-                    if not existing_user_id:
-                        session.merge(
-                            SqlTraceMetadata(
-                                request_id=trace_id,
-                                key=TraceMetadataKey.TRACE_USER,
-                                value=agg.user_id,
-                            )
-                        )
+                if agg.user_id and trace_id not in existing_user_ids:
+                    metadata_rows.append({
+                        "request_id": trace_id,
+                        "key": TraceMetadataKey.TRACE_USER,
+                        "value": agg.user_id,
+                    })
 
                 if update_dict:
                     self._trace_query(session, for_update_or_delete=True).filter(
@@ -4888,13 +4889,16 @@ class SqlAlchemyStore(SqlAlchemyGatewayStoreMixin, AbstractStore):
                     )
                 # Mark that spans are stored in the tracking store DB (required for
                 # concurrent calls that create or update the trace info).
-                session.merge(
-                    SqlTraceTag(
-                        request_id=trace_id,
-                        key=TraceTagKey.SPANS_LOCATION,
-                        value=SpansLocation.TRACKING_STORE.value,
-                    )
-                )
+                tag_rows.append({
+                    "request_id": trace_id,
+                    "key": TraceTagKey.SPANS_LOCATION,
+                    "value": SpansLocation.TRACKING_STORE.value,
+                })
+
+            # --- Phase 6: Bulk upsert all accumulated metadata/metrics/tag rows ---
+            _bulk_upsert(session, SqlTraceMetadata, metadata_rows)
+            _bulk_upsert(session, SqlTraceMetrics, metric_rows)
+            _bulk_upsert(session, SqlTraceTag, tag_rows)
 
         return spans
 
