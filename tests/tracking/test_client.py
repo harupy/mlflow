@@ -2049,8 +2049,8 @@ def test_enable_async_logging(mock_store, setup_async_logging):
     mock_store.log_metric_async.assert_called_once_with("run_id", Metric("key", "val", 1, 1))
 
 
-def test_file_store_download_upload_trace_data(tmp_path):
-    with _use_tracking_uri(tmp_path.joinpath("mlruns").as_uri()):
+def test_download_upload_trace_data(db_uri):
+    with _use_tracking_uri(db_uri):
         client = MlflowClient()
         span = client.start_trace("test", inputs={"test": 1})
         client.end_trace(span.trace_id, outputs={"result": 2})
@@ -2060,13 +2060,13 @@ def test_file_store_download_upload_trace_data(tmp_path):
         assert trace_data.response == trace.data.response
 
 
-def test_get_trace_throw_if_trace_id_is_online_trace_id():
+def test_get_trace_throw_if_trace_id_is_online_trace_id(db_uri):
     client = MlflowClient("databricks")
     trace_id = "3a3c3b56-910a-4721-8d02-0333eda5f37e"
     with pytest.raises(MlflowException, match="Traces from inference tables can only be loaded"):
         client.get_trace(trace_id)
 
-    another_client = MlflowClient("mlruns")
+    another_client = MlflowClient(db_uri)
     with pytest.raises(MlflowException, match=r"Trace with ID '[\w-]+' not found"):
         another_client.get_trace(trace_id)
 
