@@ -1,3 +1,4 @@
+import logging
 import time
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
@@ -7,6 +8,8 @@ from mlflow.gateway.constants import (
     MLFLOW_GATEWAY_ROUTE_TIMEOUT_SECONDS,
 )
 from mlflow.utils.uri import append_to_uri_path
+
+_logger = logging.getLogger(__name__)
 
 # Accumulates the total time (ms) spent waiting for provider HTTP responses in the current
 # request context. Reset to 0.0 at the start of each request by the gateway timing middleware
@@ -52,9 +55,23 @@ async def send_request(headers: dict[str, str], base_url: str, path: str, payloa
     import aiohttp
     from fastapi import HTTPException
 
+    url = append_to_uri_path(base_url, path)
+    _logger.debug(
+        "[gateway-debug] send_request: url=%s, headers=%s, payload_keys=%s",
+        url,
+        {k: ("***" if k.lower() == "authorization" else v) for k, v in headers.items()},
+        list(payload.keys()),
+    )
+
     start = time.perf_counter()
     try:
         async with _aiohttp_post(headers, base_url, path, payload) as response:
+            _logger.debug(
+                "[gateway-debug] response: status=%s, content_type=%s, headers=%s",
+                response.status,
+                response.headers.get("Content-Type"),
+                dict(response.headers),
+            )
             content_type = response.headers.get("Content-Type")
             if content_type and "application/json" in content_type:
                 js = await response.json()
@@ -66,11 +83,23 @@ async def send_request(headers: dict[str, str], base_url: str, path: str, payloa
                     detail=f"The returned data type from the route service is not supported. "
                     f"Received content type: {content_type}",
                 )
+            _logger.debug("[gateway-debug] response body: %s", js)
             try:
                 response.raise_for_status()
             except aiohttp.ClientResponseError as e:
                 detail = js.get("error", {}).get("message", e.message) if "error" in js else js
+                _logger.error(
+                    "[gateway-debug] provider returned error: status=%s, detail=%s",
+                    e.status,
+                    detail,
+                )
                 raise HTTPException(status_code=e.status, detail=detail)
+    except aiohttp.ClientError as e:
+        _logger.error("[gateway-debug] connection error to %s: %s: %s", url, type(e).__name__, e)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to connect to upstream provider at {url}: {type(e).__name__}: {e}",
+        )
     finally:
         # Record full provider HTTP time for non-streaming, even when raising.
         provider_call_duration_ms.set(
