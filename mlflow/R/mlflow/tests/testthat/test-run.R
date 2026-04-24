@@ -9,9 +9,8 @@ test_that("mlflow can run and save model", {
 
   mlflow_source("examples/train_example.R")
 
-  expect_true(dir.exists("mlruns"))
-  expect_true(dir.exists("mlruns/0"))
-  expect_true(file.exists("mlruns/0/meta.yaml"))
+  runs <- mlflow_search_runs(experiment_ids = "0")
+  expect_true(nrow(runs) >= 1)
 })
 
 

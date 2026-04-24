@@ -84,9 +84,11 @@ new_mlflow_client.mlflow_file <- function(tracking_uri) {
     mlflow_register_local_server(tracking_uri = path, local_server = local_server)
     local_server$server_url
   }
-  new_mlflow_client_impl(get_host_creds = function () {
-    new_mlflow_host_creds(host = server_url)
-  }, class = "mlflow_file_client")
+  new_mlflow_client_impl(
+    get_host_creds = function() new_mlflow_host_creds(host = server_url),
+    get_cli_env = function() list(MLFLOW_TRACKING_URI = server_url),
+    class = "mlflow_file_client"
+  )
 }
 
 new_mlflow_client.default <- function(tracking_uri) {

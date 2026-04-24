@@ -46,8 +46,11 @@ mlflow_cli_param <- function(args, param, value) {
 #'
 #' Wrapper for `mlflow server`.
 #'
-#' @param file_store The root of the backing file store for experiment and run data.
+#' @param file_store The root directory used to back the local tracking server.
+#'   A SQLite database (`mlflow.db`) is created inside this directory, and the
+#'   directory is also used as the default artifact root.
 #' @param default_artifact_root Local or S3 URI to store artifacts in, for newly created experiments.
+#'   Defaults to `file_store` when not provided.
 #' @param host The network address to listen on (default: 127.0.0.1).
 #' @param port The port to listen on (default: 5000).
 #' @param workers Number of gunicorn worker processes to handle requests (default: 4).
@@ -58,10 +61,16 @@ mlflow_server <- function(file_store = "mlruns", default_artifact_root = NULL,
                           host = "127.0.0.1", port = 5000, workers = NULL, static_prefix = NULL,
                           serve_artifacts = FALSE) {
   file_store <- fs::path_abs(file_store)
-  if (.Platform$OS.type == "windows") file_store <- paste0("file://", file_store)
+  if (!dir.exists(file_store)) {
+    dir.create(file_store, recursive = TRUE, showWarnings = FALSE)
+  }
+  backend_store_uri <- paste0("sqlite:///", file_store, "/mlflow.db")
+  if (is.null(default_artifact_root)) {
+    default_artifact_root <- file_store
+  }
 
   args <- mlflow_cli_param(list(), "--port", port) %>%
-    mlflow_cli_param("--backend-store-uri", file_store) %>%
+    mlflow_cli_param("--backend-store-uri", backend_store_uri) %>%
     mlflow_cli_param("--default-artifact-root", default_artifact_root) %>%
     mlflow_cli_param("--host", host) %>%
     mlflow_cli_param("--port", port) %>%

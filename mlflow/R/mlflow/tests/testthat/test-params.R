@@ -15,16 +15,12 @@ test_that("mlflow can read typed command line parameters", {
     "-P", "my_str=XYZ"
   )
 
-  expect_true(dir.exists("mlruns"))
-  expect_true(dir.exists("mlruns/0"))
-  expect_true(file.exists("mlruns/0/meta.yaml"))
-
-  run_dir <- file.path("mlruns/0/", dir("mlruns/0/", pattern = "^[a-zA-Z0-9]+$")[[1]])
-  params_dir <- dir(file.path(run_dir, "params"))
-
-  expect_true("my_int" %in% params_dir)
-  expect_true("my_num" %in% params_dir)
-  expect_true("my_str" %in% params_dir)
+  runs <- mlflow_search_runs(experiment_ids = "0")
+  expect_true(nrow(runs) >= 1)
+  param_keys <- runs$params[[1]]$key
+  expect_true("my_int" %in% param_keys)
+  expect_true("my_num" %in% param_keys)
+  expect_true("my_str" %in% param_keys)
 })
 
 test_that("ml_param() type checking works", {
