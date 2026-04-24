@@ -239,7 +239,9 @@ docs = [
 
 [tool.uv]
 exclude-newer = "P14D"
-exclude-newer-package = { torch = false, torchvision = false }
+# TODO: Remove pydocket override on/after 2026-05-04, when pydocket 0.19.2 (released 2026-04-20)
+# enters the P14D window. pydocket<0.19 breaks with fakeredis>=2.35.0.
+exclude-newer-package = { torch = false, torchvision = false, pydocket = "2026-04-21" }
 required-version = ">=0.10.12"
 constraint-dependencies = [
   # xgboost 3.1.0 changed base_score format to vector for multi-output models, breaking shap compatibility
