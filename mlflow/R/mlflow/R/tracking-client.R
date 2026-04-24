@@ -95,21 +95,22 @@ new_local_backend_client <- function(key, backend_store_uri, default_artifact_ro
 }
 
 new_mlflow_client.mlflow_file <- function(tracking_uri) {
-  path <- tracking_uri$path
-  abs_path <- fs::path_abs(path)
-  if (!dir.exists(abs_path)) {
-    dir.create(abs_path, recursive = TRUE, showWarnings = FALSE)
-  }
-  sqlite_uri <- paste0("sqlite:///", abs_path, "/mlflow.db")
-  new_local_backend_client(
-    key = path,
-    backend_store_uri = sqlite_uri,
-    default_artifact_root = abs_path
+  stop(
+    "FileStore-style tracking URIs (e.g., 'file:///mlruns') are no longer supported. ",
+    "Use a SQL backend instead, e.g., ",
+    "mlflow_set_tracking_uri('sqlite:///path/to/mlflow.db').",
+    call. = FALSE
   )
 }
 
 new_mlflow_client.mlflow_sqlite <- function(tracking_uri) {
   full_uri <- paste0(tracking_uri$scheme, "://", tracking_uri$path)
+  if (startsWith(tracking_uri$path, "/")) {
+    parent <- dirname(tracking_uri$path)
+    if (!dir.exists(parent)) {
+      dir.create(parent, recursive = TRUE, showWarnings = FALSE)
+    }
+  }
   new_local_backend_client(key = full_uri, backend_store_uri = full_uri)
 }
 
