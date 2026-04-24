@@ -75,22 +75,16 @@ print.mlflow_host_creds <- function(x, ...) {
   cat(")\n")
 }
 
-new_mlflow_client.mlflow_file <- function(tracking_uri) {
-  path <- tracking_uri$path
-  server_url <- if (!is.null(mlflow_local_server(path)$server_url)) {
-    mlflow_local_server(path)$server_url
+new_local_backend_client <- function(key, backend_store_uri, default_artifact_root = NULL) {
+  server_url <- if (!is.null(mlflow_local_server(key)$server_url)) {
+    mlflow_local_server(key)$server_url
   } else {
-    abs_path <- fs::path_abs(path)
-    if (!dir.exists(abs_path)) {
-      dir.create(abs_path, recursive = TRUE, showWarnings = FALSE)
-    }
-    sqlite_uri <- paste0("sqlite:///", abs_path, "/mlflow.db")
     local_server <- mlflow_server(
-      backend_store_uri = sqlite_uri,
-      default_artifact_root = abs_path,
+      backend_store_uri = backend_store_uri,
+      default_artifact_root = default_artifact_root,
       port = mlflow_connect_port()
     )
-    mlflow_register_local_server(tracking_uri = path, local_server = local_server)
+    mlflow_register_local_server(tracking_uri = key, local_server = local_server)
     local_server$server_url
   }
   new_mlflow_client_impl(
@@ -98,6 +92,25 @@ new_mlflow_client.mlflow_file <- function(tracking_uri) {
     get_cli_env = function() list(MLFLOW_TRACKING_URI = server_url),
     class = "mlflow_file_client"
   )
+}
+
+new_mlflow_client.mlflow_file <- function(tracking_uri) {
+  path <- tracking_uri$path
+  abs_path <- fs::path_abs(path)
+  if (!dir.exists(abs_path)) {
+    dir.create(abs_path, recursive = TRUE, showWarnings = FALSE)
+  }
+  sqlite_uri <- paste0("sqlite:///", abs_path, "/mlflow.db")
+  new_local_backend_client(
+    key = path,
+    backend_store_uri = sqlite_uri,
+    default_artifact_root = abs_path
+  )
+}
+
+new_mlflow_client.mlflow_sqlite <- function(tracking_uri) {
+  full_uri <- paste0(tracking_uri$scheme, "://", tracking_uri$path)
+  new_local_backend_client(key = full_uri, backend_store_uri = full_uri)
 }
 
 new_mlflow_client.default <- function(tracking_uri) {
