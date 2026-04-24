@@ -16,8 +16,9 @@ mlflow_server(
 )
 }
 \arguments{
-\item{file_store}{The root of the backing file store for experiment and run data.
-Ignored when \code{backend_store_uri} is provided.}
+\item{file_store}{Deprecated. Use \code{backend_store_uri} instead. The root of the
+backing file store for experiment and run data. Ignored when
+\code{backend_store_uri} is provided.}
 
 \item{default_artifact_root}{Local or S3 URI to store artifacts in, for newly created experiments.}
 
@@ -32,7 +33,8 @@ Ignored when \code{backend_store_uri} is provided.}
 \item{serve_artifacts}{A flag specifying whether or not to enable artifact serving (default: FALSE).}
 
 \item{backend_store_uri}{URI for the backend store (e.g., \code{sqlite:///mlflow.db},
-\code{postgresql://user:pass@host/db}). When set, takes precedence over \code{file_store}.}
+\code{postgresql://user:pass@host/db}). When set, takes precedence over \code{file_store}.
+When neither is provided, a local SQLite database under \code{mlruns/} is used.}
 }
 \description{
 Wrapper for \code{mlflow server}.

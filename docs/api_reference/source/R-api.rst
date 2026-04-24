@@ -1835,8 +1835,10 @@ Arguments
 +-------------------------------+--------------------------------------+
 | Argument                      | Description                          |
 +===============================+======================================+
-| ``file_store``                | The root of the backing file store   |
-|                               | for experiment and run data. Ignored |
+| ``file_store``                | Deprecated. Use                      |
+|                               | ``backend_store_uri`` instead. The   |
+|                               | root of the backing file store for   |
+|                               | experiment and run data. Ignored     |
 |                               | when ``backend_store_uri`` is        |
 |                               | provided.                            |
 +-------------------------------+--------------------------------------+
@@ -1863,7 +1865,9 @@ Arguments
 |                               | ``sqlite:///mlflow.db``,             |
 |                               | ``postgresql://user:pass@host/db``). |
 |                               | When set, takes precedence over      |
-|                               | ``file_store``.                      |
+|                               | ``file_store``. When neither is      |
+|                               | provided, a local SQLite database    |
+|                               | under ``mlruns/`` is used.           |
 +-------------------------------+--------------------------------------+
 
 ``mlflow_set_experiment_tag``
