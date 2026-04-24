@@ -664,7 +664,7 @@ class Linter(ast.NodeVisitor):
         self.stack.append(node)
         self._no_rst(node)
         self.visit_decorators(node.decorator_list)
-        self._check_walrus_operator(node)
+        self._check_walrus_stmts(node.body)
         with self.resolver.scope():
             self.generic_visit(node)
         self.stack.pop()
@@ -689,7 +689,7 @@ class Linter(ast.NodeVisitor):
         self.stack.append(node)
         self._no_rst(node)
         self.visit_decorators(node.decorator_list)
-        self._check_walrus_operator(node)
+        self._check_walrus_stmts(node.body)
         with self.resolver.scope():
             self.generic_visit(node)
         self.stack.pop()
@@ -895,6 +895,31 @@ class Linter(ast.NodeVisitor):
     def visit_For(self, node: ast.For) -> None:
         if self.prev_stmt and rules.AssignBeforeAppend.check(node, self.prev_stmt):
             self._check(Range.from_node(node), rules.AssignBeforeAppend())
+        self._check_walrus_stmts(node.body)
+        self._check_walrus_stmts(node.orelse)
+        self.generic_visit(node)
+
+    def visit_AsyncFor(self, node: ast.AsyncFor) -> None:
+        self._check_walrus_stmts(node.body)
+        self._check_walrus_stmts(node.orelse)
+        self.generic_visit(node)
+
+    def visit_While(self, node: ast.While) -> None:
+        self._check_walrus_stmts(node.body)
+        self._check_walrus_stmts(node.orelse)
+        self.generic_visit(node)
+
+    def visit_Try(self, node: ast.Try) -> None:
+        self._check_walrus_stmts(node.body)
+        for handler in node.handlers:
+            self._check_walrus_stmts(handler.body)
+        self._check_walrus_stmts(node.orelse)
+        self._check_walrus_stmts(node.finalbody)
+        self.generic_visit(node)
+
+    def visit_Match(self, node: ast.Match) -> None:
+        for case in node.cases:
+            self._check_walrus_stmts(case.body)
         self.generic_visit(node)
 
     def visit_type_annotation(self, node: ast.expr) -> None:
@@ -908,19 +933,28 @@ class Linter(ast.NodeVisitor):
             "TYPE_CHECKING",
         ]:
             self.in_TYPE_CHECKING = True
+        self._check_walrus_stmts(node.body)
+        self._check_walrus_stmts(node.orelse)
         self.generic_visit(node)
         self.in_TYPE_CHECKING = prev
 
-    def _check_walrus_operator(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
-        visitor = rules.WalrusOperatorVisitor()
-        visitor.visit(node)
-        for stmt in visitor.violations:
-            self._check(Range.from_node(stmt), rules.UseWalrusOperator())
+    def _check_walrus_stmts(self, stmts: list[ast.stmt]) -> None:
+        for idx in range(1, len(stmts)):
+            stmt = stmts[idx]
+            if isinstance(stmt, ast.If) and rules.UseWalrusOperator.check(
+                stmt, stmts[idx - 1], stmts[idx + 1 :]
+            ):
+                self._check(Range.from_node(stmts[idx - 1]), rules.UseWalrusOperator())
 
     def visit_With(self, node: ast.With) -> None:
         # Only check in test files
         if self.path.name.startswith("test_") and rules.NestedMockPatch.check(node, self.resolver):
             self._check(Range.from_node(node), rules.NestedMockPatch())
+        self._check_walrus_stmts(node.body)
+        self.generic_visit(node)
+
+    def visit_AsyncWith(self, node: ast.AsyncWith) -> None:
+        self._check_walrus_stmts(node.body)
         self.generic_visit(node)
 
     def post_visit(self) -> None:

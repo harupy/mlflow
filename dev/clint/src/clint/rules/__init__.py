@@ -54,7 +54,7 @@ from clint.rules.unparameterized_generic_type import UnparameterizedGenericType
 from clint.rules.unused_disable_comment import UnusedDisableComment
 from clint.rules.use_gh_token import UseGhToken
 from clint.rules.use_sys_executable import UseSysExecutable
-from clint.rules.use_walrus_operator import UseWalrusOperator, WalrusOperatorVisitor
+from clint.rules.use_walrus_operator import UseWalrusOperator
 from clint.rules.version_major_check import MajorVersionCheck
 
 ALL_RULES = {rule.name for rule in Rule.__subclasses__()}
@@ -117,6 +117,5 @@ __all__ = [
     "UseGhToken",
     "UseSysExecutable",
     "UseWalrusOperator",
-    "WalrusOperatorVisitor",
     "MajorVersionCheck",
 ]
