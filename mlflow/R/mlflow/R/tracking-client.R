@@ -80,7 +80,16 @@ new_mlflow_client.mlflow_file <- function(tracking_uri) {
   server_url <- if (!is.null(mlflow_local_server(path)$server_url)) {
     mlflow_local_server(path)$server_url
   } else {
-    local_server <- mlflow_server(file_store = path, port = mlflow_connect_port())
+    abs_path <- fs::path_abs(path)
+    if (!dir.exists(abs_path)) {
+      dir.create(abs_path, recursive = TRUE, showWarnings = FALSE)
+    }
+    sqlite_uri <- paste0("sqlite:///", abs_path, "/mlflow.db")
+    local_server <- mlflow_server(
+      file_store = sqlite_uri,
+      default_artifact_root = abs_path,
+      port = mlflow_connect_port()
+    )
     mlflow_register_local_server(tracking_uri = path, local_server = local_server)
     local_server$server_url
   }
