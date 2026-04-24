@@ -56,7 +56,7 @@ test_that("mlflow_get_experiment() not found error", {
 
   expect_error(
     mlflow_get_experiment(experiment_id = "42"),
-    "Could not find experiment with ID 42"
+    "No Experiment with id=42 exists"
   )
 })
 
