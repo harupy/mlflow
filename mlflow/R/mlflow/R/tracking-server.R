@@ -47,8 +47,8 @@ mlflow_cli_param <- function(args, param, value) {
 #' Wrapper for `mlflow server`.
 #'
 #' @param file_store Deprecated. Use `backend_store_uri` instead. The root of the
-#'   backing file store for experiment and run data. Ignored when
-#'   `backend_store_uri` is provided.
+#'   backing file store for experiment and run data. Cannot be combined with
+#'   `backend_store_uri`.
 #' @param default_artifact_root Local or S3 URI to store artifacts in, for newly created experiments.
 #' @param host The network address to listen on (default: 127.0.0.1).
 #' @param port The port to listen on (default: 5000).
@@ -56,12 +56,19 @@ mlflow_cli_param <- function(args, param, value) {
 #' @param static_prefix A prefix which will be prepended to the path of all static paths.
 #' @param serve_artifacts A flag specifying whether or not to enable artifact serving (default: FALSE).
 #' @param backend_store_uri URI for the backend store (e.g., `sqlite:///mlflow.db`,
-#'   `postgresql://user:pass@host/db`). When set, takes precedence over `file_store`.
+#'   `postgresql://user:pass@host/db`). Cannot be combined with `file_store`.
 #'   When neither is provided, a local SQLite database under `mlruns/` is used.
 #' @export
 mlflow_server <- function(file_store = "mlruns", default_artifact_root = NULL,
                           host = "127.0.0.1", port = 5000, workers = NULL, static_prefix = NULL,
                           serve_artifacts = FALSE, backend_store_uri = NULL) {
+  if (!is.null(backend_store_uri) && !missing(file_store)) {
+    stop(
+      "Cannot specify both `file_store` and `backend_store_uri`. ",
+      "Use `backend_store_uri` only.",
+      call. = FALSE
+    )
+  }
   if (is.null(backend_store_uri)) {
     if (!missing(file_store)) {
       warning(

@@ -1838,9 +1838,8 @@ Arguments
 | ``file_store``                | Deprecated. Use                      |
 |                               | ``backend_store_uri`` instead. The   |
 |                               | root of the backing file store for   |
-|                               | experiment and run data. Ignored     |
-|                               | when ``backend_store_uri`` is        |
-|                               | provided.                            |
+|                               | experiment and run data. Cannot be   |
+|                               | combined with ``backend_store_uri``. |
 +-------------------------------+--------------------------------------+
 | ``default_artifact_root``     | Local or S3 URI to store artifacts   |
 |                               | in, for newly created experiments.   |
@@ -1864,7 +1863,7 @@ Arguments
 | ``backend_store_uri``         | URI for the backend store (e.g.,     |
 |                               | ``sqlite:///mlflow.db``,             |
 |                               | ``postgresql://user:pass@host/db``). |
-|                               | When set, takes precedence over      |
+|                               | Cannot be combined with              |
 |                               | ``file_store``. When neither is      |
 |                               | provided, a local SQLite database    |
 |                               | under ``mlruns/`` is used.           |
