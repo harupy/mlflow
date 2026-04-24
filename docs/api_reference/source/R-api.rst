@@ -1823,7 +1823,8 @@ Wrapper for ``mlflow server``.
      port = 5000,
      workers = NULL,
      static_prefix = NULL,
-     serve_artifacts = FALSE
+     serve_artifacts = FALSE,
+     backend_store_uri = NULL
    )
 
 .. _arguments-41:
@@ -1835,7 +1836,9 @@ Arguments
 | Argument                      | Description                          |
 +===============================+======================================+
 | ``file_store``                | The root of the backing file store   |
-|                               | for experiment and run data.         |
+|                               | for experiment and run data. Ignored |
+|                               | when ``backend_store_uri`` is        |
+|                               | provided.                            |
 +-------------------------------+--------------------------------------+
 | ``default_artifact_root``     | Local or S3 URI to store artifacts   |
 |                               | in, for newly created experiments.   |
@@ -1855,6 +1858,12 @@ Arguments
 | ``serve_artifacts``           | A flag specifying whether or not to  |
 |                               | enable artifact serving (default:    |
 |                               | FALSE).                              |
++-------------------------------+--------------------------------------+
+| ``backend_store_uri``         | URI for the backend store (e.g.,     |
+|                               | ``sqlite:///mlflow.db``,             |
+|                               | ``postgresql://user:pass@host/db``). |
+|                               | When set, takes precedence over      |
+|                               | ``file_store``.                      |
 +-------------------------------+--------------------------------------+
 
 ``mlflow_set_experiment_tag``

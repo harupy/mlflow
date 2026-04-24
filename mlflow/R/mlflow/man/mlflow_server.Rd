@@ -11,11 +11,13 @@ mlflow_server(
   port = 5000,
   workers = NULL,
   static_prefix = NULL,
-  serve_artifacts = FALSE
+  serve_artifacts = FALSE,
+  backend_store_uri = NULL
 )
 }
 \arguments{
-\item{file_store}{The root of the backing file store for experiment and run data.}
+\item{file_store}{The root of the backing file store for experiment and run data.
+Ignored when \code{backend_store_uri} is provided.}
 
 \item{default_artifact_root}{Local or S3 URI to store artifacts in, for newly created experiments.}
 
@@ -28,7 +30,10 @@ mlflow_server(
 \item{static_prefix}{A prefix which will be prepended to the path of all static paths.}
 
 \item{serve_artifacts}{A flag specifying whether or not to enable artifact serving (default: FALSE).}
+
+\item{backend_store_uri}{URI for the backend store (e.g., \code{sqlite:///mlflow.db},
+\code{postgresql://user:pass@host/db}). When set, takes precedence over \code{file_store}.}
 }
 \description{
-Wrapper for `mlflow server`.
+Wrapper for \code{mlflow server}.
 }

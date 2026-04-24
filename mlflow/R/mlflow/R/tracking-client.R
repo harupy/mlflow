@@ -86,7 +86,7 @@ new_mlflow_client.mlflow_file <- function(tracking_uri) {
     }
     sqlite_uri <- paste0("sqlite:///", abs_path, "/mlflow.db")
     local_server <- mlflow_server(
-      file_store = sqlite_uri,
+      backend_store_uri = sqlite_uri,
       default_artifact_root = abs_path,
       port = mlflow_connect_port()
     )

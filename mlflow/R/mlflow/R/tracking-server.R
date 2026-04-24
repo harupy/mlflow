@@ -47,23 +47,26 @@ mlflow_cli_param <- function(args, param, value) {
 #' Wrapper for `mlflow server`.
 #'
 #' @param file_store The root of the backing file store for experiment and run data.
+#'   Ignored when `backend_store_uri` is provided.
 #' @param default_artifact_root Local or S3 URI to store artifacts in, for newly created experiments.
 #' @param host The network address to listen on (default: 127.0.0.1).
 #' @param port The port to listen on (default: 5000).
 #' @param workers Number of gunicorn worker processes to handle requests (default: 4).
 #' @param static_prefix A prefix which will be prepended to the path of all static paths.
 #' @param serve_artifacts A flag specifying whether or not to enable artifact serving (default: FALSE).
+#' @param backend_store_uri URI for the backend store (e.g., `sqlite:///mlflow.db`,
+#'   `postgresql://user:pass@host/db`). When set, takes precedence over `file_store`.
 #' @export
 mlflow_server <- function(file_store = "mlruns", default_artifact_root = NULL,
                           host = "127.0.0.1", port = 5000, workers = NULL, static_prefix = NULL,
-                          serve_artifacts = FALSE) {
-  if (!grepl("://", file_store)) {
-    file_store <- fs::path_abs(file_store)
-    if (.Platform$OS.type == "windows") file_store <- paste0("file://", file_store)
+                          serve_artifacts = FALSE, backend_store_uri = NULL) {
+  if (is.null(backend_store_uri)) {
+    backend_store_uri <- fs::path_abs(file_store)
+    if (.Platform$OS.type == "windows") backend_store_uri <- paste0("file://", backend_store_uri)
   }
 
   args <- mlflow_cli_param(list(), "--port", port) %>%
-    mlflow_cli_param("--backend-store-uri", file_store) %>%
+    mlflow_cli_param("--backend-store-uri", backend_store_uri) %>%
     mlflow_cli_param("--default-artifact-root", default_artifact_root) %>%
     mlflow_cli_param("--host", host) %>%
     mlflow_cli_param("--port", port) %>%
