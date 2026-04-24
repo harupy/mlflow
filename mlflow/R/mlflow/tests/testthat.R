@@ -19,6 +19,10 @@ mlflow_load_flavor.mlflow_flavor_trivial <- function(flavor, model_path) {
 library(testthat)
 library(mlflow)
 
+# Allow extra time for the local SQLite-backed tracking server to come up
+# (the first start runs alembic migrations).
+options(mlflow.connect.wait = 30)
+
 if (identical(Sys.getenv("NOT_CRAN"), "true")) {
   message("Current working directory: ", getwd())
   test_check("mlflow", reporter = ProgressReporter)
