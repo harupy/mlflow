@@ -46,11 +46,8 @@ mlflow_cli_param <- function(args, param, value) {
 #'
 #' Wrapper for `mlflow server`.
 #'
-#' @param file_store The root directory used to back the local tracking server.
-#'   A SQLite database (`mlflow.db`) is created inside this directory, and the
-#'   directory is also used as the default artifact root.
+#' @param file_store The root of the backing file store for experiment and run data.
 #' @param default_artifact_root Local or S3 URI to store artifacts in, for newly created experiments.
-#'   Defaults to `file_store` when not provided.
 #' @param host The network address to listen on (default: 127.0.0.1).
 #' @param port The port to listen on (default: 5000).
 #' @param workers Number of gunicorn worker processes to handle requests (default: 4).
