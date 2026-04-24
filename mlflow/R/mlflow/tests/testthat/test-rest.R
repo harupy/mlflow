@@ -56,7 +56,7 @@ test_that("insecure is used", {
 
 test_that("429s are retried", {
   next_id <<- 1
-  client <- mlflow:::mlflow_client("local")
+  client <- mlflow:::mlflow_client("http://local")
   new_response <- function(status_code) {
     structure(
       list(status_code = status_code,
