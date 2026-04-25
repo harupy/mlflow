@@ -219,6 +219,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       actions: write
+      pull-requests: read
     steps:
       - name: Approve queued rerun workflows
         env:
@@ -253,6 +254,8 @@ jobs:
             exit 0
           fi
 
+          # /rerun, not /approve: review-triggered runs are recorded against
+          # the base repo, so /approve 403s with "not a fork pull request".
           while IFS= read -r run_id; do
             gh api --method POST "repos/${REPO}/actions/runs/${run_id}/rerun" >/dev/null \
               && echo "Approved run $run_id" \
