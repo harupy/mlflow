@@ -201,13 +201,13 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           PR_NUMBER: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
-          COMMENT_TS: ${{ github.event.comment.created_at }}
+          COMMENT_CREATED_AT: ${{ github.event.comment.created_at }}
         run: |
           count=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
             --jq '[.[]
                    | select(.user.login == "mlflow-app[bot]"
                             and .state == "APPROVED"
-                            and .submitted_at >= env.COMMENT_TS)
+                            and .submitted_at >= env.COMMENT_CREATED_AT)
                   ] | length')
           approved=$([ "$count" -gt 0 ] && echo true || echo false)
           echo "approved=$approved" >> "$GITHUB_OUTPUT"
@@ -226,7 +226,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
-          COMMENT_TS: ${{ github.event.comment.created_at }}
+          COMMENT_CREATED_AT: ${{ github.event.comment.created_at }}
         run: |
           head_sha=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json headRefOid --jq '.headRefOid')
 
@@ -241,7 +241,7 @@ jobs:
                       | select(.name == "rerun"
                                and .conclusion == "action_required"
                                and .actor.login == "mlflow-app[bot]"
-                               and .created_at >= env.COMMENT_TS)
+                               and .created_at >= env.COMMENT_CREATED_AT)
                       | .id'
             )
             [ -n "$run_ids" ] && break
