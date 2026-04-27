@@ -1,4 +1,3 @@
-import random
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -30,11 +29,6 @@ def experiment_id(store: SqlAlchemyStore) -> str:
 @pytest.fixture(scope="session")
 def seeded(store: SqlAlchemyStore, experiment_id: str) -> list[str]:
     return seed_traces(store, experiment_id, SEED_TRACES, SEED_SPANS_PER_TRACE)
-
-
-@pytest.fixture(scope="session")
-def trace_id(seeded: list[str]) -> str:
-    return random.Random(7).choice(seeded)
 
 
 @pytest.fixture(scope="session")

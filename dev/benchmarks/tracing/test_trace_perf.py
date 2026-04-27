@@ -13,8 +13,6 @@ from pytest_benchmark.fixture import BenchmarkFixture
 
 import mlflow
 from mlflow.entities.span import SpanType
-from mlflow.entities.trace import Trace
-from mlflow.entities.trace_data import TraceData
 from mlflow.store.tracking.sqlalchemy_store import SqlAlchemyStore
 
 DEFAULT_SPANS = 100
@@ -38,10 +36,6 @@ def test_ingest(benchmark: BenchmarkFixture, store: SqlAlchemyStore, experiment_
     )
 
 
-def test_get_trace(benchmark: BenchmarkFixture, store: SqlAlchemyStore, trace_id: str) -> None:
-    benchmark(store.get_trace, trace_id)
-
-
 def test_search_by_tag(
     benchmark: BenchmarkFixture,
     store: SqlAlchemyStore,
@@ -57,11 +51,50 @@ def test_search_by_tag(
     )
 
 
-def test_trace_from_json(benchmark: BenchmarkFixture, experiment_id: str) -> None:
-    rng = random.Random(99)
-    ti, sp = generate_trace_data(experiment_id, DEFAULT_SPANS, rng)
-    trace_json = Trace(info=ti, data=TraceData(spans=sp)).to_json()
-    benchmark(Trace.from_json, trace_json)
+def test_search_by_state(
+    benchmark: BenchmarkFixture,
+    store: SqlAlchemyStore,
+    experiment_id: str,
+    seeded: list[str],
+) -> None:
+    del seeded
+    benchmark(
+        store.search_traces,
+        locations=[experiment_id],
+        max_results=100,
+        filter_string="status = 'ERROR'",
+    )
+
+
+def test_search_by_name_like(
+    benchmark: BenchmarkFixture,
+    store: SqlAlchemyStore,
+    experiment_id: str,
+    seeded: list[str],
+) -> None:
+    del seeded
+    benchmark(
+        store.search_traces,
+        locations=[experiment_id],
+        max_results=100,
+        filter_string="name LIKE 'rag_pipeline%'",
+    )
+
+
+def test_search_by_timestamp(
+    benchmark: BenchmarkFixture,
+    store: SqlAlchemyStore,
+    experiment_id: str,
+    seeded: list[str],
+) -> None:
+    del seeded
+    benchmark(
+        store.search_traces,
+        locations=[experiment_id],
+        max_results=100,
+        filter_string="timestamp > 0",
+        order_by=["timestamp DESC"],
+    )
 
 
 def _run_agent_workflow(num_tools: int, num_docs: int, query: str) -> None:
