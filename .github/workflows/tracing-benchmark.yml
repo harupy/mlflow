@@ -63,7 +63,7 @@ jobs:
           benchmark-data-dir-path: dev/benchmarks/tracing
           auto-push: true
           alert-threshold: "200%"
-          comment-on-alert: true
+          comment-on-alert: false
           fail-on-alert: false
           summary-always: true
           max-items-in-chart: 500
