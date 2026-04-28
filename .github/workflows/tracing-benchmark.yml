@@ -49,7 +49,7 @@ jobs:
       - name: Convert to custom format
         run: |
           uv run --no-sync python -c "
-          import json, sys
+          import json
           with open('benchmark-results.json') as f:
               data = json.load(f)
           out = [
