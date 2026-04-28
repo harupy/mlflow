@@ -90,6 +90,10 @@ def register_generic_import_hook(hook, name, hook_dict, overwrite):
 
     # Determine if any prior registration of an import hook for
     # the target modules has occurred and act appropriately.
+    # NOTE: We must not call hooks while holding the lock, because hooks may trigger
+    # imports which re-enter the import machinery and try to acquire this lock from
+    # another thread, causing a deadlock. Instead, we record the deferred call and
+    # execute it after the lock is released by the caller.
 
     hooks = hook_dict.get(name, None)
 
@@ -105,7 +109,7 @@ def register_generic_import_hook(hook, name, hook_dict, overwrite):
 
         if module is not None:
             hook_dict[name] = []
-            hook(module)
+            return hook, module
 
         else:
             hook_dict[name] = [hook]
@@ -116,7 +120,7 @@ def register_generic_import_hook(hook, name, hook_dict, overwrite):
         # immediately.
 
         module = sys.modules[name]
-        hook(module)
+        return hook, module
 
     else:
         # A prior registration of import hooks for the target
@@ -137,8 +141,9 @@ def register_generic_import_hook(hook, name, hook_dict, overwrite):
 
         hook_dict[name].append(hook)
 
+    return None
 
-@synchronized(_import_error_hooks_lock)
+
 def register_import_error_hook(hook, name, overwrite=True):
     """
     Args:
@@ -150,10 +155,13 @@ def register_import_error_hook(hook, name, overwrite=True):
             all preexisting hooks matching the specified function / entrypoint will be
             removed and replaced with a single instance of the specified `hook`.
     """
-    register_generic_import_hook(hook, name, _import_error_hooks, overwrite)
+    with _import_error_hooks_lock:
+        deferred = register_generic_import_hook(hook, name, _import_error_hooks, overwrite)
+    if deferred is not None:
+        deferred_hook, module = deferred
+        deferred_hook(module)
 
 
-@synchronized(_post_import_hooks_lock)
 def register_post_import_hook(hook, name, overwrite=True):
     """
     Args:
@@ -164,12 +172,16 @@ def register_post_import_hook(hook, name, overwrite=True):
             all preexisting hooks matching the specified function / entrypoint will be
             removed and replaced with a single instance of the specified `hook`.
     """
-    register_generic_import_hook(hook, name, _post_import_hooks, overwrite)
+    with _post_import_hooks_lock:
+        deferred = register_generic_import_hook(hook, name, _post_import_hooks, overwrite)
+    if deferred is not None:
+        deferred_hook, module = deferred
+        deferred_hook(module)
 
 
-@synchronized(_post_import_hooks_lock)
 def get_post_import_hooks(name):
-    return _post_import_hooks.get(name)
+    with _post_import_hooks_lock:
+        return _post_import_hooks.get(name)
 
 
 # Register post import hooks defined as package entry points.
@@ -202,23 +214,25 @@ def discover_post_import_hooks(group):
 # the import of the target module to fail.
 
 
-@synchronized(_post_import_hooks_lock)
 def notify_module_loaded(module):
     name = getattr(module, "__name__", None)
-    if hooks := _post_import_hooks.get(name):
-        _post_import_hooks[name] = []
+    with _post_import_hooks_lock:
+        hooks = _post_import_hooks.get(name, [])
+        if hooks:
+            _post_import_hooks[name] = []
 
-        for hook in hooks:
-            hook(module)
+    for hook in hooks:
+        hook(module)
 
 
-@synchronized(_import_error_hooks_lock)
 def notify_module_import_error(module_name):
-    if hooks := _import_error_hooks.get(module_name):
-        # Error hooks differ from post import hooks, in that we don't clear the
-        # hook as soon as it fires.
-        for hook in hooks:
-            hook(module_name)
+    with _import_error_hooks_lock:
+        hooks = list(_import_error_hooks.get(module_name, []))
+
+    # Error hooks differ from post import hooks, in that we don't clear the
+    # hook as soon as it fires.
+    for hook in hooks:
+        hook(module_name)
 
 
 # A custom module import finder. This intercepts attempts to import
@@ -246,44 +260,26 @@ class ImportHookFinder:
     def __init__(self):
         self.in_progress = {}
 
-    @synchronized(_post_import_hooks_lock)
-    @synchronized(_import_error_hooks_lock)
     def find_module(self, fullname, path=None):
-        # If the module being imported is not one we have registered
-        # import hooks for, we can return immediately. We will
-        # take no further part in the importing of this module.
+        # Check registration and set in_progress flag under the lock, but
+        # release it before calling into the import system to avoid deadlocks
+        # between _post_import_hooks_lock and per-module import locks.
+        with _post_import_hooks_lock, _import_error_hooks_lock:
+            if fullname not in _post_import_hooks and fullname not in _import_error_hooks:
+                return None
 
-        if fullname not in _post_import_hooks and fullname not in _import_error_hooks:
-            return None
+            if fullname in self.in_progress:
+                return None
 
-        # When we are interested in a specific module, we will call back
-        # into the import system a second time to defer to the import
-        # finder that is supposed to handle the importing of the module.
-        # We set an in progress flag for the target module so that on
-        # the second time through we don't trigger another call back
-        # into the import system and cause a infinite loop.
+            self.in_progress[fullname] = True
 
-        if fullname in self.in_progress:
-            return None
-
-        self.in_progress[fullname] = True
-
-        # Now call back into the import system again.
+        # Now call back into the import system again (without holding the lock).
 
         try:
-            # For Python 3 we need to use find_spec().loader
-            # from the importlib.util module. It doesn't actually
-            # import the target module and only finds the
-            # loader. If a loader is found, we need to return
-            # our own loader which will then in turn call the
-            # real loader to import the module and invoke the
-            # post import hooks.
             try:
                 import importlib.util  # clint: disable=lazy-import
 
                 loader = importlib.util.find_spec(fullname).loader
-            # If an ImportError (or AttributeError) is encountered while finding the module,
-            # notify the hooks for import errors
             except (ImportError, AttributeError):
                 notify_module_import_error(fullname)
                 loader = importlib.find_loader(fullname, path)
@@ -292,29 +288,20 @@ class ImportHookFinder:
         finally:
             del self.in_progress[fullname]
 
-    @synchronized(_post_import_hooks_lock)
-    @synchronized(_import_error_hooks_lock)
     def find_spec(self, fullname, path, target=None):
-        # If the module being imported is not one we have registered
-        # import hooks for, we can return immediately. We will
-        # take no further part in the importing of this module.
+        # Check registration and set in_progress flag under the lock, but
+        # release it before calling into the import system to avoid deadlocks
+        # between _post_import_hooks_lock and per-module import locks.
+        with _post_import_hooks_lock, _import_error_hooks_lock:
+            if fullname not in _post_import_hooks and fullname not in _import_error_hooks:
+                return None
 
-        if fullname not in _post_import_hooks and fullname not in _import_error_hooks:
-            return None
+            if fullname in self.in_progress:
+                return None
 
-        # When we are interested in a specific module, we will call back
-        # into the import system a second time to defer to the import
-        # finder that is supposed to handle the importing of the module.
-        # We set an in progress flag for the target module so that on
-        # the second time through we don't trigger another call back
-        # into the import system and cause a infinite loop.
+            self.in_progress[fullname] = True
 
-        if fullname in self.in_progress:
-            return None
-
-        self.in_progress[fullname] = True
-
-        # Now call back into the import system again.
+        # Now call back into the import system again (without holding the lock).
 
         try:
             import importlib.util  # clint: disable=lazy-import
