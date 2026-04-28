@@ -101,10 +101,11 @@ def configure_autologging_for_evaluation(enable_tracing: bool = True):
             # Restore original post-import hooks if any. Note that we don't use
             # register_post_import_hook method to bypass some pre-checks and just
             # restore the original state.
-            if hooks is None:
+            original = original_import_hooks[module]
+            if original is None:
                 _post_import_hooks.pop(module, None)
             else:
-                _post_import_hooks[module] = original_import_hooks[module]
+                _post_import_hooks[module] = original
 
         # If any autologging configuration is updated, restore original autologging configurations.
         for flavor, new_config in AUTOLOGGING_INTEGRATIONS.copy().items():
