@@ -156,7 +156,7 @@ jobs:
           && contains(github.event.issue.labels.*.name, 'area/uiux')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COMMENT: ${{ fromJSON(steps.triage.outputs.result).comment }}
+          COMMENT: ${{ fromJSON(steps.triage.outputs.result || '{"comment":""}').comment }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           gh issue comment "$ISSUE_NUMBER" --repo "$REPO" --body "$COMMENT
