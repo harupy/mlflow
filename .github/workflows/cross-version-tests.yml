@@ -189,7 +189,6 @@ jobs:
         run: |
           eval "$MATRIX_INSTALL"
       - uses: ./.github/actions/show-versions
-      - uses: ./.github/actions/pipdeptree
       - name: Pre-test
         if: matrix.pre_test
         env:
