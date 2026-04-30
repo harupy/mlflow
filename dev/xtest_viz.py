@@ -365,7 +365,10 @@ async def main() -> None:
     data_rows = await visualizer.fetch_all_jobs(args.days)
     if args.json_output:
         Path(args.json_output).write_text(visualizer.render_json(data_rows))
-    print(visualizer.render_results_table(data_rows))
+    if not data_rows:
+        print("No workflow runs found in the specified time period.")
+    else:
+        print(visualizer.render_results_table(data_rows))
 
 
 if __name__ == "__main__":
