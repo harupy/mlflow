@@ -1,0 +1,43 @@
+name: probe-windows-sleep
+
+on:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  probe:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.11"
+      - name: Show sleep on PATH
+        run: |
+          which sleep || true
+          where sleep || true
+          file "$(which sleep)" || true
+      - name: Run probe
+        shell: python
+        run: |
+          import subprocess
+          import sys
+          import time
+
+          results = []
+          for i in range(20):
+              proc = subprocess.Popen(["sleep", "10"])
+              time.sleep(0.2)
+              proc.terminate()
+              rc = proc.wait(timeout=5)
+              results.append(rc)
+              print(f"iter {i}: returncode={rc} (hex={rc & 0xFFFFFFFF:#010x})")
+
+          print("---")
+          print("unique returncodes:", sorted(set(results)))
+          print("count 0xC0000142:", sum(1 for r in results if (r & 0xFFFFFFFF) == 0xC0000142))
