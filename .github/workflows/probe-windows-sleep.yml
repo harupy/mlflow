@@ -2,6 +2,9 @@ name: probe-windows-sleep
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/probe-windows-sleep.yml
 
 defaults:
   run:
@@ -30,7 +33,7 @@ jobs:
           import time
 
           results = []
-          for i in range(20):
+          for i in range(200):
               proc = subprocess.Popen(["sleep", "10"])
               time.sleep(0.2)
               proc.terminate()
