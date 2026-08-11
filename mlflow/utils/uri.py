@@ -547,8 +547,15 @@ def validate_path_within_directory(base_dir: str, constructed_path: str) -> str:
         real_constructed_path = target.parent.resolve() / target.name
 
     if not real_constructed_path.is_relative_to(real_base_dir):
+        # Report both the inputs and what each resolve() produced. This rejection has fired
+        # spuriously on the Windows CI runners, and the message alone gives no way to tell
+        # which of the two resolutions diverged or how (an unexpanded 8.3 short name, a
+        # retained \\?\ extended-length prefix, or a genuinely different location).
         raise MlflowException(
-            "Invalid path: resolved path is outside the artifact directory",
+            "Invalid path: resolved path is outside the artifact directory "
+            f"(base_dir={base_dir!r}, constructed_path={constructed_path!r}, "
+            f"real_base_dir={str(real_base_dir)!r}, "
+            f"real_constructed_path={str(real_constructed_path)!r})",
             error_code=INVALID_PARAMETER_VALUE,
         )
 

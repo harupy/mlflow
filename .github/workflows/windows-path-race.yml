@@ -1,0 +1,63 @@
+name: Windows path race repro
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      rounds:
+        description: "Number of rounds per shard"
+        required: false
+        default: "20"
+      iterations:
+        description: "Writes and probes per worker thread, per round"
+        required: false
+        default: "200"
+      writers:
+        description: "Concurrent writer threads (5 matches the async artifact logging queue)"
+        required: false
+        default: "5"
+      probers:
+        description: "Concurrent threads resolving paths in the directory being written to"
+        required: false
+        default: "5"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions: {}
+
+jobs:
+  stress:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # Independent shards, purely to collect more samples of a rare race per run.
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python
+      - name: Install mlflow
+        run: uv sync --no-dev
+      - name: Stress the artifact path validator under concurrent writes
+        env:
+          ROUNDS: ${{ inputs.rounds || '20' }}
+          ITERATIONS: ${{ inputs.iterations || '200' }}
+          WRITERS: ${{ inputs.writers || '5' }}
+          PROBERS: ${{ inputs.probers || '5' }}
+        run: |
+          uv run --no-sync python dev/repro_windows_path_race.py \
+            --rounds "$ROUNDS" \
+            --iterations "$ITERATIONS" \
+            --writers "$WRITERS" \
+            --probers "$PROBERS"
