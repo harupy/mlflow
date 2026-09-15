@@ -6,7 +6,7 @@ on:
       - codex/cache-mode-expression-probe-20260915
 
 permissions: {}
-cache-mode: none
+cache-mode: ${{ github.event_name == 'push' && 'read' || 'none' }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -22,7 +22,6 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-    cache-mode: ${{ github.event_name == 'push' && 'read' || 'none' }}
     steps:
       - name: Show effective cache mode
         run: echo "ACTIONS_CACHE_MODE=$ACTIONS_CACHE_MODE"
