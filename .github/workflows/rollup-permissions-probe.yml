@@ -284,3 +284,68 @@ jobs:
             fi
           done
           exit "$result"
+  no_permissions:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Query statusCheckRollup
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          gh --version
+          result=0
+          for target in self upstream; do
+            if [ "$target" = self ]; then
+              repo="$GH_REPO"
+              sha="$HEAD_SHA"
+            else
+              repo=mlflow/mlflow
+              sha=81ef127abeade5ecbda31a837a6bc4ef979202ff
+            fi
+            echo "Testing $target ($repo at $sha)"
+            if gh api graphql --paginate --slurp \
+              -f owner="${repo%/*}" -f name="${repo#*/}" -f sha="$sha" \
+              -f query='query($owner: String!, $name: String!, $sha: String!, $endCursor: String) {
+          repository(owner: $owner, name: $name) {
+          object(expression: $sha) {
+          ... on Commit {
+          statusCheckRollup {
+          contexts(first: 100, after: $endCursor) {
+          nodes {
+          __typename
+          ... on CheckRun {
+          name
+          status
+          conclusion
+          startedAt
+          completedAt
+          detailsUrl
+          checkSuite {
+          app { slug }
+          workflowRun { event workflow { name } }
+          }
+          }
+          }
+          pageInfo { hasNextPage endCursor }
+          }
+          }
+          }
+          }
+          }
+          }' > response.json; then
+              jq '[.[].data.repository.object.statusCheckRollup.contexts.nodes[]?] | {contexts: length, github_actions: [.[] | select(.checkSuite.app.slug == "github-actions")] | length}' response.json
+              if jq -e '[.[].data.repository.object.statusCheckRollup.contexts.nodes[]? | select(.checkSuite.app.slug == "github-actions")] | length > 0' response.json > /dev/null; then
+                echo "RESULT $target PASS"
+              else
+                echo "RESULT $target EMPTY"
+                result=1
+              fi
+            else
+              jq '[.[] | .errors // []] | flatten | map({type, message, path})' response.json || true
+              echo "RESULT $target FAIL"
+              result=1
+            fi
+          done
+          exit "$result"
