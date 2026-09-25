@@ -110,11 +110,14 @@ jobs:
       matrix:
         include:
           - runner: ubuntu-24.04
-            python-version: 3.10.21
+            python-version: "3.10"
+            expected-version: 3.10.21
           - runner: ubuntu-26.04
-            python-version: 3.10.21
+            python-version: "3.10"
+            expected-version: 3.10.21
           - runner: windows-2025
-            python-version: 3.10.11
+            python-version: "3.10"
+            expected-version: 3.10.11
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -124,7 +127,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Verify uv-managed Python
         env:
-          EXPECTED_VERSION: ${{ matrix.python-version }}
+          EXPECTED_VERSION: ${{ matrix.expected-version }}
         run: |
           python --version
           uv python find "$EXPECTED_VERSION"
