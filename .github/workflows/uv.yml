@@ -134,8 +134,7 @@ jobs:
           uv pip list
           python -c 'import os, sys; assert sys.version.startswith(os.environ["EXPECTED_VERSION"]), sys.version'
           uv run --no-sync python -c 'import os, sys; assert sys.version.startswith(os.environ["EXPECTED_VERSION"]), sys.version'
-      - name: Inspect system install target
+      - name: Verify environment install target
         run: |
-          uv pip install --system pyfiglet==1.0.4
-          uv python find --system
-          python -c 'import importlib.util, sys; print(sys.executable, importlib.util.find_spec("pyfiglet"))'
+          uv pip install pyfiglet==1.0.4
+          python -c 'import pyfiglet, sys; print(sys.executable, pyfiglet.__file__)'
