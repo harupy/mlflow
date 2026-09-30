@@ -1,0 +1,24 @@
+name: Issue label probe
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  issues: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump payload labels and API labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTION: ${{ github.event.action }}
+          PAYLOAD_LABELS: ${{ toJSON(github.event.issue.labels.*.name) }}
+          EVENT_LABEL: ${{ github.event.label.name }}
+          NUMBER: ${{ github.event.issue.number }}
+        run: |
+          echo "action=$ACTION event_label=$EVENT_LABEL"
+          echo "payload_labels=$(echo "$PAYLOAD_LABELS" | tr -d '\n ')"
+          echo "api_labels=$(gh api repos/$GITHUB_REPOSITORY/issues/$NUMBER -q '[.labels[].name]')"
