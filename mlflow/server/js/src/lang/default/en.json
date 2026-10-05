@@ -8011,6 +8011,10 @@
     "defaultMessage": "Admin",
     "description": "Roles table column flagging admin roles when workspaces are disabled"
   },
+  "Ulp7ge": {
+    "defaultMessage": "TypeSafe endpoints require all primary and fallback models to use TypeSafe.",
+    "description": "Validation error for mixing TypeSafe evaluation models with other providers"
+  },
   "UmwZQv": {
     "defaultMessage": "using Prompt Engineering",
     "description": "String for creating a new run with prompt engineering modal"
@@ -11854,6 +11858,10 @@
   "itlAT2": {
     "defaultMessage": "This experiment has reached the maximum of {max} saved views. Delete a view before saving a new one.",
     "description": "Error toast shown when saving a traces view once the experiment is at the saved-view cap"
+  },
+  "ityxuF": {
+    "defaultMessage": "Image unavailable",
+    "description": "Fallback shown when a custom trace view image binding is missing or invalid"
   },
   "ivRq5S": {
     "defaultMessage": "Send Feedback",
