@@ -1,0 +1,118 @@
+name: Traces pagination comparison
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/traces-v4-pagination-tests
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions: {}
+cache-mode: none
+
+jobs:
+  compare:
+    if: github.repository == 'harupy/mlflow'
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [baseline, optimized]
+    defaults:
+      run:
+        working-directory: mlflow/server/js
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ matrix.variant == 'baseline' && 'b994a7a7be2fdeffe5c644ac21f90439724bb5b1' || github.sha }}
+      - uses: ./.github/actions/setup-node
+      - run: yarn install --immutable
+      - name: Record per-test timings
+        run: |
+          mkdir -p /tmp/traces-pagination-ci
+          cat > /tmp/traces-pagination-ci/reporter.cjs <<'JS'
+          const fs = require('node:fs');
+          module.exports = class {
+            onTestResult(_test, result) {
+              const timings = result.testResults.map(({ fullName, status, duration }) => ({ fullName, status, duration }));
+              fs.appendFileSync('/tmp/traces-pagination-ci/timings.jsonl', JSON.stringify(timings) + '\n');
+            }
+          };
+          JS
+      - name: Run experiment-tracking component tests
+        run: |
+          "$GITHUB_WORKSPACE/dev/profile.sh" \
+            yarn test --silent --maxWorkers=2 \
+            --testPathPattern src/experiment-tracking/components \
+            --reporters=default --reporters=/tmp/traces-pagination-ci/reporter.cjs \
+            --json --outputFile=/tmp/traces-pagination-ci/components.json
+        env:
+          PROFILE_DATA_FILE: /tmp/traces-pagination-ci/profile.csv
+      - name: Run shared pagination tests
+        if: always()
+        run: |
+          yarn test --silent --maxWorkers=2 \
+            --testPathPattern='useTracesPageQuery.test.tsx|TracesTableView.test.tsx' \
+            --reporters=default --reporters=/tmp/traces-pagination-ci/reporter.cjs \
+            --json --outputFile=/tmp/traces-pagination-ci/shared.json
+      - name: Summarize pagination timings
+        if: always()
+        run: |
+          node <<'JS'
+          const fs = require('node:fs');
+          const lines = ['### Pagination test timings', '', '| Test | Status | Seconds |', '| --- | --- | ---: |'];
+          for (const file of ['components.json', 'shared.json']) {
+            const path = `/tmp/traces-pagination-ci/${file}`;
+            if (!fs.existsSync(path)) continue;
+            const results = JSON.parse(fs.readFileSync(path, 'utf8'));
+            lines.push(`| ${file}: ${results.numPassedTests} passed, ${results.numFailedTests} failed | | |`);
+          }
+          const path = '/tmp/traces-pagination-ci/timings.jsonl';
+          if (fs.existsSync(path)) {
+            for (const line of fs.readFileSync(path, 'utf8').trim().split('\n')) {
+              for (const test of JSON.parse(line)) {
+                if (!test.fullName.includes('pagination') && !test.fullName.includes('pages from a full page')) continue;
+                lines.push(`| ${test.fullName.replaceAll('|', '\\|')} | ${test.status} | ${((test.duration ?? 0) / 1000).toFixed(3)} |`);
+              }
+            }
+          }
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
+          JS
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: traces-pagination-${{ matrix.variant }}
+          path: /tmp/traces-pagination-ci
+          retention-days: 3
+          if-no-files-found: error
+
+  checks:
+    if: github.repository == 'harupy/mlflow'
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: mlflow/server/js
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-node
+      - run: yarn install --immutable
+      - run: yarn lint
+      - run: yarn prettier:check
+      - run: yarn i18n:check
+      - run: yarn type-check
