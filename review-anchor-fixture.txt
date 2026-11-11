@@ -2,9 +2,10 @@ fixture line 01
 fixture line 02
 fixture line 03
 fixture line 04
-fixture line 05
+replacement at old line 05
+extra added line
 fixture line 06
-fixture line 07
+replacement at old line 07
 fixture line 08
 fixture line 09
 fixture line 10
@@ -22,7 +23,7 @@ fixture line 21
 fixture line 22
 fixture line 23
 fixture line 24
-fixture line 25
+replacement at old line 25
 fixture line 26
 fixture line 27
 fixture line 28
